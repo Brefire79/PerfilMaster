@@ -28,6 +28,16 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Binários Supabase CLI
+supabase.exe
+supabase.tar.gz
+supabase_windows_amd64.tar.gz
+supabase_windows_amd64/
+supabase/.temp/
+
+# Claude IDE
+.claude/
 npm-debug.log*
 yarn-debug.log*
 
