@@ -1,0 +1,390 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ProfileAI Assessment API Schema",
+  "description": "AMB FUSI — Schema completo da API do Assessment Engine (DISC + Sabotadores)",
+  "version": "1.0",
+  "date": "Abril 2026",
+
+  "definitions": {
+
+    "LikertScale": {
+      "type": "integer",
+      "enum": [1, 2, 3, 4, 5],
+      "description": "Escala Likert: 1=Discordo totalmente, 2=Discordo, 3=Neutro, 4=Concordo, 5=Concordo totalmente"
+    },
+
+    "DISCProfileCode": {
+      "type": "string",
+      "enum": ["D", "I", "S", "C"],
+      "description": "Código do perfil DISC: D=Dominante, I=Influente, S=Estável, C=Analítico"
+    },
+
+    "DISCSubtype": {
+      "type": "string",
+      "enum": ["DC", "D", "Di", "iD", "i", "iS", "Si", "S", "SC", "CS", "C", "CD"],
+      "description": "12 subtipos DISC (combinação primário + secundário)"
+    },
+
+    "SaboteurCode": {
+      "type": "string",
+      "enum": ["judge", "stickler", "pleaser", "hyperAchiever", "victim", "hyperRational", "hyperVigilant", "restless", "controller", "avoider"],
+      "description": "Código dos 10 sabotadores: judge=Juiz, stickler=Insistente, pleaser=Prestativo, hyperAchiever=Hiper-Realizador, victim=Vítima, hyperRational=Hiper-Racional, hyperVigilant=Hiper-Vigilante, restless=Inquieto, controller=Controlador, avoider=Esquivo"
+    },
+
+    "AssessmentType": {
+      "type": "string",
+      "enum": ["disc", "saboteurs", "full"]
+    },
+
+    "SaboteurIntensity": {
+      "type": "string",
+      "enum": ["baixa", "moderada", "alta", "muito_alta"],
+      "description": "baixa: 1.0-3.0 | moderada: 3.1-5.0 | alta: 5.1-7.0 | muito_alta: 7.1-10.0"
+    },
+
+    "DISCLevel": {
+      "type": "string",
+      "enum": ["baixo", "moderado", "alto", "dominante"],
+      "description": "baixo: 1.0-2.0 | moderado: 2.1-3.0 | alto: 3.1-4.0 | dominante: 4.1-5.0"
+    },
+
+    "DISCScores": {
+      "type": "object",
+      "properties": {
+        "dominante": { "type": "number", "minimum": 1.0, "maximum": 5.0, "description": "Score perfil D (Dominante)" },
+        "influente":  { "type": "number", "minimum": 1.0, "maximum": 5.0, "description": "Score perfil I (Influente)" },
+        "estavel":    { "type": "number", "minimum": 1.0, "maximum": 5.0, "description": "Score perfil S (Estável)" },
+        "analitico":  { "type": "number", "minimum": 1.0, "maximum": 5.0, "description": "Score perfil C (Analítico)" }
+      },
+      "required": ["dominante", "influente", "estavel", "analitico"]
+    },
+
+    "SaboteurScores": {
+      "type": "object",
+      "description": "Scores normalizados 1.0–10.0 para cada sabotador",
+      "properties": {
+        "judge":          { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "stickler":       { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "pleaser":        { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "hyperAchiever":  { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "victim":         { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "hyperRational":  { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "hyperVigilant":  { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "restless":       { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "controller":     { "type": "number", "minimum": 1.0, "maximum": 10.0 },
+        "avoider":        { "type": "number", "minimum": 1.0, "maximum": 10.0 }
+      },
+      "required": ["judge","stickler","pleaser","hyperAchiever","victim","hyperRational","hyperVigilant","restless","controller","avoider"]
+    }
+  },
+
+  "endpoints": {
+
+    "POST /functions/v1/calculate-assessment": {
+      "description": "Recebe respostas brutas, calcula scores DISC e Sabotadores, salva no banco e retorna resultados.",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CalculateAssessmentRequest",
+        "type": "object",
+        "required": ["respostas", "assessment_type"],
+        "properties": {
+          "respostas": {
+            "type": "object",
+            "description": "Mapa de question_uuid para valor Likert 1-5",
+            "additionalProperties": { "$ref": "#/definitions/LikertScale" },
+            "minProperties": 1,
+            "example": {
+              "550e8400-e29b-41d4-a716-446655440000": 4,
+              "550e8400-e29b-41d4-a716-446655440001": 3
+            }
+          },
+          "assessment_type": { "$ref": "#/definitions/AssessmentType" }
+        }
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CalculateAssessmentResponse",
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "assessment_result_id": { "type": "string", "format": "uuid" },
+          "disc": {
+            "allOf": [
+              { "$ref": "#/definitions/DISCScores" },
+              {
+                "type": "object",
+                "properties": {
+                  "perfil_primario":  { "$ref": "#/definitions/DISCProfileCode" },
+                  "perfil_secundario": { "$ref": "#/definitions/DISCProfileCode" },
+                  "subtipo": { "$ref": "#/definitions/DISCSubtype" },
+                  "nivel": {
+                    "type": "object",
+                    "properties": {
+                      "D": { "$ref": "#/definitions/DISCLevel" },
+                      "I": { "$ref": "#/definitions/DISCLevel" },
+                      "S": { "$ref": "#/definitions/DISCLevel" },
+                      "C": { "$ref": "#/definitions/DISCLevel" }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "saboteurs": {
+            "allOf": [
+              { "$ref": "#/definitions/SaboteurScores" },
+              {
+                "type": "object",
+                "properties": {
+                  "top_sabotadores": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/SaboteurCode" },
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "description": "Os 3 sabotadores com maior score"
+                  },
+                  "intensidade": {
+                    "type": "object",
+                    "description": "Intensidade de cada sabotador",
+                    "additionalProperties": { "$ref": "#/definitions/SaboteurIntensity" }
+                  }
+                }
+              }
+            ]
+          },
+          "pq_score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "PQ Score = 100 - (média dos top 3 sabotadores × 10). Acima de 75 = ótimo."
+          },
+          "proxima_avaliacao": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Data mínima para nova avaliação (completed_at + 30 dias)"
+          },
+          "error": { "type": "string" }
+        },
+        "required": ["success", "assessment_result_id", "disc", "saboteurs", "pq_score", "proxima_avaliacao"]
+      },
+      "example_response": {
+        "success": true,
+        "assessment_result_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+        "disc": {
+          "dominante": 3.8,
+          "influente": 4.2,
+          "estavel": 2.5,
+          "analitico": 3.1,
+          "perfil_primario": "I",
+          "perfil_secundario": "D",
+          "subtipo": "iD",
+          "nivel": { "D": "alto", "I": "dominante", "S": "moderado", "C": "alto" }
+        },
+        "saboteurs": {
+          "judge": 7.2,
+          "stickler": 5.8,
+          "pleaser": 8.2,
+          "hyperAchiever": 6.4,
+          "victim": 3.2,
+          "hyperRational": 4.8,
+          "hyperVigilant": 6.0,
+          "restless": 7.5,
+          "controller": 5.2,
+          "avoider": 4.0,
+          "top_sabotadores": ["pleaser", "restless", "judge"],
+          "intensidade": {
+            "judge": "alta",
+            "stickler": "moderada",
+            "pleaser": "muito_alta",
+            "hyperAchiever": "alta",
+            "victim": "baixa",
+            "hyperRational": "moderada",
+            "hyperVigilant": "alta",
+            "restless": "alta",
+            "controller": "moderada",
+            "avoider": "moderada"
+          }
+        },
+        "pq_score": 62,
+        "proxima_avaliacao": "2026-05-03T10:00:00Z"
+      }
+    },
+
+    "POST /functions/v1/generate-report": {
+      "description": "Gera relatório personalizado via Anthropic API integrando perfil DISC e top 3 sabotadores.",
+      "request": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GenerateReportRequest",
+        "type": "object",
+        "required": ["assessment_result_id"],
+        "properties": {
+          "assessment_result_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID do resultado do assessment para gerar o relatório"
+          }
+        }
+      },
+      "response": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GenerateReportResponse",
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean" },
+          "report_id": { "type": "string", "format": "uuid" },
+          "resumo_perfil": {
+            "type": "string",
+            "description": "2-3 parágrafos sobre o perfil comportamental do usuário"
+          },
+          "impacto_sabotadores": {
+            "type": "string",
+            "description": "Como os top 3 sabotadores afetam especificamente este perfil DISC"
+          },
+          "recomendacoes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 5,
+            "maxItems": 5,
+            "description": "5 recomendações práticas de desenvolvimento"
+          },
+          "focos_mentoria": {
+            "type": "array",
+            "items": { "type": "string" },
+            "minItems": 3,
+            "maxItems": 3,
+            "description": "3 focos prioritários de mentoria"
+          },
+          "pontos_fortes": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Pontos fortes a potencializar"
+          },
+          "relatorio_completo": {
+            "type": "string",
+            "description": "Relatório completo em Markdown, 100% em português brasileiro"
+          },
+          "tokens_usados": { "type": "integer" },
+          "error": { "type": "string" }
+        },
+        "required": ["success", "report_id", "resumo_perfil", "impacto_sabotadores", "recomendacoes", "focos_mentoria", "pontos_fortes", "relatorio_completo"]
+      }
+    }
+  },
+
+  "database_model": {
+    "description": "Estrutura de dados salva no Supabase (seção 3.2 do documento de referência)",
+    "assessment_result": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "assessment_type": { "$ref": "#/definitions/AssessmentType" },
+        "respostas_brutas": {
+          "type": "object",
+          "description": "{ question_uuid: likert_value }",
+          "additionalProperties": { "$ref": "#/definitions/LikertScale" }
+        },
+        "disc": { "$ref": "#/definitions/DISCScores" },
+        "perfil_primario": { "$ref": "#/definitions/DISCProfileCode" },
+        "perfil_secundario": { "$ref": "#/definitions/DISCProfileCode" },
+        "subtipo_disc": { "$ref": "#/definitions/DISCSubtype" },
+        "saboteurs": { "$ref": "#/definitions/SaboteurScores" },
+        "pq_score": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "top_sabotadores": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/SaboteurCode" },
+          "maxItems": 3
+        },
+        "completed_at": { "type": "string", "format": "date-time" },
+        "proxima_avaliacao": { "type": "string", "format": "date-time" }
+      }
+    },
+    "user_report": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "user_id": { "type": "string", "format": "uuid" },
+        "assessment_result_id": { "type": "string", "format": "uuid" },
+        "resumo_perfil": { "type": "string" },
+        "impacto_sabotadores": { "type": "string" },
+        "recomendacoes": { "type": "array", "items": { "type": "string" }, "minItems": 5, "maxItems": 5 },
+        "focos_mentoria": { "type": "array", "items": { "type": "string" }, "minItems": 3, "maxItems": 3 },
+        "pontos_fortes": { "type": "array", "items": { "type": "string" } },
+        "relatorio_completo": { "type": "string" },
+        "modelo_ia": { "type": "string", "default": "claude-sonnet-4-6" },
+        "tokens_usados": { "type": "integer" },
+        "created_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  },
+
+  "scoring_rules": {
+    "disc": {
+      "formula": "Média das 7 respostas Likert (1-5) por perfil",
+      "escala": "1.0 a 5.0",
+      "perfil_primario": "Perfil com maior score",
+      "perfil_secundario": "Segundo maior score",
+      "subtipo": "Combinação primário + secundário (ex: iD, SC, Di)",
+      "niveis": {
+        "1.0-2.0": "Baixo — pouca presença no comportamento",
+        "2.1-3.0": "Moderado — aparece em contextos específicos",
+        "3.1-4.0": "Alto — força significativa no perfil",
+        "4.1-5.0": "Dominante — define o comportamento predominante"
+      }
+    },
+    "saboteurs": {
+      "formula": "Média das 5 respostas Likert (1-5) × 2 para normalizar para escala 1-10",
+      "escala": "1.0 a 10.0",
+      "intensidades": {
+        "1.0-3.0": "Baixa — pouca influência",
+        "3.1-5.0": "Moderada — aparece em situações de estresse",
+        "5.1-7.0": "Alta — afeta significativamente o desempenho",
+        "7.1-10.0": "Muito Alta — domina reações e decisões"
+      }
+    },
+    "pq_score": {
+      "formula": "100 - (média dos top 3 sabotadores em escala 1-5 × 10)",
+      "escala": "0 a 100",
+      "referencia": {
+        "abaixo_de_51": "Abaixo da média populacional (18-25 anos)",
+        "51_a_63": "Faixa média da população geral",
+        "64_a_74": "Acima da média — bom desempenho",
+        "acima_de_75": "Ótimo — ponto crítico para desempenho ideal (proporção 3:1 positivo/negativo)"
+      }
+    }
+  },
+
+  "disc_subtypes_reference": [
+    { "code": "DC", "combinacao": "Dominante + Analítico",  "caracteristica": "Desafiador: direto, cético e exigente" },
+    { "code": "D",  "combinacao": "Dominante puro",         "caracteristica": "Realizador: focado, competitivo e decisivo" },
+    { "code": "Di", "combinacao": "Dominante + Influente",  "caracteristica": "Dinâmico: ativo, ousado e persuasivo" },
+    { "code": "iD", "combinacao": "Influente + Dominante",  "caracteristica": "Inspirador: energético, assertivo e visionário" },
+    { "code": "i",  "combinacao": "Influente puro",         "caracteristica": "Comunicador: expressivo, otimista e sociável" },
+    { "code": "iS", "combinacao": "Influente + Estável",    "caracteristica": "Acolhedor: amigável, paciente e colaborativo" },
+    { "code": "Si", "combinacao": "Estável + Influente",    "caracteristica": "Apoiador: calmo, atencioso e receptivo" },
+    { "code": "S",  "combinacao": "Estável puro",           "caracteristica": "Leal: confiável, estável e consistente" },
+    { "code": "SC", "combinacao": "Estável + Analítico",    "caracteristica": "Técnico: meticuloso, estável e cuidadoso" },
+    { "code": "CS", "combinacao": "Analítico + Estável",    "caracteristica": "Deliberado: cauteloso, preciso e reflexivo" },
+    { "code": "C",  "combinacao": "Analítico puro",         "caracteristica": "Criterioso: detalhista, lógico e independente" },
+    { "code": "CD", "combinacao": "Analítico + Dominante",  "caracteristica": "Resoluto: analítico, determinado e objetivo" }
+  ],
+
+  "disc_saboteur_correlations": {
+    "D": {
+      "sabotadores_comuns": ["controller", "hyperAchiever", "judge"],
+      "razao": "A orientação a resultados e controle do D alimenta tendências de controle e autocobrança excessiva."
+    },
+    "I": {
+      "sabotadores_comuns": ["pleaser", "avoider", "restless"],
+      "razao": "A busca por aprovação social e o otimismo do I podem gerar necessidade de agradar e evitar conflitos."
+    },
+    "S": {
+      "sabotadores_comuns": ["pleaser", "avoider", "victim"],
+      "razao": "A prioridade em harmonia e estabilidade do S pode levar à acomodação excessiva e evitação de conflitos."
+    },
+    "C": {
+      "sabotadores_comuns": ["stickler", "hyperRational", "hyperVigilant"],
+      "razao": "A busca por precisão e qualidade do C alimenta perfeccionismo, racionalização excessiva e ansiedade."
+    }
+  }
+}
