@@ -1,0 +1,174 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ─── Helper functions ──────────────────────────────────────────────────────
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isStudent() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'student';
+    }
+
+    function isGroupAdmin(groupId) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/groups/$(groupId)).data.adminUid == request.auth.uid;
+    }
+
+    function isGroupMember(groupId) {
+      return isAuthenticated() &&
+        request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'createdAt']) &&
+        data.role in ['admin', 'student'] &&
+        data.uid == request.auth.uid;
+    }
+
+    // ─── Users collection ──────────────────────────────────────────────────────
+    match /users/{uid} {
+      // Users can read their own document; admins can read any user
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Users can create their own document on registration
+      allow create: if isOwner(uid) && isValidUser(request.resource.data);
+
+      // Users can update their own non-role fields; admins can update any field
+      allow update: if (isOwner(uid) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'uid'])) ||
+                       isAdmin();
+
+      // Only admins can delete user documents
+      allow delete: if isAdmin();
+    }
+
+    // ─── Groups collection ─────────────────────────────────────────────────────
+    match /groups/{groupId} {
+      // Group members and the admin can read
+      allow read: if isGroupAdmin(groupId) || isGroupMember(groupId);
+
+      // Admins (platform) can create groups
+      allow create: if isAdmin() && request.resource.data.adminUid == request.auth.uid;
+
+      // Only the group admin can update
+      allow update: if isGroupAdmin(groupId);
+
+      // Only the group admin can delete
+      allow delete: if isGroupAdmin(groupId);
+    }
+
+    // ─── Modules collection ────────────────────────────────────────────────────
+    match /modules/{moduleId} {
+      // Group members can read published modules; admin can read all
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.status == 'published' && isGroupMember(resource.data.groupId))
+      );
+
+      // Only admins can create/update/delete modules
+      allow create: if isAdmin();
+      allow update: if isAdmin() && isGroupAdmin(resource.data.groupId);
+      allow delete: if isAdmin() && isGroupAdmin(resource.data.groupId);
+    }
+
+    // ─── Assessments collection ────────────────────────────────────────────────
+    match /assessments/{assessmentId} {
+      // Students can read their own; admins can read assessments in their groups
+      allow read: if isOwner(resource.data.uid) ||
+                     (isAdmin() && isGroupAdmin(resource.data.groupId));
+
+      // Students can create their own assessments
+      allow create: if isAuthenticated() &&
+                       request.resource.data.uid == request.auth.uid;
+
+      // Students can update their own (answers, progress); can't change uid/groupId
+      allow update: if isOwner(resource.data.uid) &&
+                       !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'groupId']);
+
+      // Only admins can delete assessments
+      allow delete: if isAdmin();
+    }
+
+    // ─── Profiles collection ───────────────────────────────────────────────────
+    match /profiles/{uid} {
+      // Students can read their own profile; group admin can read profiles in their group
+      allow read: if isOwner(uid) ||
+                     (isAdmin() && isGroupAdmin(
+                       get(/databases/$(database)/documents/profiles/$(uid)).data.groupId
+                     ));
+
+      // Profiles are created/updated by Cloud Functions (server-side)
+      // Direct writes are allowed only for the owner (for edge cases)
+      allow create: if isOwner(uid);
+      allow update: if isOwner(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ─── Invites collection ────────────────────────────────────────────────────
+    match /invites/{token} {
+      // Anyone can read an invite token (to validate it during registration)
+      allow read: if true;
+
+      // Only admins can create invite tokens
+      allow create: if isAdmin();
+
+      // Authenticated users can mark an invite as used (during registration)
+      allow update: if isAuthenticated() &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasAll(['used', 'usedAt', 'usedBy']) &&
+                       request.resource.data.used == true &&
+                       resource.data.used == false;
+
+      // Only admins can delete invites
+      allow delete: if isAdmin();
+    }
+
+    // ─── Sessões de avaliação (criadas pelo admin) ─────────────────────────────
+    // Apenas o admin que criou pode ler e gerenciar suas sessões.
+    match /sessoes/{sessaoId} {
+      allow read:   if isAuthenticated() &&
+                       (isAdmin() && resource.data.adminUid == request.auth.uid);
+      allow create: if isAdmin() &&
+                       request.resource.data.adminUid == request.auth.uid;
+      allow update: if isAdmin() &&
+                       resource.data.adminUid == request.auth.uid;
+      allow delete: if isAdmin() &&
+                       resource.data.adminUid == request.auth.uid;
+    }
+
+    // ─── Avaliados (token = ID do documento) ──────────────────────────────────
+    // Leitura pública: o token em si é a chave de acesso (UUID secreto).
+    // Escrita apenas pelo Cloud Function via Admin SDK (bypass de rules).
+    match /avaliados/{token} {
+      allow read:   if true;
+      allow create: if isAdmin();
+      allow update: if false;  // somente Cloud Function (Admin SDK)
+      allow delete: if isAdmin() &&
+                       resource.data.adminUid == request.auth.uid;
+    }
+
+    // ─── Respostas imutáveis de avaliações públicas ────────────────────────────
+    // Escritas apenas pelo Cloud Function via Admin SDK.
+    match /sessao_respostas/{respostaId} {
+      allow read:  if isAuthenticated() && isAdmin();
+      allow write: if false; // somente Cloud Function (Admin SDK)
+    }
+
+    // ─── Deny all other collections by default ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

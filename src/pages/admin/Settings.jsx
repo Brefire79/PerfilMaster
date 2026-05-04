@@ -1,0 +1,424 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import clsx from 'clsx';
+import useAuthStore from '@/store/authStore.js';
+import { updateUser } from '@/firebase/firestore.js';
+import { signOut } from '@/firebase/auth.js';
+import Card from '@/components/ui/Card.jsx';
+import Button from '@/components/ui/Button.jsx';
+import Input from '@/components/ui/Input.jsx';
+import { ConfirmModal } from '@/components/ui/Modal.jsx';
+
+const LANGUAGES = [
+  { value: 'pt-BR', label: 'Português (Brasil)' },
+  { value: 'en',   label: 'English' },
+  { value: 'es',   label: 'Español' },
+];
+
+function getInitials(name = '') {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join('') || '?';
+}
+
+// ─── Section wrapper ───────────────────────────────────────────────────────────
+function SettingsSection({ title, description, children }) {
+  return (
+    <section className="space-y-4">
+      <div>
+        <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">{title}</h2>
+        {description && (
+          <p className="text-sm text-[#A0A3B1] mt-0.5">{description}</p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+// ─── Toggle switch ─────────────────────────────────────────────────────────────
+function Toggle({ checked, onChange, label, description }) {
+  const id = React.useId();
+  return (
+    <div className="flex items-start justify-between gap-4 py-3">
+      <div className="min-w-0">
+        <label htmlFor={id} className="text-sm font-medium text-[#F7F8FC] cursor-pointer select-none">
+          {label}
+        </label>
+        {description && (
+          <p className="text-xs text-[#A0A3B1] mt-0.5">{description}</p>
+        )}
+      </div>
+      <button
+        id={id}
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={clsx(
+          'relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6366F1] focus-visible:ring-offset-2 focus-visible:ring-offset-[#1A1D2E]',
+          checked ? 'bg-[#6366F1]' : 'bg-[#2D3047]'
+        )}
+      >
+        <span
+          className={clsx(
+            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200',
+            checked ? 'translate-x-5' : 'translate-x-0'
+          )}
+        />
+      </button>
+    </div>
+  );
+}
+
+// ─── Save feedback ─────────────────────────────────────────────────────────────
+function SaveFeedback({ status }) {
+  if (status === 'idle') return null;
+  return (
+    <span className={clsx(
+      'text-sm flex items-center gap-1.5',
+      status === 'saving' ? 'text-[#A0A3B1]' : 'text-[#38A169]'
+    )}>
+      {status === 'saving' ? (
+        <>
+          <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          Salvando...
+        </>
+      ) : (
+        <>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+          Salvo!
+        </>
+      )}
+    </span>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+export default function Settings() {
+  const { t, i18n } = useTranslation();
+  const { user, clearUser } = useAuthStore();
+
+  // ── Profile section ──────────────────────────────────────────────────────────
+  const [profileForm, setProfileForm] = useState({
+    displayName: user?.displayName || '',
+  });
+  const [profileStatus, setProfileStatus] = useState('idle');
+
+  // ── Company section ──────────────────────────────────────────────────────────
+  const [companyForm, setCompanyForm] = useState({
+    companyName: '',
+    logoUrl: '',
+  });
+  const [companyStatus, setCompanyStatus] = useState('idle');
+
+  // ── Preferences ─────────────────────────────────────────────────────────────
+  const [language, setLanguage] = useState(i18n.language || 'pt-BR');
+  const [prefStatus, setPrefStatus] = useState('idle');
+
+  // ── Notifications ────────────────────────────────────────────────────────────
+  const [notifications, setNotifications] = useState({
+    newMember: true,
+    assessmentComplete: true,
+    weeklyDigest: false,
+    systemUpdates: true,
+  });
+
+  // ── Danger zone ──────────────────────────────────────────────────────────────
+  const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+
+  const saveProfile = async () => {
+    if (!profileForm.displayName.trim()) return;
+    setProfileStatus('saving');
+    try {
+      await updateUser(user.uid, { displayName: profileForm.displayName.trim() });
+      setProfileStatus('saved');
+      setTimeout(() => setProfileStatus('idle'), 2500);
+    } catch (err) {
+      console.error(err);
+      setProfileStatus('idle');
+    }
+  };
+
+  const saveCompany = async () => {
+    setCompanyStatus('saving');
+    try {
+      await updateUser(user.uid, {
+        companyName: companyForm.companyName.trim(),
+        logoUrl: companyForm.logoUrl.trim(),
+      });
+      setCompanyStatus('saved');
+      setTimeout(() => setCompanyStatus('idle'), 2500);
+    } catch (err) {
+      console.error(err);
+      setCompanyStatus('idle');
+    }
+  };
+
+  const savePreferences = async () => {
+    setPrefStatus('saving');
+    try {
+      await i18n.changeLanguage(language);
+      await updateUser(user.uid, { preferredLanguage: language });
+      setPrefStatus('saved');
+      setTimeout(() => setPrefStatus('idle'), 2500);
+    } catch (err) {
+      console.error(err);
+      setPrefStatus('idle');
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    try {
+      // In production: call Firebase function to delete all user data
+      await signOut();
+      clearUser();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const initials = getInitials(profileForm.displayName || user?.displayName || user?.email || '');
+
+  return (
+    <div className="space-y-10 animate-fade-in max-w-2xl">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
+          {t('navigation.settings', 'Configurações')}
+        </h1>
+        <p className="text-[#A0A3B1] text-sm mt-0.5">
+          {t('settings.subtitle', 'Gerencie sua conta e preferências')}
+        </p>
+      </div>
+
+      {/* ── Profile section ── */}
+      <SettingsSection
+        title={t('settings.profile', 'Perfil')}
+        description={t('settings.profileDesc', 'Suas informações pessoais')}
+      >
+        <Card variant="default">
+          <div className="space-y-5">
+            {/* Avatar */}
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-2xl bg-[#6366F1]/15 border border-[#6366F1]/25 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl font-heading font-bold text-[#6366F1]">
+                  {initials}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-[#F7F8FC]">
+                  {profileForm.displayName || user?.email}
+                </p>
+                <p className="text-xs text-[#A0A3B1] mt-0.5">
+                  {t('settings.avatarHint', 'Avatar gerado pelas iniciais do nome')}
+                </p>
+              </div>
+            </div>
+
+            <Input
+              label={t('auth.name', 'Nome completo')}
+              value={profileForm.displayName}
+              onChange={(e) =>
+                setProfileForm((f) => ({ ...f, displayName: e.target.value }))
+              }
+              placeholder={t('auth.namePlaceholder', 'Seu nome completo')}
+            />
+
+            <Input
+              label={t('auth.email', 'E-mail')}
+              value={user?.email || ''}
+              disabled
+              hint={t('settings.emailReadOnly', 'O e-mail não pode ser alterado')}
+            />
+
+            <div className="flex items-center justify-end gap-3 pt-1">
+              <SaveFeedback status={profileStatus} />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={saveProfile}
+                loading={profileStatus === 'saving'}
+              >
+                {t('app.save', 'Salvar')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* ── Company section ── */}
+      <SettingsSection
+        title={t('settings.company', 'Empresa')}
+        description={t('settings.companyDesc', 'Informações da organização')}
+      >
+        <Card variant="default">
+          <div className="space-y-4">
+            <Input
+              label={t('settings.companyName', 'Nome da empresa')}
+              value={companyForm.companyName}
+              onChange={(e) =>
+                setCompanyForm((f) => ({ ...f, companyName: e.target.value }))
+              }
+              placeholder="Ex: Acme Corp"
+            />
+            <Input
+              label={t('settings.logoUrl', 'URL do logo')}
+              value={companyForm.logoUrl}
+              onChange={(e) =>
+                setCompanyForm((f) => ({ ...f, logoUrl: e.target.value }))
+              }
+              placeholder="https://empresa.com/logo.png"
+              hint={t('settings.logoHint', 'URL pública de uma imagem (PNG, SVG)')}
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <polyline points="21 15 16 10 5 21" />
+                </svg>
+              }
+            />
+
+            <div className="flex items-center justify-end gap-3">
+              <SaveFeedback status={companyStatus} />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={saveCompany}
+                loading={companyStatus === 'saving'}
+              >
+                {t('app.save', 'Salvar')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* ── Language & preferences ── */}
+      <SettingsSection
+        title={t('settings.preferences', 'Preferências')}
+        description={t('settings.preferencesDesc', 'Idioma padrão e exibição')}
+      >
+        <Card variant="default">
+          <div className="space-y-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-[#F7F8FC]">
+                {t('settings.language', 'Idioma padrão')}
+              </label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
+              >
+                {LANGUAGES.map((lang) => (
+                  <option key={lang.value} value={lang.value}>{lang.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <SaveFeedback status={prefStatus} />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={savePreferences}
+                loading={prefStatus === 'saving'}
+              >
+                {t('app.save', 'Salvar')}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* ── Notification preferences ── */}
+      <SettingsSection
+        title={t('settings.notifications', 'Notificações')}
+        description={t('settings.notificationsDesc', 'Escolha quando ser notificado')}
+      >
+        <Card variant="default">
+          <div className="divide-y divide-[#2D3047]">
+            <Toggle
+              checked={notifications.newMember}
+              onChange={(v) => setNotifications((n) => ({ ...n, newMember: v }))}
+              label={t('settings.notif.newMember', 'Novo membro no grupo')}
+              description={t('settings.notif.newMemberDesc', 'Receba um aviso quando um aluno entrar no grupo.')}
+            />
+            <Toggle
+              checked={notifications.assessmentComplete}
+              onChange={(v) => setNotifications((n) => ({ ...n, assessmentComplete: v }))}
+              label={t('settings.notif.assessmentComplete', 'Avaliação concluída')}
+              description={t('settings.notif.assessmentCompleteDesc', 'Notificação quando um aluno completar a avaliação.')}
+            />
+            <Toggle
+              checked={notifications.weeklyDigest}
+              onChange={(v) => setNotifications((n) => ({ ...n, weeklyDigest: v }))}
+              label={t('settings.notif.weeklyDigest', 'Resumo semanal')}
+              description={t('settings.notif.weeklyDigestDesc', 'Relatório resumido toda segunda-feira.')}
+            />
+            <Toggle
+              checked={notifications.systemUpdates}
+              onChange={(v) => setNotifications((n) => ({ ...n, systemUpdates: v }))}
+              label={t('settings.notif.systemUpdates', 'Atualizações do sistema')}
+              description={t('settings.notif.systemUpdatesDesc', 'Novidades sobre a plataforma ProfileAI.')}
+            />
+          </div>
+          <div className="mt-4 pt-4 border-t border-[#2D3047] flex justify-end">
+            <p className="text-xs text-[#A0A3B1]">
+              {t('settings.notif.placeholder', 'As notificações por e-mail serão ativadas em breve.')}
+            </p>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* ── Danger zone ── */}
+      <SettingsSection title={t('settings.dangerZone', 'Zona de Perigo')}>
+        <Card variant="default" className="border-[#E53E3E]/20">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-[#E53E3E]">
+                {t('settings.deleteAccount', 'Excluir conta')}
+              </p>
+              <p className="text-xs text-[#A0A3B1] mt-0.5">
+                {t(
+                  'settings.deleteAccountWarning',
+                  'Todos os seus dados, grupos e relatórios serão permanentemente removidos. Esta ação não pode ser desfeita.'
+                )}
+              </p>
+            </div>
+            <Button
+              variant="danger"
+              size="sm"
+              className="flex-shrink-0"
+              onClick={() => setConfirmDeleteAccount(true)}
+            >
+              {t('settings.deleteAccount', 'Excluir conta')}
+            </Button>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* Delete account confirm modal */}
+      <ConfirmModal
+        isOpen={confirmDeleteAccount}
+        onClose={() => setConfirmDeleteAccount(false)}
+        onConfirm={handleDeleteAccount}
+        title={t('settings.deleteAccount', 'Excluir conta?')}
+        description={t(
+          'settings.deleteAccountConfirm',
+          'Esta ação é irreversível. Todos os seus grupos, alunos e dados serão permanentemente excluídos.'
+        )}
+        confirmLabel={t('settings.deleteAccount', 'Sim, excluir minha conta')}
+        cancelLabel={t('app.cancel', 'Cancelar')}
+        variant="danger"
+      />
+    </div>
+  );
+}

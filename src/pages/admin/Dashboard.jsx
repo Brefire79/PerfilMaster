@@ -1,0 +1,304 @@
+import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import useAuthStore from '@/store/authStore.js';
+import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
+import Badge from '@/components/ui/Badge.jsx';
+import Button from '@/components/ui/Button.jsx';
+import clsx from 'clsx';
+
+// ─── Stat Card ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', loading = false }) {
+  return (
+    <Card variant="elevated" className="relative overflow-hidden">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium text-[#A0A3B1] uppercase tracking-wider mb-1">
+            {label}
+          </p>
+          {loading ? (
+            <div className="h-8 w-20 skeleton rounded-lg" />
+          ) : (
+            <p className="text-3xl font-heading font-bold text-[#F7F8FC]">{value}</p>
+          )}
+          {trendLabel && !loading && (
+            <p className="text-xs text-[#A0A3B1] mt-1.5 flex items-center gap-1">
+              {trend > 0 ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-3 h-3">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              ) : trend < 0 ? (
+                <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-3 h-3">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              ) : null}
+              <span style={{ color: trend > 0 ? '#38A169' : trend < 0 ? '#E53E3E' : '#A0A3B1' }}>
+                {trendLabel}
+              </span>
+            </p>
+          )}
+        </div>
+        <div
+          className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}
+        >
+          <span style={{ color }}>{icon}</span>
+        </div>
+      </div>
+      {/* Decorative gradient */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-0.5 opacity-40"
+        style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
+      />
+    </Card>
+  );
+}
+
+// ─── Quick Action Card ─────────────────────────────────────────────────────────
+function QuickActionCard({ to, icon, label, description, color }) {
+  return (
+    <Link to={to} className="block">
+      <Card
+        variant="default"
+        hoverable
+        clickable
+        className="h-full transition-all duration-200 hover:border-[#6366F1]/30"
+      >
+        <div className="flex items-start gap-4">
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${color}15`, border: `1px solid ${color}25` }}
+          >
+            <span style={{ color }}>{icon}</span>
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-[#F7F8FC]">{label}</p>
+            <p className="text-xs text-[#A0A3B1] mt-0.5">{description}</p>
+          </div>
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
+export default function AdminDashboard() {
+  const { t } = useTranslation();
+  const { user } = useAuthStore();
+  const [loading, setLoading] = useState(true);
+
+  // Simulate data loading
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const stats = [
+    {
+      key: 'totalStudents',
+      label: t('admin.totalStudents'),
+      value: '0',
+      color: '#6366F1',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+          <circle cx="12" cy="7" r="4" />
+        </svg>
+      ),
+    },
+    {
+      key: 'totalGroups',
+      label: t('admin.totalGroups'),
+      value: '0',
+      color: '#38A169',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      ),
+    },
+    {
+      key: 'totalAssessments',
+      label: t('admin.totalAssessments'),
+      value: '0',
+      color: '#D69E2E',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M9 11l3 3L22 4" />
+          <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+        </svg>
+      ),
+    },
+    {
+      key: 'completionRate',
+      label: t('admin.completionRate'),
+      value: '0%',
+      color: '#3182CE',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <line x1="18" y1="20" x2="18" y2="10" />
+          <line x1="12" y1="20" x2="12" y2="4" />
+          <line x1="6" y1="20" x2="6" y2="14" />
+        </svg>
+      ),
+    },
+  ];
+
+  const quickActions = [
+    {
+      to: '/admin/groups',
+      label: t('admin.createGroup'),
+      description: t('admin.groups.create'),
+      color: '#6366F1',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <line x1="19" y1="8" x2="19" y2="14" />
+          <line x1="16" y1="11" x2="22" y2="11" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/students',
+      label: t('admin.inviteStudents'),
+      description: t('admin.students.invite'),
+      color: '#38A169',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+          <polyline points="22,6 12,13 2,6" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/reports',
+      label: t('admin.viewReports'),
+      description: t('admin.reports.generate'),
+      color: '#D69E2E',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+        </svg>
+      ),
+    },
+    {
+      to: '/admin/modules',
+      label: t('admin.manageModules'),
+      description: t('admin.modules.create'),
+      color: '#3182CE',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+        </svg>
+      ),
+    },
+  ];
+
+  const displayName = user?.displayName?.split(' ')[0] || 'Admin';
+
+  return (
+    <div className="space-y-8 animate-fade-in">
+      {/* Page header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
+            {t('admin.welcomeBack')}, {displayName} 👋
+          </h1>
+          <p className="text-[#A0A3B1] text-sm mt-1">{t('admin.overview')}</p>
+        </div>
+        <Badge variant="accent" size="md" dot>
+          Admin
+        </Badge>
+      </div>
+
+      {/* Stats grid */}
+      <section aria-label={t('admin.overview')}>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat) => (
+            <StatCard
+              key={stat.key}
+              label={stat.label}
+              value={stat.value}
+              icon={stat.icon}
+              color={stat.color}
+              loading={loading}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Quick actions */}
+      <section aria-label={t('admin.quickActions')}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+            {t('admin.quickActions')}
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {quickActions.map((action) => (
+            <QuickActionCard key={action.to} {...action} />
+          ))}
+        </div>
+      </section>
+
+      {/* Recent activity placeholder */}
+      <section aria-label={t('admin.recentActivity')}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+            {t('admin.recentActivity')}
+          </h2>
+        </div>
+        <Card variant="default">
+          <div className="py-8 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-[#242736] flex items-center justify-center mx-auto mb-3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#A0A3B1" strokeWidth={1.5} className="w-6 h-6">
+                <circle cx="12" cy="12" r="10" />
+                <polyline points="12 6 12 12 16 14" />
+              </svg>
+            </div>
+            <p className="text-[#A0A3B1] text-sm">{t('app.noData')}</p>
+            <p className="text-[#A0A3B1] text-xs mt-1">
+              Crie grupos e convide alunos para começar.
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      {/* DISC Profile legend */}
+      <section aria-label={t('profiles.title')}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+            {t('profiles.subtitle')}
+          </h2>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {['D', 'I', 'S', 'C'].map((type) => (
+            <Card key={type} variant="default" className="text-center">
+              <div
+                className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center text-lg font-heading font-black"
+                style={{
+                  backgroundColor: `var(--color-${type})15`,
+                  border: `1px solid var(--color-${type})30`,
+                  color: `var(--color-${type})`,
+                }}
+              >
+                {type}
+              </div>
+              <p className="text-xs font-medium text-[#F7F8FC]">
+                {t(`profiles.${type}.name`)}
+              </p>
+              <p className="text-2xs text-[#A0A3B1] mt-1 leading-tight">
+                {t(`profiles.${type}.tagline`)}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

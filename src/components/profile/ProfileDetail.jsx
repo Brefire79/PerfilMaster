@@ -1,0 +1,374 @@
+import React, { useState } from 'react';
+import clsx from 'clsx';
+import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
+import TherapyAlert from '@/components/profile/TherapyAlert.jsx';
+import RadarChart from '@/components/ui/RadarChart.jsx';
+import Card from '@/components/ui/Card.jsx';
+
+// ─── Profile color map ────────────────────────────────────────────────────────
+const PROFILE_HEX = {
+  D: '#E53E3E',
+  I: '#D69E2E',
+  S: '#38A169',
+  C: '#3182CE',
+};
+
+// ─── Score pill ───────────────────────────────────────────────────────────────
+function ScorePill({ label, value, profileKey }) {
+  const hex = PROFILE_HEX[profileKey] || '#6366F1';
+  return (
+    <div
+      className="flex flex-col items-center px-3 py-1.5 rounded-xl border"
+      style={{
+        backgroundColor: `${hex}15`,
+        borderColor: `${hex}30`,
+      }}
+    >
+      <span className="text-xs font-bold" style={{ color: hex }}>{label}</span>
+      <span className="text-base font-heading font-bold text-[#F7F8FC] tabular-nums">{value}</span>
+    </div>
+  );
+}
+
+// ─── Section with icon ────────────────────────────────────────────────────────
+function SectionTitle({ children, icon }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      {icon && (
+        <span className="text-base" aria-hidden="true">{icon}</span>
+      )}
+      <h3 className="text-sm font-heading font-semibold text-[#F7F8FC]">{children}</h3>
+    </div>
+  );
+}
+
+// ─── Collapsible section ──────────────────────────────────────────────────────
+function CollapsibleSection({ title, icon, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border border-[#2D3047] rounded-xl overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-[#2D3047]/40 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          {icon && <span className="text-base" aria-hidden="true">{icon}</span>}
+          <span className="text-sm font-semibold text-[#F7F8FC]">{title}</span>
+        </div>
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          className={clsx('w-4 h-4 text-[#A0A3B1] transition-transform duration-200', open && 'rotate-180')}
+          aria-hidden="true"
+        >
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 space-y-2 border-t border-[#2D3047]">
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── List item with colored bullet ───────────────────────────────────────────
+function BulletItem({ children, color = '#6366F1' }) {
+  return (
+    <li className="flex items-start gap-2 text-sm text-[#A0A3B1] leading-relaxed">
+      <span
+        className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2"
+        style={{ backgroundColor: color }}
+        aria-hidden="true"
+      />
+      {children}
+    </li>
+  );
+}
+
+// ─── Info card ────────────────────────────────────────────────────────────────
+function InfoCard({ title, icon, children, accentColor }) {
+  return (
+    <div
+      className="rounded-xl p-4 border"
+      style={{
+        backgroundColor: accentColor ? `${accentColor}08` : '#242736',
+        borderColor: accentColor ? `${accentColor}25` : '#2D3047',
+      }}
+    >
+      <p className="text-xs font-semibold text-[#A0A3B1] mb-1.5 flex items-center gap-1.5">
+        {icon && <span aria-hidden="true">{icon}</span>}
+        {title}
+      </p>
+      <p className="text-sm text-[#F7F8FC] leading-relaxed">{children}</p>
+    </div>
+  );
+}
+
+/**
+ * ProfileDetail — full behavioral profile card
+ *
+ * @param {object} profile — full profile object from Firestore
+ * @param {boolean} isAdmin — shows admin-only fields (TherapyAlert)
+ * @param {boolean} compact — condensed view
+ */
+export default function ProfileDetail({ profile, isAdmin = false, compact = false }) {
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <p className="text-[#A0A3B1] text-sm">Perfil não disponível.</p>
+      </div>
+    );
+  }
+
+  const {
+    dominantProfile,
+    dominantProfileName,
+    secondaryProfile,
+    secondaryProfileName,
+    scores = {},
+    summary,
+    strengths = [],
+    challenges = [],
+    roleRecommendation,
+    workStyleRecommendation,
+    teamBehavior,
+    communicationTips,
+    saboteurPatterns = [],
+    derailmentRisks = [],
+    therapyIndicator,
+    userName,
+    displayName,
+  } = profile;
+
+  const profileName = dominantProfile ? PROFILE_HEX[dominantProfile] : undefined;
+  const resolvedName = userName || displayName || profile.name || '';
+
+  // ── Compact view ─────────────────────────────────────────────────────────────
+  if (compact) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-4">
+          <ProfileBadge profile={dominantProfile} size="lg" showLabel={true} />
+          <div className="flex-1 min-w-0">
+            {resolvedName && (
+              <p className="text-base font-semibold text-[#F7F8FC] truncate">{resolvedName}</p>
+            )}
+            <p className="text-sm text-[#A0A3B1]">
+              Perfil {dominantProfileName || dominantProfile}
+              {secondaryProfile && ` · ${secondaryProfileName || secondaryProfile}`}
+            </p>
+            <div className="flex gap-2 mt-2">
+              {['D', 'I', 'S', 'C'].map((k) => (
+                <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
+              ))}
+            </div>
+          </div>
+        </div>
+        {summary && (
+          <p className="text-sm text-[#A0A3B1] leading-relaxed line-clamp-3">{summary}</p>
+        )}
+        {isAdmin && therapyIndicator?.flagged && (
+          <TherapyAlert therapyIndicator={therapyIndicator} userName={resolvedName} />
+        )}
+      </div>
+    );
+  }
+
+  // ── Full view ─────────────────────────────────────────────────────────────────
+  return (
+    <div className="space-y-6">
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <ProfileBadge
+          profile={dominantProfile}
+          size="xl"
+          scores={scores}
+          showLabel={true}
+          showBars={true}
+        />
+        <div className="flex-1 min-w-0 space-y-2">
+          {resolvedName && (
+            <h2 className="text-xl font-heading font-bold text-[#F7F8FC]">{resolvedName}</h2>
+          )}
+          <p className="text-sm text-[#A0A3B1]">
+            Perfil primário:{' '}
+            <span
+              className="font-semibold"
+              style={{ color: PROFILE_HEX[dominantProfile] }}
+            >
+              {dominantProfile} — {dominantProfileName || dominantProfile}
+            </span>
+            {secondaryProfile && (
+              <>
+                {' '}· Secundário:{' '}
+                <span
+                  className="font-semibold"
+                  style={{ color: PROFILE_HEX[secondaryProfile] }}
+                >
+                  {secondaryProfile} — {secondaryProfileName || secondaryProfile}
+                </span>
+              </>
+            )}
+          </p>
+          {/* Score pills row */}
+          <div className="flex flex-wrap gap-2 mt-1">
+            {['D', 'I', 'S', 'C'].map((k) => (
+              <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
+            ))}
+          </div>
+          {/* Admin-only therapy alert */}
+          {isAdmin && therapyIndicator?.flagged && (
+            <div className="mt-2">
+              <TherapyAlert therapyIndicator={therapyIndicator} userName={resolvedName} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Radar Chart ─────────────────────────────────────────────────────── */}
+      <Card variant="default">
+        <SectionTitle icon="📊">Mapa de Perfil</SectionTitle>
+        <div className="flex justify-center">
+          <RadarChart scores={scores} size={260} showLabels={true} animated={true} />
+        </div>
+      </Card>
+
+      {/* ── Summary ─────────────────────────────────────────────────────────── */}
+      {summary && (
+        <Card variant="default">
+          <SectionTitle icon="💡">Visão Geral</SectionTitle>
+          <div className="space-y-3">
+            {summary.split('\n').filter(Boolean).map((paragraph, i) => (
+              <p key={i} className="text-sm text-[#A0A3B1] leading-relaxed">{paragraph}</p>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* ── Strengths & Challenges ───────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {strengths.length > 0 && (
+          <Card variant="default">
+            <SectionTitle icon="✅">Pontos Fortes</SectionTitle>
+            <ul className="space-y-1.5">
+              {strengths.map((s, i) => (
+                <BulletItem key={i} color="#38A169">{s}</BulletItem>
+              ))}
+            </ul>
+          </Card>
+        )}
+        {challenges.length > 0 && (
+          <Card variant="default">
+            <SectionTitle icon="⚠️">Desafios</SectionTitle>
+            <ul className="space-y-1.5">
+              {challenges.map((c, i) => (
+                <BulletItem key={i} color="#D69E2E">{c}</BulletItem>
+              ))}
+            </ul>
+          </Card>
+        )}
+      </div>
+
+      {/* ── Recommendations grid ────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {roleRecommendation && (
+          <InfoCard title="Papéis Recomendados" icon="🎯" accentColor="#6366F1">
+            {roleRecommendation}
+          </InfoCard>
+        )}
+        {workStyleRecommendation && (
+          <InfoCard title="Estilo de Trabalho" icon="⚙️" accentColor="#3182CE">
+            {workStyleRecommendation}
+          </InfoCard>
+        )}
+        {teamBehavior && (
+          <InfoCard title="Comportamento em Equipe" icon="🤝" accentColor="#38A169">
+            {teamBehavior}
+          </InfoCard>
+        )}
+        {communicationTips && (
+          <InfoCard title="Dicas de Comunicação" icon="💬" accentColor="#D69E2E">
+            {communicationTips}
+          </InfoCard>
+        )}
+      </div>
+
+      {/* ── Collapsible: saboteurs ───────────────────────────────────────────── */}
+      {saboteurPatterns.length > 0 && (
+        <CollapsibleSection title="Padrões Sabotadores" icon="🔍">
+          <ul className="space-y-1.5 pt-2">
+            {saboteurPatterns.map((p, i) => (
+              <BulletItem key={i} color="#E53E3E">{p}</BulletItem>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      )}
+
+      {/* ── Collapsible: derailment risks ────────────────────────────────────── */}
+      {derailmentRisks.length > 0 && (
+        <CollapsibleSection title="Riscos de Derailment" icon="🚨">
+          <ul className="space-y-1.5 pt-2">
+            {derailmentRisks.map((r, i) => (
+              <BulletItem key={i} color="#D69E2E">{r}</BulletItem>
+            ))}
+          </ul>
+        </CollapsibleSection>
+      )}
+
+      {/* ── Extra fields present in buildProfile (richer) ───────────────────── */}
+      {(profile.leadershipStyle || profile.conflictStyle) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {profile.leadershipStyle && (
+            <InfoCard title="Estilo de Liderança" icon="👑" accentColor="#8B5CF6">
+              {profile.leadershipStyle}
+            </InfoCard>
+          )}
+          {profile.conflictStyle && (
+            <InfoCard title="Gestão de Conflitos" icon="⚡" accentColor="#E53E3E">
+              {profile.conflictStyle}
+            </InfoCard>
+          )}
+        </div>
+      )}
+
+      {profile.evolutionNotes && (
+        <Card variant="accent">
+          <SectionTitle icon="📈">Notas de Evolução</SectionTitle>
+          <p className="text-sm text-[#A0A3B1] leading-relaxed">{profile.evolutionNotes}</p>
+        </Card>
+      )}
+
+      {(profile.motivators?.length > 0 || profile.stressors?.length > 0) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {profile.motivators?.length > 0 && (
+            <Card variant="default">
+              <SectionTitle icon="🔋">Motivadores</SectionTitle>
+              <ul className="space-y-1.5">
+                {profile.motivators.map((m, i) => (
+                  <BulletItem key={i} color="#38A169">{m}</BulletItem>
+                ))}
+              </ul>
+            </Card>
+          )}
+          {profile.stressors?.length > 0 && (
+            <Card variant="default">
+              <SectionTitle icon="🌡️">Estressores</SectionTitle>
+              <ul className="space-y-1.5">
+                {profile.stressors.map((s, i) => (
+                  <BulletItem key={i} color="#E53E3E">{s}</BulletItem>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+      )}
+
+    </div>
+  );
+}

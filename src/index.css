@@ -1,0 +1,331 @@
+/* ─── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ─── Tailwind Directives ───────────────────────────────────────────────────── */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Design System CSS Custom Properties ──────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --bg-primary: #0F1117;
+  --bg-secondary: #1A1D2E;
+  --bg-card: #242736;
+
+  /* Text */
+  --text-primary: #F7F8FC;
+  --text-secondary: #A0A3B1;
+
+  /* Border */
+  --border: #2D3047;
+
+  /* Accent */
+  --accent-primary: #6366F1;
+  --accent-glow: rgba(99, 102, 241, 0.3);
+
+  /* Profile D — Dominante / Dominant */
+  --color-D: #E53E3E;
+  --color-D-light: #FED7D7;
+
+  /* Profile I — Influente / Influential */
+  --color-I: #D69E2E;
+  --color-I-light: #FEFCBF;
+
+  /* Profile S — Estável / Stable */
+  --color-S: #38A169;
+  --color-S-light: #C6F6D5;
+
+  /* Profile C — Analítico / Analytical */
+  --color-C: #3182CE;
+  --color-C-light: #BEE3F8;
+
+  /* Spacing & Radii */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* Z-index layers */
+  --z-base: 1;
+  --z-dropdown: 10;
+  --z-sticky: 20;
+  --z-overlay: 30;
+  --z-modal: 40;
+  --z-toast: 50;
+  --z-tooltip: 60;
+}
+
+/* ─── Base Styles ───────────────────────────────────────────────────────────── */
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    min-height: 100dvh;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-primary);
+  }
+
+  p {
+    color: var(--text-secondary);
+  }
+
+  a {
+    color: var(--accent-primary);
+    text-decoration: none;
+    transition: opacity var(--transition-fast);
+  }
+
+  a:hover {
+    opacity: 0.85;
+  }
+
+  code, kbd, pre, samp {
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  input, textarea, select {
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  img, svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  button {
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  /* Remove default margins */
+  h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd {
+    margin: 0;
+  }
+
+  ul[role='list'],
+  ol[role='list'] {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+/* ─── Custom Scrollbar ──────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) var(--bg-secondary);
+}
+
+/* ─── Utility / Component Classes ──────────────────────────────────────────── */
+@layer components {
+  /* Glassmorphism effect */
+  .glass {
+    background: rgba(36, 39, 54, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(45, 48, 71, 0.5);
+  }
+
+  /* Card with accent glow on hover */
+  .card-glow {
+    transition: box-shadow var(--transition-base), border-color var(--transition-base);
+  }
+
+  .card-glow:hover {
+    box-shadow: 0 0 24px var(--accent-glow);
+    border-color: rgba(99, 102, 241, 0.4);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #A78BFA 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Page container */
+  .page-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .page-container {
+      padding: 0 1.5rem;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .page-container {
+      padding: 0 2rem;
+    }
+  }
+
+  /* Input base style */
+  .input-base {
+    width: 100%;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.9375rem;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    outline: none;
+  }
+
+  .input-base::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+  }
+
+  .input-base:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .input-base:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* Label style */
+  .label-base {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 0.375rem;
+  }
+
+  /* Divider */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    border: none;
+    margin: 0;
+  }
+
+  /* Safe area padding for mobile */
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--bg-card) 25%,
+      var(--bg-secondary) 50%,
+      var(--bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ─── Animations ────────────────────────────────────────────────────────────── */
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-16px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+  50% { box-shadow: 0 0 25px var(--accent-glow); }
+}
+
+/* ─── PWA / Mobile specific ─────────────────────────────────────────────────── */
+@media (display-mode: standalone) {
+  body {
+    padding-top: env(safe-area-inset-top, 0);
+  }
+}
+
+/* Prevent text selection on UI elements */
+.no-select {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Tap highlight removal for mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
