@@ -111,7 +111,11 @@ function ProtectedRoute({ children, requiredRole }) {
   }
 
   // Wrong role — redirect to their correct area
+  // Admins can also access student routes (they may participate in assessments)
   if (requiredRole && role !== requiredRole) {
+    if (requiredRole === 'student' && role === 'admin') {
+      return children;
+    }
     if (role === 'admin') {
       return <Navigate to="/admin/dashboard" replace />;
     }

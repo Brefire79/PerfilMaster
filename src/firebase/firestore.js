@@ -47,9 +47,26 @@ const CAMEL_TO_DB = {
   atualizadoEm: 'atualizadoem',
   primaryType: 'primarytype',
   assessmentId: 'assessmentid',
+  assessmentStatus: 'assessmentstatus',
   emailVerified: 'emailverified',
   displayName: 'displayname',
   photoURL: 'photourl',
+  // app_profiles columns
+  dominantProfile: 'dominantprofile',
+  secondaryProfile: 'secondaryprofile',
+  aiSummary: 'aisummary',
+  roleRecommendation: 'rolerecommendation',
+  workStyleRecommendation: 'workstylerecommendation',
+  teamBehavior: 'teambehavior',
+  communicationTips: 'communicationtips',
+  saboteurPatterns: 'saboteurpatterns',
+  derailmentRisks: 'derailmentrisks',
+  developmentAreas: 'developmentareas',
+  evolutionNotes: 'evolutionnotes',
+  leadershipStyle: 'leadershipstyle',
+  conflictStyle: 'conflictstyle',
+  therapyIndicator: 'therapyindicator',
+  adminStrategy: 'adminstrategy',
 };
 
 const DB_TO_CAMEL = Object.fromEntries(
@@ -474,12 +491,27 @@ export async function createProfile(uid, data) {
   }, 'uid');
 }
 
+/** Merge aiSummary JSON fields into the top-level profile object for easier consumption */
+function flattenProfile(row) {
+  if (!row) return row;
+  const ai = row.aiSummary || {};
+  return {
+    ...row,
+    summary: row.summary ?? ai.summary,
+    strengths: row.strengths ?? ai.strengths ?? [],
+    challenges: row.challenges ?? ai.challenges ?? [],
+    motivators: row.motivators ?? ai.motivators ?? [],
+    stressors: row.stressors ?? ai.stressors ?? [],
+    adminStrategy: row.adminStrategy ?? ai.adminStrategy ?? null,
+  };
+}
+
 export async function getProfile(uid) {
   const row = await selectRows(COLLECTIONS.PROFILES, {
     filters: [{ field: 'uid', op: 'eq', value: uid }],
     single: true,
   });
-  return row ? withDateWrapper({ id: row.id || row.uid, ...row }) : null;
+  return row ? withDateWrapper(flattenProfile({ id: row.id || row.uid, ...row })) : null;
 }
 
 export async function updateProfile(uid, data) {
@@ -494,7 +526,7 @@ export async function getProfilesByGroup(groupId) {
   const rows = await selectRows(COLLECTIONS.PROFILES, {
     filters: [{ field: 'groupId', op: 'eq', value: groupId }],
   });
-  return rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row }));
+  return rows.map((row) => withDateWrapper(flattenProfile({ id: row.id || row.uid, ...row })));
 }
 
 export function subscribeToProfile(uid, callback) {
@@ -679,6 +711,10 @@ export async function getAvaliadoByToken(token) {
     single: true,
   });
   return row ? withDateWrapper({ id: row.id || row.token, ...row }) : null;
+}
+
+export async function deleteAvaliado(avaliadoId) {
+  await deleteRows(COLLECTIONS.AVALIADOS, [{ field: 'id', op: 'eq', value: avaliadoId }]);
 }
 
 // Keep named export compatibility.

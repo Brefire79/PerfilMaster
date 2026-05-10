@@ -40,6 +40,15 @@
     "seeMore": "Ver mais",
     "seeLess": "Ver menos"
   },
+  "time": {
+    "justNow": "agora mesmo",
+    "minutesAgo_one": "há {{count}} min",
+    "minutesAgo_other": "há {{count}} min",
+    "hoursAgo_one": "há {{count}}h",
+    "hoursAgo_other": "há {{count}}h",
+    "daysAgo_one": "há {{count}}d",
+    "daysAgo_other": "há {{count}}d"
+  },
   "auth": {
     "login": "Entrar",
     "logout": "Sair",
@@ -113,6 +122,11 @@
     "pendingAssessments": "Avaliações Pendentes",
     "completionRate": "Taxa de Conclusão",
     "recentActivity": "Atividade Recente",
+    "noRecentActivity": "Nenhuma atividade recente",
+    "activityCompleted": "concluiu a avaliação",
+    "activityProfile": "Perfil identificado",
+    "activityJoined": "entrou em",
+    "activityGroupCreated": "Grupo criado",
     "quickActions": "Ações Rápidas",
     "createGroup": "Criar Grupo",
     "inviteStudents": "Convidar Alunos",
