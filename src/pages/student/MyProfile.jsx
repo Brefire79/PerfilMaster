@@ -9,6 +9,8 @@ import { getAssessmentsByUser } from '@/firebase/firestore.js';
 import Button from '@/components/ui/Button.jsx';
 import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge, { ProfileBadge } from '@/components/ui/Badge.jsx';
+import RadarChart from '@/components/ui/RadarChart.jsx';
+import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 
 // ─── Profile colors ───────────────────────────────────────────────────────────
 
@@ -215,38 +217,6 @@ function StrengthsAndChallenges({ type }) {
   );
 }
 
-// ─── Radar Chart Placeholder ──────────────────────────────────────────────────
-
-function RadarChartPlaceholder() {
-  const { t } = useTranslation();
-  return (
-    <div className="bg-[#1A1D2E] border border-[#2D3047] rounded-xl p-5 flex flex-col items-center gap-3">
-      <div className="w-full h-48 flex items-center justify-center">
-        <div className="relative w-40 h-40">
-          {/* Octagon placeholder lines */}
-          <svg viewBox="0 0 160 160" className="w-full h-full text-[#2D3047]" aria-hidden="true">
-            <polygon points="80,10 140,40 155,100 120,150 40,150 5,100 20,40 80,10" fill="none" stroke="currentColor" strokeWidth="1.5" />
-            <polygon points="80,30 120,55 130,95 108,130 52,130 30,95 40,55 80,30" fill="none" stroke="currentColor" strokeWidth="1" />
-            <polygon points="80,50 103,67 108,90 93,112 67,112 52,90 57,67 80,50" fill="none" stroke="currentColor" strokeWidth="1" />
-            <line x1="80" y1="10" x2="80" y2="150" stroke="currentColor" strokeWidth="0.5" />
-            <line x1="20" y1="40" x2="140" y2="120" stroke="currentColor" strokeWidth="0.5" />
-            <line x1="140" y1="40" x2="20" y2="120" stroke="currentColor" strokeWidth="0.5" />
-            <circle cx="80" cy="80" r="2" fill="#6366F1" />
-          </svg>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-xs text-[#A0A3B1] font-medium px-2 py-1 bg-[#1A1D2E] rounded">
-              Sprint 4
-            </span>
-          </div>
-        </div>
-      </div>
-      <p className="text-xs text-[#A0A3B1] text-center">
-        {t('profiles.profileChart', 'Gráfico de Perfil')} — disponível em breve
-      </p>
-    </div>
-  );
-}
-
 // ─── Role Recommendations Card ────────────────────────────────────────────────
 
 function RoleRecommendationsCard({ type }) {
@@ -428,7 +398,14 @@ function ProfileTab({ profile }) {
       <StrengthsAndChallenges type={type} />
 
       {/* Radar chart placeholder */}
-      <RadarChartPlaceholder />
+      {profile?.scores && (
+        <Card variant="default">
+          <CardTitle className="mb-3">{t('profiles.profileChart', 'Gráfico de Perfil')}</CardTitle>
+          <div className="flex justify-center">
+            <RadarChart scores={profile.scores} size={260} showLabels animated />
+          </div>
+        </Card>
+      )}
 
       {/* Role recommendations */}
       <RoleRecommendationsCard type={type} />
@@ -503,19 +480,26 @@ function HistoryTab({ userId }) {
     );
   }
 
+  const chartHistory = history
+    .filter((a) => a.profile?.dominantProfile)
+    .map((a) => ({
+      moduleTitle: a.moduleName || t('assessment.title', 'Avaliação DISC'),
+      completedAt: a.submittedAt,
+      scores: a.profile?.scores ?? {},
+      dominantProfile: a.profile?.dominantProfile,
+    }));
+
   return (
     <div className="py-4 space-y-3">
-      {/* Evolution chart placeholder */}
-      <Card variant="default">
-        <CardTitle className="mb-3">
-          {t('report.evolution', 'Evolução')}
-        </CardTitle>
-        <div className="h-32 bg-[#1A1D2E] rounded-xl border border-[#2D3047] flex items-center justify-center">
-          <p className="text-xs text-[#A0A3B1]">
-            {t('profile.history.chartPlaceholder', 'Gráfico de evolução — Sprint 4')}
-          </p>
-        </div>
-      </Card>
+      {/* Evolution chart */}
+      {chartHistory.length > 0 && (
+        <Card variant="default">
+          <CardTitle className="mb-3">
+            {t('report.evolution', 'Evolução')}
+          </CardTitle>
+          <EvolutionChart history={chartHistory} />
+        </Card>
+      )}
 
       {/* Timeline */}
       <div className="space-y-2">

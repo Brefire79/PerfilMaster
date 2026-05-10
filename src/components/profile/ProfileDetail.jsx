@@ -369,6 +369,146 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
         </div>
       )}
 
+      {/* ── ADMIN STRATEGY PANEL — exclusivo do instrutor ───────────────────── */}
+      {isAdmin && profile.adminStrategy && (
+        <AdminStrategyPanel strategy={profile.adminStrategy} />
+      )}
+
+    </div>
+  );
+}
+
+// ─── Admin Strategy Panel ─────────────────────────────────────────────────────
+function AdminStrategyPanel({ strategy }) {
+  const {
+    executiveBrief, approachStyle, coachingQuestions = [], feedbackApproach,
+    motivationLevers = [], redFlags = [], nextAssessmentFocus, actionPlan = [],
+    compatibilityMap = {}, delegationGuide, stretchAreas = [],
+  } = strategy || {};
+
+  const PROFILE_LABELS = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+
+  return (
+    <div className="space-y-4 pt-2">
+      <div className="flex items-center gap-2 px-4 py-3 rounded-xl bg-gradient-to-r from-[#6366F1]/15 to-[#8B5CF6]/10 border border-[#6366F1]/30">
+        <span className="text-lg" aria-hidden="true">🎯</span>
+        <div>
+          <h3 className="text-sm font-heading font-bold text-[#F7F8FC]">
+            Painel Estratégico do Instrutor
+          </h3>
+          <p className="text-xs text-[#A0A3B1] mt-0.5">
+            Conteúdo confidencial — uso exclusivo do instrutor para conduzir 1:1 e planejar evolução
+          </p>
+        </div>
+      </div>
+
+      {executiveBrief && (
+        <Card variant="accent">
+          <SectionTitle icon="📋">Briefing Executivo</SectionTitle>
+          <div className="space-y-2.5">
+            {executiveBrief.split('\n').filter(Boolean).map((p, i) => (
+              <p key={i} className="text-sm text-[#F7F8FC] leading-relaxed">{p}</p>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {approachStyle && (
+          <InfoCard title="Como Abordar (1:1)" icon="🤝" accentColor="#6366F1">{approachStyle}</InfoCard>
+        )}
+        {feedbackApproach && (
+          <InfoCard title="Como Dar Feedback" icon="💬" accentColor="#3182CE">{feedbackApproach}</InfoCard>
+        )}
+      </div>
+
+      {coachingQuestions.length > 0 && (
+        <Card variant="default">
+          <SectionTitle icon="❓">Perguntas para a Próxima Conversa</SectionTitle>
+          <ol className="space-y-2.5">
+            {coachingQuestions.map((q, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-sm text-[#F7F8FC] leading-relaxed">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#6366F1]/20 text-[#6366F1] text-xs font-bold flex items-center justify-center mt-0.5">
+                  {i + 1}
+                </span>
+                <span>{q}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {actionPlan.length > 0 && (
+          <Card variant="default">
+            <SectionTitle icon="🚀">Plano de Ação</SectionTitle>
+            <ul className="space-y-1.5">
+              {actionPlan.map((a, i) => (<BulletItem key={i} color="#38A169">{a}</BulletItem>))}
+            </ul>
+          </Card>
+        )}
+        {motivationLevers.length > 0 && (
+          <Card variant="default">
+            <SectionTitle icon="⚡">Alavancas Motivacionais</SectionTitle>
+            <ul className="space-y-1.5">
+              {motivationLevers.map((m, i) => (<BulletItem key={i} color="#D69E2E">{m}</BulletItem>))}
+            </ul>
+          </Card>
+        )}
+      </div>
+
+      {redFlags.length > 0 && (
+        <Card variant="default" className="border-[#E53E3E]/30 bg-[#E53E3E]/5">
+          <SectionTitle icon="🚨">Sinais de Alerta para Monitorar</SectionTitle>
+          <ul className="space-y-1.5">
+            {redFlags.map((f, i) => (<BulletItem key={i} color="#E53E3E">{f}</BulletItem>))}
+          </ul>
+        </Card>
+      )}
+
+      {Object.keys(compatibilityMap).length > 0 && (
+        <Card variant="default">
+          <SectionTitle icon="🔗">Compatibilidade com Outros Perfis</SectionTitle>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {['D', 'I', 'S', 'C'].map((p) => (
+              compatibilityMap[p] ? (
+                <div key={p}
+                     className="rounded-lg p-3 border"
+                     style={{
+                       backgroundColor: `${PROFILE_HEX[p]}08`,
+                       borderColor: `${PROFILE_HEX[p]}30`,
+                     }}>
+                  <p className="text-xs font-bold mb-1.5" style={{ color: PROFILE_HEX[p] }}>
+                    {p} — {PROFILE_LABELS[p]}
+                  </p>
+                  <p className="text-xs text-[#A0A3B1] leading-relaxed">{compatibilityMap[p]}</p>
+                </div>
+              ) : null
+            ))}
+          </div>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {stretchAreas.length > 0 && (
+          <Card variant="default">
+            <SectionTitle icon="📈">Áreas de Estiramento</SectionTitle>
+            <ul className="space-y-1.5">
+              {stretchAreas.map((s, i) => (<BulletItem key={i} color="#8B5CF6">{s}</BulletItem>))}
+            </ul>
+          </Card>
+        )}
+        {delegationGuide && (
+          <InfoCard title="Guia de Delegação" icon="🎯" accentColor="#3182CE">{delegationGuide}</InfoCard>
+        )}
+      </div>
+
+      {nextAssessmentFocus && (
+        <Card variant="accent">
+          <SectionTitle icon="🔭">Foco para a Próxima Avaliação</SectionTitle>
+          <p className="text-sm text-[#F7F8FC] leading-relaxed">{nextAssessmentFocus}</p>
+        </Card>
+      )}
     </div>
   );
 }
