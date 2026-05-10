@@ -1,5 +1,6 @@
 import { callAnthropic } from '../_shared/anthropic.ts';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
+import { getAuthenticatedUser } from '../_shared/auth.ts';
 
 function buildSystemPrompt(language?: string) {
   return `Você é um especialista em psicologia organizacional e avaliação comportamental.
@@ -23,9 +24,17 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
+    const caller = await getAuthenticatedUser(req);
+    if (!caller) {
+      return jsonResponse({ error: 'unauthorized' }, 401, req);
+    }
+
     const { answers, moduleObjective, language } = await req.json();
     if (!Array.isArray(answers) || answers.length === 0) {
-      return jsonResponse({ error: 'answers must be a non-empty array' }, 400);
+      return jsonResponse({ error: 'answers must be a non-empty array' }, 400, req);
+    }
+    if (answers.length > 200) {
+      return jsonResponse({ error: 'answers array too large (max 200)' }, 400, req);
     }
 
     const profile = await callAnthropic(
@@ -41,8 +50,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    return jsonResponse(profile);
+    return jsonResponse(profile, 200, req);
   } catch (err) {
-    return jsonResponse({ error: (err as Error).message || 'analyzeResponse failed' }, 500);
+    return jsonResponse({ error: (err as Error).message || 'analyzeResponse failed' }, 500, req);
   }
 });

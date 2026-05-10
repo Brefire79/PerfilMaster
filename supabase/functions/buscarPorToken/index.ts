@@ -12,22 +12,24 @@ Deno.serve(async (req) => {
 
   try {
     const { token } = await req.json();
-    if (!token) return jsonResponse({ error: 'token is required' }, 400);
+    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100) {
+      return jsonResponse({ error: 'token inválido' }, 400, req);
+    }
 
     const { data: avaliado, error: avaliadoError } = await supabase
       .from('app_avaliados')
-      .select('*')
+      .select('nome, status, sessaoid')
       .eq('token', token)
       .single();
 
     if (avaliadoError || !avaliado) {
-      return jsonResponse({ error: 'Token inválido ou expirado.' }, 404);
+      return jsonResponse({ error: 'Token inválido ou expirado.' }, 404, req);
     }
 
     const { data: sessao } = await supabase
       .from('app_sessoes')
-      .select('*')
-      .eq('id', avaliado.sessaoId)
+      .select('titulo, descricao')
+      .eq('id', avaliado.sessaoid)
       .single();
 
     return jsonResponse({
@@ -35,8 +37,8 @@ Deno.serve(async (req) => {
       status: avaliado.status,
       sessaoTitulo: sessao?.titulo || 'Avaliação DISC',
       sessaoDescricao: sessao?.descricao || null,
-    });
+    }, 200, req);
   } catch (err) {
-    return jsonResponse({ error: (err as Error).message || 'buscarPorToken failed' }, 500);
+    return jsonResponse({ error: (err as Error).message || 'buscarPorToken failed' }, 500, req);
   }
 });
