@@ -1,0 +1,5 @@
+{
+  "version": "1.0.4",
+  "buildDate": "2026-05-05T17:30:00.000Z",
+  "notes": "Fix: input de email some ao digitar (state movido pro pai, memo, seletores Zustand)"
+}
