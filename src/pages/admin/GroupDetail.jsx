@@ -8,6 +8,7 @@ import useGroupStore from '@/store/groupStore.js';
 import {
   getGroup,
   getUsersByGroup,
+  getAssessmentsByGroup,
   removeMemberFromGroup,
   updateGroup,
   deleteGroup,
@@ -140,7 +141,9 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
 
   const getStatusVariant = (status) => {
     switch (status) {
-      case 'completed':   return 'bg-[#38A169]/10 text-[#38A169] border-[#38A169]/20';
+      case 'completed':
+      case 'analyzed':    return 'bg-[#38A169]/10 text-[#38A169] border-[#38A169]/20';
+      case 'submitted':
       case 'in_progress': return 'bg-[#D69E2E]/10 text-[#D69E2E] border-[#D69E2E]/20';
       case 'pending':     return 'bg-[#A0A3B1]/10 text-[#A0A3B1] border-[#A0A3B1]/20';
       default:            return 'bg-[#2D3047] text-[#A0A3B1] border-[#2D3047]';
@@ -149,7 +152,9 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
 
   const getStatusLabel = (status) => {
     switch (status) {
-      case 'completed':   return t('assessment.completed', 'Concluída');
+      case 'completed':
+      case 'analyzed':    return t('assessment.completed', 'Concluída');
+      case 'submitted':   return t('assessment.submitted', 'Enviada');
       case 'in_progress': return t('assessment.inProgress', 'Em andamento');
       case 'pending':     return t('assessment.pending', 'Pendente');
       default:            return t('assessment.notStarted', 'Não iniciada');
@@ -242,7 +247,7 @@ function TabButton({ active, onClick, children }) {
 function StatsRow({ members, group }) {
   const { t } = useTranslation();
   const totalMembers = members.length;
-  const completed = members.filter((m) => m.assessmentStatus === 'completed').length;
+  const completed = members.filter((m) => m.assessmentStatus === 'completed' || m.assessmentStatus === 'analyzed').length;
   const completedPct = totalMembers > 0 ? Math.round((completed / totalMembers) * 100) : 0;
 
   const profileCounts = members.reduce((acc, m) => {
@@ -505,10 +510,28 @@ export default function GroupDetail() {
       setGroup(g);
       setCurrentGroup(g);
 
-      // Fetch members
+      // Fetch members + cruza com assessments para status real
       if (g.memberIds?.length) {
-        const memberData = await getUsersByGroup(id);
-        setMembers(memberData);
+        const [memberData, assessments] = await Promise.all([
+          getUsersByGroup(id),
+          getAssessmentsByGroup(id),
+        ]);
+
+        const STATUS_RANK = { completed: 4, analyzed: 4, submitted: 3, in_progress: 2, pending: 1 };
+        const bestStatus = {};
+        for (const a of assessments) {
+          const uid = a.uid;
+          if (!uid) continue;
+          const rank = STATUS_RANK[a.status] ?? 0;
+          if (!bestStatus[uid] || rank > (STATUS_RANK[bestStatus[uid]] ?? 0)) {
+            bestStatus[uid] = a.status;
+          }
+        }
+
+        setMembers(memberData.map((m) => ({
+          ...m,
+          assessmentStatus: bestStatus[m.id] ?? bestStatus[m.uid] ?? m.assessmentStatus ?? null,
+        })));
       } else {
         setMembers([]);
       }

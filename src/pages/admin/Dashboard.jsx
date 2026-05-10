@@ -6,6 +6,66 @@ import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge from '@/components/ui/Badge.jsx';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup } from '@/firebase/firestore.js';
+
+const ACTIVITY_PROFILE_COLORS = {
+  D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE',
+};
+
+function formatRelativeTime(date, t) {
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  if (minutes < 1) return t('time.justNow', 'agora mesmo');
+  if (minutes < 60) return t('time.minutesAgo', { count: minutes, defaultValue: `há ${minutes} min` });
+  if (hours < 24) return t('time.hoursAgo', { count: hours, defaultValue: `há ${hours}h` });
+  if (days < 7) return t('time.daysAgo', { count: days, defaultValue: `há ${days}d` });
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+function ActivityRow({ event, t }) {
+  const linkTo = event.groupId ? `/admin/groups/${event.groupId}` : '/admin/groups';
+  let iconBg, iconColor, iconSvg, message;
+
+  if (event.type === 'completed') {
+    iconBg = 'bg-[#38A169]/10'; iconColor = '#38A169';
+    iconSvg = <polyline points="20 6 9 17 4 12" />;
+    message = (<><strong className="text-[#F7F8FC]">{event.name}</strong> {t('admin.activityCompleted', 'concluiu a avaliação')}</>);
+  } else if (event.type === 'profile') {
+    const c = ACTIVITY_PROFILE_COLORS[event.profile] || '#6366F1';
+    iconBg = ''; iconColor = c;
+    iconSvg = <circle cx="12" cy="12" r="9" />;
+    message = (<>{t('admin.activityProfile', 'Perfil identificado')} <strong style={{ color: c }}>{event.profile}</strong>: <strong className="text-[#F7F8FC]">{event.name}</strong></>);
+  } else if (event.type === 'joined') {
+    iconBg = 'bg-[#6366F1]/10'; iconColor = '#6366F1';
+    iconSvg = (<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></>);
+    message = (<><strong className="text-[#F7F8FC]">{event.name}</strong> {t('admin.activityJoined', 'entrou em')} <strong className="text-[#F7F8FC]">{event.groupName}</strong></>);
+  } else {
+    iconBg = 'bg-[#D69E2E]/10'; iconColor = '#D69E2E';
+    iconSvg = (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></>);
+    message = (<>{t('admin.activityGroupCreated', 'Grupo criado')}: <strong className="text-[#F7F8FC]">{event.name}</strong></>);
+  }
+
+  return (
+    <Link to={linkTo} className="flex items-center gap-3 p-4 hover:bg-[#1A1D2E]/50 transition-colors">
+      <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${iconBg}`}
+           style={!iconBg ? { backgroundColor: `${iconColor}1A` } : undefined}>
+        <svg viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth={2} className="w-4 h-4">
+          {iconSvg}
+        </svg>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-[#A0A3B1] truncate">{message}</p>
+        <p className="text-xs text-[#4A4D6A] mt-0.5">{formatRelativeTime(event.timestamp, t)}</p>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4A4D6A" strokeWidth={2} className="w-4 h-4 flex-shrink-0">
+        <polyline points="9 18 15 12 9 6" />
+      </svg>
+    </Link>
+  );
+}
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', loading = false }) {
@@ -85,18 +145,128 @@ export default function AdminDashboard() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
+  const [statsData, setStatsData] = useState({
+    totalStudents: 0, totalGroups: 0, completedAssessments: 0, completionRate: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState([]);
 
-  // Simulate data loading
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800);
-    return () => clearTimeout(timer);
-  }, []);
+    if (!user?.uid) return;
+    let cancelled = false;
+    const loadStats = async () => {
+      setLoading(true);
+      try {
+        const groups = await getGroupsByAdmin(user.uid);
+        if (cancelled) return;
+        let totalStudents = 0;
+        let completedAssessments = 0;
+        const allEvents = [];
+        const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
+        await Promise.all(
+          groups.map(async (g) => {
+            const [members, assessments, profiles] = await Promise.all([
+              getUsersByGroup(g.id),
+              getAssessmentsByGroup(g.id),
+              getProfilesByGroup(g.id),
+            ]);
+            totalStudents += members.length;
+            const completedUids = new Set(
+              assessments
+                .filter((a) => ['completed', 'analyzed', 'submitted'].includes(a.status))
+                .map((a) => a.uid)
+            );
+            completedAssessments += completedUids.size;
+
+            const memberMap = Object.fromEntries(
+              members.map((m) => [m.uid || m.id, m.displayName || m.name || m.email || 'Aluno'])
+            );
+
+            for (const a of assessments) {
+              if (['submitted', 'analyzed', 'completed'].includes(a.status) && a.submittedAt) {
+                allEvents.push({
+                  type: 'completed',
+                  name: memberMap[a.uid] || 'Aluno',
+                  groupName: g.name, groupId: g.id, uid: a.uid,
+                  timestamp: new Date(a.submittedAt),
+                });
+              }
+            }
+            for (const p of profiles) {
+              if (p.dominantProfile && p.updatedAt) {
+                allEvents.push({
+                  type: 'profile', name: memberMap[p.uid] || 'Aluno',
+                  profile: p.dominantProfile, groupName: g.name, groupId: g.id, uid: p.uid,
+                  timestamp: new Date(p.updatedAt),
+                });
+              }
+            }
+            for (const m of members) {
+              const created = m.createdAt ? new Date(m.createdAt).getTime() : 0;
+              if (created > thirtyDaysAgo) {
+                allEvents.push({
+                  type: 'joined', name: m.displayName || m.name || m.email || 'Aluno',
+                  groupName: g.name, groupId: g.id, uid: m.uid || m.id,
+                  timestamp: new Date(m.createdAt),
+                });
+              }
+            }
+          })
+        );
+
+        for (const g of groups) {
+          const created = g.createdAt ? new Date(g.createdAt).getTime() : 0;
+          if (created > thirtyDaysAgo) {
+            allEvents.push({
+              type: 'group', name: g.name, groupId: g.id,
+              timestamp: new Date(g.createdAt),
+            });
+          }
+        }
+
+        const PRIORITY = { completed: 3, profile: 2, joined: 1, group: 0 };
+        const dedupMap = new Map();
+        for (const ev of allEvents) {
+          if (!ev.uid) {
+            dedupMap.set(`group-${ev.groupId}-${ev.timestamp.toDateString()}`, ev);
+            continue;
+          }
+          const key = `${ev.uid}-${ev.timestamp.toDateString()}`;
+          const existing = dedupMap.get(key);
+          if (!existing || PRIORITY[ev.type] > PRIORITY[existing.type]) {
+            dedupMap.set(key, ev);
+          }
+        }
+        const sortedEvents = Array.from(dedupMap.values())
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 8);
+
+        if (!cancelled) {
+          setStatsData({
+            totalStudents,
+            totalGroups: groups.length,
+            completedAssessments,
+            completionRate: totalStudents > 0
+              ? Math.round((completedAssessments / totalStudents) * 100)
+              : 0,
+          });
+          setRecentActivity(sortedEvents);
+        }
+      } catch (err) {
+        console.error('[AdminDashboard] Failed to load stats:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    loadStats();
+    return () => { cancelled = true; };
+  }, [user?.uid]);
 
   const stats = [
     {
       key: 'totalStudents',
       label: t('admin.totalStudents'),
-      value: '0',
+      value: String(statsData.totalStudents),
       color: '#6366F1',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
@@ -108,7 +278,7 @@ export default function AdminDashboard() {
     {
       key: 'totalGroups',
       label: t('admin.totalGroups'),
-      value: '0',
+      value: String(statsData.totalGroups),
       color: '#38A169',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
@@ -122,7 +292,7 @@ export default function AdminDashboard() {
     {
       key: 'totalAssessments',
       label: t('admin.totalAssessments'),
-      value: '0',
+      value: String(statsData.completedAssessments),
       color: '#D69E2E',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
@@ -134,7 +304,7 @@ export default function AdminDashboard() {
     {
       key: 'completionRate',
       label: t('admin.completionRate'),
-      value: '0%',
+      value: `${statsData.completionRate}%`,
       color: '#3182CE',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
@@ -253,19 +423,39 @@ export default function AdminDashboard() {
             {t('admin.recentActivity')}
           </h2>
         </div>
-        <Card variant="default">
-          <div className="py-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[#242736] flex items-center justify-center mx-auto mb-3">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#A0A3B1" strokeWidth={1.5} className="w-6 h-6">
-                <circle cx="12" cy="12" r="10" />
-                <polyline points="12 6 12 12 16 14" />
-              </svg>
+        <Card variant="default" bodyClassName="p-0">
+          {loading ? (
+            <div className="divide-y divide-[#2D3047]">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-4 animate-pulse">
+                  <div className="w-9 h-9 rounded-full bg-[#2D3047]" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="h-3 w-48 rounded bg-[#2D3047]" />
+                    <div className="h-2.5 w-20 rounded bg-[#2D3047]" />
+                  </div>
+                </div>
+              ))}
             </div>
-            <p className="text-[#A0A3B1] text-sm">{t('app.noData')}</p>
-            <p className="text-[#A0A3B1] text-xs mt-1">
-              Crie grupos e convide alunos para começar.
-            </p>
-          </div>
+          ) : recentActivity.length === 0 ? (
+            <div className="py-8 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-[#242736] flex items-center justify-center mx-auto mb-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#A0A3B1" strokeWidth={1.5} className="w-6 h-6">
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" />
+                </svg>
+              </div>
+              <p className="text-[#A0A3B1] text-sm">{t('admin.noRecentActivity', 'Nenhuma atividade recente')}</p>
+              <p className="text-[#A0A3B1] text-xs mt-1">
+                Crie grupos e convide alunos para começar.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-[#2D3047]">
+              {recentActivity.map((ev, i) => (
+                <ActivityRow key={`${ev.type}-${ev.uid || ev.groupId}-${i}`} event={ev} t={t} />
+              ))}
+            </div>
+          )}
         </Card>
       </section>
 
