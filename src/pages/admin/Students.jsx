@@ -3,11 +3,12 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
+import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
 
 const PROFILE_COLORS = { D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE' };
 const PAGE_SIZE = 10;
@@ -23,7 +24,9 @@ function getInitials(name = '') {
 
 function getStatusVariant(status) {
   switch (status) {
-    case 'completed': return 'success';
+    case 'completed':
+    case 'analyzed': return 'success';
+    case 'submitted':
     case 'in_progress': return 'warning';
     case 'pending': return 'pending';
     default: return 'neutral';
@@ -32,7 +35,9 @@ function getStatusVariant(status) {
 
 function getStatusLabel(t, status) {
   switch (status) {
-    case 'completed': return t('assessment.completed', 'Concluída');
+    case 'completed':
+    case 'analyzed': return t('assessment.completed', 'Concluída');
+    case 'submitted': return t('assessment.submitted', 'Enviada');
     case 'in_progress': return t('assessment.inProgress', 'Em andamento');
     case 'pending': return t('assessment.pending', 'Pendente');
     default: return t('assessment.notStarted', 'Não iniciada');
@@ -66,6 +71,16 @@ export default function Students() {
   const [groupFilter, setGroupFilter] = useState('');
   const [profileFilter, setProfileFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+
+  // Assign assessment modal
+  const [assignStudent, setAssignStudent] = useState(null);
+  const [assignModules, setAssignModules] = useState([]);
+  const [assignModuleId, setAssignModuleId] = useState('default');
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [assignSending, setAssignSending] = useState(false);
+  const [assignDone, setAssignDone] = useState(false);
 
   // Load groups then their members
   useEffect(() => {
@@ -82,8 +97,30 @@ export default function Students() {
         // Fetch members for all groups in parallel
         const membersByGroup = await Promise.all(
           fetchedGroups.map(async (g) => {
-            const members = await getUsersByGroup(g.id);
-            return members.map((m) => ({ ...m, groupId: g.id, groupName: g.name, groupColor: g.color }));
+            const [members, assessments] = await Promise.all([
+              getUsersByGroup(g.id),
+              getAssessmentsByGroup(g.id),
+            ]);
+
+            // Cruza com assessments reais para descobrir status atual
+            const STATUS_RANK = { completed: 4, analyzed: 4, submitted: 3, in_progress: 2, pending: 1 };
+            const bestStatus = {};
+            for (const a of assessments) {
+              const uid = a.uid;
+              if (!uid) continue;
+              const rank = STATUS_RANK[a.status] ?? 0;
+              if (!bestStatus[uid] || rank > (STATUS_RANK[bestStatus[uid]] ?? 0)) {
+                bestStatus[uid] = a.status;
+              }
+            }
+
+            return members.map((m) => ({
+              ...m,
+              groupId: g.id,
+              groupName: g.name,
+              groupColor: g.color,
+              assessmentStatus: bestStatus[m.id] ?? bestStatus[m.uid] ?? m.assessmentStatus ?? null,
+            }));
           })
         );
         if (!cancelled) {
@@ -133,6 +170,74 @@ export default function Students() {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const handleOpenAssign = async (student) => {
+    setAssignStudent(student);
+    setAssignModuleId('default');
+    setAssignDone(false);
+    setAssignLoading(true);
+    try {
+      const mods = student.groupId ? await getModules(student.groupId) : [];
+      setAssignModules(mods.filter((m) => m.status !== 'archived'));
+    } catch {
+      setAssignModules([]);
+    } finally {
+      setAssignLoading(false);
+    }
+  };
+
+  const handleCloseAssign = () => {
+    setAssignStudent(null);
+    setAssignModules([]);
+    setAssignModuleId('default');
+    setAssignDone(false);
+  };
+
+  const handleAssign = async () => {
+    if (!assignStudent || !assignModuleId) return;
+    const isDefault = assignModuleId === 'default';
+    const mod = isDefault ? null : assignModules.find((m) => m.id === assignModuleId);
+    setAssignSending(true);
+    try {
+      await createAssessment({
+        uid: assignStudent.id,
+        groupId: assignStudent.groupId,
+        moduleId: isDefault ? null : assignModuleId,
+        moduleName: isDefault ? 'Avaliação DISC Padrão' : (mod?.title || mod?.name || 'Avaliação DISC'),
+        moduleObjective: isDefault ? 'Avaliação comportamental DISC + Sabotadores' : (mod?.objective || ''),
+        assignedBy: user?.uid,
+      });
+      setAssignDone(true);
+      setAllStudents((prev) =>
+        prev.map((s) => s.id === assignStudent.id ? { ...s, assessmentStatus: 'pending' } : s)
+      );
+      const nome = assignStudent.displayName || assignStudent.name || 'aluno(a)';
+      const subject = encodeURIComponent('Você tem uma nova avaliação no ProfileAI');
+      const body = encodeURIComponent(
+        `Olá, ${nome}!\n\nUma nova avaliação foi atribuída para você no ProfileAI.\nAcesse o app e responda quando puder — leva cerca de 10 minutos.\n\nAbraços,\n${user?.displayName || 'Instrutor'}`
+      );
+      if (assignStudent.email) {
+        window.open(`mailto:${assignStudent.email}?subject=${subject}&body=${body}`);
+      }
+    } catch (err) {
+      console.error('Erro ao atribuir avaliação:', err);
+    } finally {
+      setAssignSending(false);
+    }
+  };
+
+  const handleSendReminder = (student) => {
+    if (!student?.email) return;
+    const nome = student.displayName || student.name || 'aluno(a)';
+    const status = student.assessmentStatus;
+    const subject = status === 'completed'
+      ? 'ProfileAI — Sobre sua avaliação'
+      : 'Lembrete: complete sua avaliação ProfileAI';
+    const body = status === 'completed'
+      ? `Olá, ${nome}!\n\nEspero que esteja bem. Estou entrando em contato sobre sua avaliação no ProfileAI.\n\nAbraços,\n${user?.displayName || ''}`
+      : `Olá, ${nome}!\n\nVi que sua avaliação no ProfileAI ainda não foi concluída. Quando puder, acesse o link abaixo e responda às perguntas — leva uns 10 minutos.\n\nQualquer dúvida, é só responder este e-mail.\n\nAbraços,\n${user?.displayName || ''}`;
+    window.open(`mailto:${student.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -317,6 +422,7 @@ export default function Students() {
                     className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
                     aria-label={t('app.view', 'Ver perfil')}
                     title={t('app.view', 'Ver perfil')}
+                    onClick={() => { setSelectedStudent(student); setProfilePanelOpen(true); }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -324,9 +430,22 @@ export default function Students() {
                     </svg>
                   </button>
                   <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#D69E2E] hover:bg-[#D69E2E]/10 transition-colors"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#38A169] hover:bg-[#38A169]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    aria-label={t('students.assignAssessment', 'Atribuir avaliação')}
+                    title={t('students.assignAssessment', 'Atribuir avaliação')}
+                    onClick={() => handleOpenAssign(student)}
+                    disabled={student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </button>
+                  <button
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#D69E2E] hover:bg-[#D69E2E]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={t('students.sendReminder', 'Enviar lembrete')}
                     title={t('students.sendReminder', 'Enviar lembrete')}
+                    onClick={() => handleSendReminder(student)}
+                    disabled={!student.email}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -368,6 +487,114 @@ export default function Students() {
           </div>
         )}
       </Card>
+
+      {/* ── Assign Assessment Modal ─────────────────────────────────── */}
+      {assignStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl animate-fade-in">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047]">
+              <div>
+                <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+                  {t('students.assignAssessment', 'Atribuir avaliação')}
+                </h2>
+                <p className="text-xs text-[#A0A3B1] mt-0.5">
+                  {assignStudent.displayName || assignStudent.name}
+                  {assignStudent.email && ` · ${assignStudent.email}`}
+                </p>
+              </div>
+              <button
+                onClick={handleCloseAssign}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#2D3047] transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="px-5 py-4 space-y-4">
+              {assignDone ? (
+                <div className="flex flex-col items-center gap-3 py-6 text-center">
+                  <div className="w-12 h-12 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2.5} className="w-6 h-6">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </div>
+                  <p className="text-sm font-medium text-[#F7F8FC]">
+                    {t('students.assignSuccess', 'Avaliação atribuída com sucesso!')}
+                  </p>
+                  <p className="text-xs text-[#A0A3B1]">
+                    {t('students.assignEmailNote', 'O e-mail de notificação foi aberto no seu cliente de e-mail.')}
+                  </p>
+                  <Button variant="secondary" size="sm" onClick={handleCloseAssign}>
+                    {t('app.close', 'Fechar')}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-[#A0A3B1] mb-2">
+                      {t('students.selectModule', 'Selecione a avaliação')}
+                    </label>
+                    {assignLoading ? (
+                      <div className="h-11 rounded-lg bg-[#242736] animate-pulse" />
+                    ) : (
+                      <select
+                        value={assignModuleId}
+                        onChange={(e) => setAssignModuleId(e.target.value)}
+                        className="w-full h-11 px-3 rounded-lg bg-[#242736] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
+                      >
+                        <option value="default">⭐ Avaliação DISC Padrão (24 + 50 perguntas)</option>
+                        {assignModules.length > 0 && (
+                          <optgroup label="Módulos do grupo">
+                            {assignModules.map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.title || m.name}{m.status === 'draft' ? ' (rascunho)' : ''}
+                              </option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </select>
+                    )}
+                    {assignModules.length === 0 && !assignLoading && (
+                      <p className="text-xs text-[#A0A3B1] mt-2">
+                        Este grupo não tem módulos customizados. A avaliação DISC padrão será atribuída.
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#A0A3B1] leading-relaxed">
+                    {t('students.assignNote', 'A avaliação aparecerá no dashboard do aluno assim que for atribuída. Um e-mail de notificação será aberto automaticamente.')}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {!assignDone && (
+              <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">
+                <Button variant="secondary" size="sm" onClick={handleCloseAssign}>
+                  {t('app.cancel', 'Cancelar')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleAssign}
+                  disabled={!assignModuleId || assignSending || assignLoading}
+                >
+                  {assignSending
+                    ? t('app.saving', 'Atribuindo...')
+                    : t('students.assign', 'Atribuir avaliação')}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <MemberProfileSlideOver
+        member={selectedStudent}
+        isOpen={profilePanelOpen}
+        onClose={() => setProfilePanelOpen(false)}
+      />
     </div>
   );
 }
