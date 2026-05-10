@@ -6,6 +6,7 @@ import {
   subscribeToSessoes,
   subscribeToAvaliados,
   encerrarSessao,
+  deleteAvaliado,
 } from '@/firebase/firestore.js';
 
 const APP_URL = 'https://profileai.netlify.app';
@@ -122,6 +123,28 @@ const useSessaoStore = create(
           return token;
         } catch (e) {
           set({ loading: false, erro: e.message }, false, 'avaliado/erro');
+          throw e;
+        }
+      },
+
+      async removerAvaliado(sessaoId, avaliadoId) {
+        set({ erro: null }, false, 'avaliado/removendo');
+        try {
+          await deleteAvaliado(avaliadoId);
+          set(
+            (state) => ({
+              avaliadosBySessao: {
+                ...state.avaliadosBySessao,
+                [sessaoId]: (state.avaliadosBySessao[sessaoId] || []).filter(
+                  (a) => a.id !== avaliadoId
+                ),
+              },
+            }),
+            false,
+            'avaliado/removido'
+          );
+        } catch (e) {
+          set({ erro: e.message }, false, 'avaliado/erro');
           throw e;
         }
       },
