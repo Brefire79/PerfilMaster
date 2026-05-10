@@ -1,10 +1,42 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
-import { createAssessment, submitAssessment } from '@/firebase/firestore.js';
+import { createAssessment, submitAssessment, updateUser, createProfile, getUser } from '@/firebase/firestore.js';
+import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
 import Button from '@/components/ui/Button.jsx';
 import useAuthStore from '@/store/authStore.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
+
+const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+
+function calcularPerfilDisc(respostas, perguntas) {
+  const acc = { D: [], I: [], S: [], C: [] };
+  for (const q of perguntas) {
+    const dim = q.dimension;
+    if (!dim || !acc[dim]) continue;
+    const valor = respostas[q.id];
+    if (valor != null) acc[dim].push(Number(valor));
+  }
+  const scores = {};
+  for (const dim of ['D', 'I', 'S', 'C']) {
+    const arr = acc[dim];
+    if (arr.length === 0) {
+      scores[dim] = 0;
+    } else {
+      const media = arr.reduce((s, v) => s + v, 0) / arr.length;
+      scores[dim] = Math.round((media / 5) * 100);
+    }
+  }
+  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const [dominant, secondary] = sorted;
+  return {
+    scores,
+    dominantProfile: dominant[0],
+    dominantProfileName: PROFILE_NAMES[dominant[0]],
+    secondaryProfile: secondary[0],
+    secondaryProfileName: PROFILE_NAMES[secondary[0]],
+  };
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -454,6 +486,29 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
     }
   }, [etapa, indice, perguntasDisc.length, animateTransition]);
 
+  // ─── Keyboard shortcuts (1-5 selecionam, Enter avanca) ──────────────────
+  useEffect(() => {
+    if (etapa !== 'disc' && etapa !== 'saboteurs') return;
+    const handleKeyDown = (e) => {
+      const target = e.target;
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (['1', '2', '3', '4', '5'].includes(e.key)) {
+        e.preventDefault();
+        selecionarResposta(Number(e.key));
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (perguntaAtual && respostas[perguntaAtual.id] != null) {
+          e.preventDefault();
+          avancar();
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [etapa, perguntaAtual, respostas, selecionarResposta, avancar]);
+
   // ─── Submit to Supabase ───────────────────────────────────────────────────
   const enviar = useCallback(async () => {
     if (submittingRef.current) return;
@@ -463,12 +518,50 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
 
     try {
       if (!user) throw new Error('Usuário não autenticado');
+
+      // 1. Resolve groupId — busca em app_users se não estiver no contexto
+      let groupId = user.groupId || null;
+      if (!groupId) {
+        try {
+          const fresh = await getUser(user.uid);
+          groupId = fresh?.groupId || null;
+        } catch (_) { /* segue sem groupId */ }
+      }
+
+      // 2. Cria e submete a avaliação
       const assessmentDocId = await createAssessment({
         uid: user.uid,
         moduleId: 'full',
+        groupId,
         totalQuestions: TOTAL_QUESTIONS,
       });
       await submitAssessment(assessmentDocId, { ...respostas });
+
+      // 3. Calcula perfil DISC localmente
+      const todasPerguntas = [...perguntasDisc, ...perguntasSaboteurs];
+      const perfilLocal = calcularPerfilDisc(respostas, todasPerguntas);
+
+      // 4. Salva perfil base em app_profiles
+      await createProfile(user.uid, {
+        dominantProfile: perfilLocal.dominantProfile,
+        secondaryProfile: perfilLocal.secondaryProfile,
+        scores: perfilLocal.scores,
+        assessmentId: assessmentDocId,
+        groupId,
+        summary: '',
+        strengths: [],
+        challenges: [],
+      });
+
+      // 5. Atualiza status do usuário
+      await updateUser(user.uid, {
+        assessmentStatus: 'completed',
+        profile: perfilLocal.dominantProfile,
+      });
+
+      // 6. Dispara enriquecimento AI em background (gera adminStrategy + summary)
+      buildProfileAI({ assessmentId: assessmentDocId, uid: user.uid, language: 'ptBR' })
+        .catch((err) => console.warn('[AssessmentWizard] buildProfile AI falhou (nao-critico):', err));
 
       setEtapa('completed');
       onCompleted?.({ assessmentId: assessmentDocId });
@@ -482,7 +575,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
     } finally {
       submittingRef.current = false;
     }
-  }, [user, respostas, perguntasSaboteurs.length, onCompleted, t]);
+  }, [user, respostas, perguntasDisc, perguntasSaboteurs, onCompleted, t]);
 
   // ─── Transition screen → start saboteurs ──────────────────────────────────
   const iniciarSaboteurs = useCallback(() => {
@@ -668,6 +761,11 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       {/* Auto-save hint */}
       <p className="text-xs text-[#A0A3B1] text-center">
         {t('assessment.saveProgress', 'Progresso salvo automaticamente')}
+      </p>
+
+      {/* Keyboard shortcuts hint (desktop only) */}
+      <p className="hidden sm:block text-[11px] text-[#4A4D6A] text-center">
+        {t('assessment.keyboardHint', 'Dica: pressione 1–5 para escolher e Enter para avançar')}
       </p>
     </div>
   );
