@@ -6,13 +6,17 @@ import {
   subscribeToSessoes,
   subscribeToAvaliados,
   encerrarSessao,
+  deletarSessao,
   deleteAvaliado,
 } from '@/firebase/firestore.js';
 
-const APP_URL = 'https://profileai.netlify.app';
+function getAppUrl() {
+  if (typeof window !== 'undefined') return window.location.origin;
+  return 'https://perfilmaster.netlify.app';
+}
 
 function montarMensagemWhatsApp(nome, token) {
-  const link = `${APP_URL}/avaliacao/${token}`;
+  const link = `${getAppUrl()}/avaliacao/${token}`;
   return (
     `Olá, ${nome}! 👋\n\n` +
     `Você foi convidado(a) para realizar uma avaliação de perfil comportamental DISC — Dominante · Influente · Estável · Analítico.\n\n` +
@@ -88,6 +92,28 @@ const useSessaoStore = create(
         }
       },
 
+      async deletarSessaoById(sessaoId) {
+        set({ loading: true, erro: null }, false, 'sessao/deletando');
+        try {
+          await deletarSessao(sessaoId);
+          set(
+            (state) => ({
+              loading: false,
+              sessoes: state.sessoes.filter((s) => s.id !== sessaoId),
+              sessaoAtiva: state.sessaoAtiva?.id === sessaoId ? null : state.sessaoAtiva,
+              avaliadosBySessao: Object.fromEntries(
+                Object.entries(state.avaliadosBySessao).filter(([k]) => k !== sessaoId)
+              ),
+            }),
+            false,
+            'sessao/deletado'
+          );
+        } catch (e) {
+          set({ loading: false, erro: e.message }, false, 'sessao/erro');
+          throw e;
+        }
+      },
+
       selecionarSessao(sessao) {
         const { _unsubAvaliados } = get();
         if (_unsubAvaliados) _unsubAvaliados();
@@ -156,7 +182,7 @@ const useSessaoStore = create(
       },
 
       getLinkAvaliacao(token) {
-        return `${APP_URL}/avaliacao/${token}`;
+        return `${getAppUrl()}/avaliacao/${token}`;
       },
 
       limparErro() {

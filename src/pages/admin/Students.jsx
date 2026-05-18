@@ -25,8 +25,8 @@ function getInitials(name = '') {
 function getStatusVariant(status) {
   switch (status) {
     case 'completed':
-    case 'analyzed': return 'success';
-    case 'submitted':
+    case 'analyzed':
+    case 'submitted': return 'success';
     case 'in_progress': return 'warning';
     case 'pending': return 'pending';
     default: return 'neutral';
@@ -36,8 +36,8 @@ function getStatusVariant(status) {
 function getStatusLabel(t, status) {
   switch (status) {
     case 'completed':
-    case 'analyzed': return t('assessment.completed', 'Concluída');
-    case 'submitted': return t('assessment.submitted', 'Enviada');
+    case 'analyzed':
+    case 'submitted': return t('assessment.completed', 'Concluída');
     case 'in_progress': return t('assessment.inProgress', 'Em andamento');
     case 'pending': return t('assessment.pending', 'Pendente');
     default: return t('assessment.notStarted', 'Não iniciada');
@@ -67,6 +67,8 @@ export default function Students() {
 
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshTick, setRefreshTick] = useState(0);
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('');
   const [profileFilter, setProfileFilter] = useState('');
@@ -81,6 +83,9 @@ export default function Students() {
   const [assignLoading, setAssignLoading] = useState(false);
   const [assignSending, setAssignSending] = useState(false);
   const [assignDone, setAssignDone] = useState(false);
+  const [assignError, setAssignError] = useState('');
+
+  const handleRefresh = () => setRefreshTick((t) => t + 1);
 
   // Load groups then their members
   useEffect(() => {
@@ -88,7 +93,8 @@ export default function Students() {
     let cancelled = false;
 
     const load = async () => {
-      setLoading(true);
+      if (refreshTick > 0) setRefreshing(true);
+      else setLoading(true);
       try {
         const fetchedGroups = await getGroupsByAdmin(user.uid);
         if (cancelled) return;
@@ -114,13 +120,25 @@ export default function Students() {
               }
             }
 
-            return members.map((m) => ({
-              ...m,
-              groupId: g.id,
-              groupName: g.name,
-              groupColor: g.color,
-              assessmentStatus: bestStatus[m.id] ?? bestStatus[m.uid] ?? m.assessmentStatus ?? null,
-            }));
+            return members.map((m) => {
+              // Status vindo dos assessments deste grupo (pode ser null se assessment foi criado com groupId diferente)
+              const fromAssessment = bestStatus[m.id] ?? bestStatus[m.uid] ?? null;
+              // Status diretamente no registro do usuário (atualizado pelo wizard ao concluir)
+              const fromUser = m.assessmentStatus ?? null;
+              // Toma o status de maior rank entre os dois — evita que 'pending' de assessment
+              // sobrescreva 'completed' já gravado em app_users.assessmentstatus
+              const rankA = STATUS_RANK[fromAssessment] ?? 0;
+              const rankB = STATUS_RANK[fromUser] ?? 0;
+              const resolvedStatus = rankA >= rankB ? (fromAssessment ?? fromUser) : fromUser;
+
+              return {
+                ...m,
+                groupId: g.id,
+                groupName: g.name,
+                groupColor: g.color,
+                assessmentStatus: resolvedStatus,
+              };
+            });
           })
         );
         if (!cancelled) {
@@ -136,13 +154,13 @@ export default function Students() {
       } catch (err) {
         console.error('Error loading students:', err);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) { setLoading(false); setRefreshing(false); }
       }
     };
 
     load();
     return () => { cancelled = true; };
-  }, [user?.uid, setGroups]);
+  }, [user?.uid, setGroups, refreshTick]);
 
   // Reset to page 1 on filter change
   useEffect(() => { setPage(1); }, [search, groupFilter, profileFilter]);
@@ -191,6 +209,7 @@ export default function Students() {
     setAssignModules([]);
     setAssignModuleId('default');
     setAssignDone(false);
+    setAssignError('');
   };
 
   const handleAssign = async () => {
@@ -198,6 +217,7 @@ export default function Students() {
     const isDefault = assignModuleId === 'default';
     const mod = isDefault ? null : assignModules.find((m) => m.id === assignModuleId);
     setAssignSending(true);
+    setAssignError('');
     try {
       await createAssessment({
         uid: assignStudent.id,
@@ -212,15 +232,29 @@ export default function Students() {
         prev.map((s) => s.id === assignStudent.id ? { ...s, assessmentStatus: 'pending' } : s)
       );
       const nome = assignStudent.displayName || assignStudent.name || 'aluno(a)';
-      const subject = encodeURIComponent('Você tem uma nova avaliação no ProfileAI');
+      const appUrl = `${window.location.origin}/student/dashboard`;
+      const isReeval = assignStudent.assessmentStatus === 'completed' || assignStudent.assessmentStatus === 'analyzed';
+      const subject = encodeURIComponent(
+        isReeval ? 'Nova reavaliação disponível no ProfileAI' : 'Você tem uma nova avaliação no ProfileAI'
+      );
       const body = encodeURIComponent(
-        `Olá, ${nome}!\n\nUma nova avaliação foi atribuída para você no ProfileAI.\nAcesse o app e responda quando puder — leva cerca de 10 minutos.\n\nAbraços,\n${user?.displayName || 'Instrutor'}`
+        `Olá, ${nome}!\n\n` +
+        (isReeval
+          ? `Uma nova avaliação comportamental DISC foi gerada para você no ProfileAI — desta vez para atualizar seu perfil.\n\n`
+          : `Uma nova avaliação comportamental DISC foi atribuída para você no ProfileAI.\n\n`) +
+        `Acesse o link abaixo para entrar no app e responder:\n` +
+        `${appUrl}\n\n` +
+        `⏱️ Tempo estimado: 10–15 minutos.\n` +
+        `📊 Seus resultados são confidenciais.\n\n` +
+        `Qualquer dúvida, é só responder este e-mail.\n\n` +
+        `Abraços,\n${user?.displayName || 'Instrutor'}`
       );
       if (assignStudent.email) {
         window.open(`mailto:${assignStudent.email}?subject=${subject}&body=${body}`);
       }
     } catch (err) {
       console.error('Erro ao atribuir avaliação:', err);
+      setAssignError(err?.message || 'Erro ao atribuir avaliação. Tente novamente.');
     } finally {
       setAssignSending(false);
     }
@@ -230,12 +264,26 @@ export default function Students() {
     if (!student?.email) return;
     const nome = student.displayName || student.name || 'aluno(a)';
     const status = student.assessmentStatus;
+    const appUrl = `${window.location.origin}/student/dashboard`;
     const subject = status === 'completed'
       ? 'ProfileAI — Sobre sua avaliação'
       : 'Lembrete: complete sua avaliação ProfileAI';
     const body = status === 'completed'
-      ? `Olá, ${nome}!\n\nEspero que esteja bem. Estou entrando em contato sobre sua avaliação no ProfileAI.\n\nAbraços,\n${user?.displayName || ''}`
-      : `Olá, ${nome}!\n\nVi que sua avaliação no ProfileAI ainda não foi concluída. Quando puder, acesse o link abaixo e responda às perguntas — leva uns 10 minutos.\n\nQualquer dúvida, é só responder este e-mail.\n\nAbraços,\n${user?.displayName || ''}`;
+      ? (
+        `Olá, ${nome}!\n\n` +
+        `Espero que esteja bem. Estou entrando em contato sobre sua avaliação no ProfileAI.\n\n` +
+        `Você pode acessar seus resultados aqui:\n${appUrl}\n\n` +
+        `Abraços,\n${user?.displayName || ''}`
+      )
+      : (
+        `Olá, ${nome}!\n\n` +
+        `Vi que sua avaliação no ProfileAI ainda não foi concluída. Quando puder, acesse o link abaixo e responda — leva uns 10 minutos.\n\n` +
+        `👉 ${appUrl}\n\n` +
+        `⏱️ Tempo estimado: 10–15 minutos.\n` +
+        `📊 Seus resultados são confidenciais.\n\n` +
+        `Qualquer dúvida, é só responder este e-mail.\n\n` +
+        `Abraços,\n${user?.displayName || ''}`
+      );
     window.open(`mailto:${student.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
@@ -251,20 +299,40 @@ export default function Students() {
             {t('students.subtitle', 'Todos os alunos em todos os grupos')}
           </p>
         </div>
-        <Button
-          variant="secondary"
-          size="md"
-          disabled
-          leftIcon={
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading}
+            title={t('admin.students.refreshList', 'Atualizar lista')}
+            className="w-9 h-9 rounded-xl border border-[#2D3047] bg-[#1A1C2A] flex items-center justify-center text-[#A0A3B1] hover:text-[#F7F8FC] hover:border-[#6366F1] transition-colors disabled:opacity-50"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`}
+            >
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-          }
-        >
-          {t('app.export', 'Exportar')}
-        </Button>
+          </button>
+          <Button
+            variant="secondary"
+            size="md"
+            disabled
+            leftIcon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+            }
+          >
+            {t('app.export', 'Exportar')}
+          </Button>
+        </div>
       </div>
 
       {/* Filters row */}
@@ -430,11 +498,22 @@ export default function Students() {
                     </svg>
                   </button>
                   <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#38A169] hover:bg-[#38A169]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                    aria-label={t('students.assignAssessment', 'Atribuir avaliação')}
-                    title={t('students.assignAssessment', 'Atribuir avaliação')}
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
+                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
+                        ? 'text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10'
+                        : 'text-[#A0A3B1] hover:text-[#38A169] hover:bg-[#38A169]/10'
+                    }`}
+                    aria-label={
+                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
+                        ? 'Reavaliar aluno'
+                        : t('students.assignAssessment', 'Atribuir avaliação')
+                    }
+                    title={
+                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
+                        ? 'Reavaliar aluno'
+                        : t('students.assignAssessment', 'Atribuir avaliação')
+                    }
                     onClick={() => handleOpenAssign(student)}
-                    disabled={student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
                       <polygon points="5 3 19 12 5 21 5 3" />
@@ -495,11 +574,16 @@ export default function Students() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047]">
               <div>
                 <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
-                  {t('students.assignAssessment', 'Atribuir avaliação')}
+                  {assignStudent.assessmentStatus === 'completed' || assignStudent.assessmentStatus === 'analyzed'
+                    ? 'Reavaliar aluno'
+                    : t('students.assignAssessment', 'Atribuir avaliação')}
                 </h2>
                 <p className="text-xs text-[#A0A3B1] mt-0.5">
                   {assignStudent.displayName || assignStudent.name}
                   {assignStudent.email && ` · ${assignStudent.email}`}
+                  {(assignStudent.assessmentStatus === 'completed' || assignStudent.assessmentStatus === 'analyzed') && (
+                    <span className="ml-1 text-[#6366F1]">· já avaliado anteriormente</span>
+                  )}
                 </p>
               </div>
               <button
@@ -544,7 +628,7 @@ export default function Students() {
                         onChange={(e) => setAssignModuleId(e.target.value)}
                         className="w-full h-11 px-3 rounded-lg bg-[#242736] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
                       >
-                        <option value="default">⭐ Avaliação DISC Padrão (24 + 50 perguntas)</option>
+                        <option value="default">{t('students.defaultModule', '⭐ Avaliação DISC Padrão (24 + 50 perguntas)')}</option>
                         {assignModules.length > 0 && (
                           <optgroup label="Módulos do grupo">
                             {assignModules.map((m) => (
@@ -558,7 +642,7 @@ export default function Students() {
                     )}
                     {assignModules.length === 0 && !assignLoading && (
                       <p className="text-xs text-[#A0A3B1] mt-2">
-                        Este grupo não tem módulos customizados. A avaliação DISC padrão será atribuída.
+                        {t('students.noCustomModules', 'Este grupo não tem módulos customizados. A avaliação DISC padrão será atribuída.')}
                       </p>
                     )}
                   </div>
@@ -568,6 +652,12 @@ export default function Students() {
                 </>
               )}
             </div>
+
+            {assignError && !assignDone && (
+              <div className="mx-5 mb-2 px-3 py-2 rounded-lg bg-[#E53E3E]/10 border border-[#E53E3E]/30 text-xs text-[#E53E3E]">
+                {assignError}
+              </div>
+            )}
 
             {!assignDone && (
               <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">

@@ -85,10 +85,9 @@ const useAuthStore = create(
       }),
       {
         name: 'profileai-auth',
-        partialize: (state) => ({
-          // Only persist non-sensitive, non-reactive data
-          role: state.role,
-        }),
+        // Nothing persisted — role is always re-derived from the server on init.
+        // Persisting role caused stale admin/student bleed-over between sessions.
+        partialize: () => ({}),
       }
     ),
     { name: 'AuthStore' }

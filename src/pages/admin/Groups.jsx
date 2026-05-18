@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, createGroup, updateGroup as updateGroupFirestore } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, createGroup, updateGroup as updateGroupFirestore, getModules } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Modal from '@/components/ui/Modal.jsx';
@@ -349,8 +349,9 @@ export default function Groups() {
   const [search, setSearch] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [editGroup, setEditGroup] = useState(null);
+  const [modules, setModules] = useState([]);
 
-  // Fetch groups (and modules if available) on mount
+  // Fetch groups and modules on mount
   useEffect(() => {
     if (!user?.uid) return;
     let cancelled = false;
@@ -358,9 +359,13 @@ export default function Groups() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const fetchedGroups = await getGroupsByAdmin(user.uid);
+        const [fetchedGroups, fetchedModules] = await Promise.all([
+          getGroupsByAdmin(user.uid),
+          getModules(null).catch(() => []),
+        ]);
         if (!cancelled) {
           setGroups(fetchedGroups);
+          setModules(Array.isArray(fetchedModules) ? fetchedModules : []);
         }
       } catch (err) {
         console.error('Error fetching groups:', err);
@@ -515,7 +520,7 @@ export default function Groups() {
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
         onCreated={handleCreated}
-        modules={[]}
+        modules={modules}
       />
 
       {/* Edit modal */}
@@ -524,7 +529,7 @@ export default function Groups() {
         onClose={() => setEditGroup(null)}
         group={editGroup}
         onUpdated={(updated) => updateGroupStore(updated.id, updated)}
-        modules={[]}
+        modules={modules}
       />
     </div>
   );

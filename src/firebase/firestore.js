@@ -51,6 +51,10 @@ const CAMEL_TO_DB = {
   emailVerified: 'emailverified',
   displayName: 'displayname',
   photoURL: 'photourl',
+  // app_assessments extra columns
+  moduleName: 'modulename',
+  moduleObjective: 'moduleobjective',
+  assignedBy: 'assignedby',
   // app_profiles columns
   dominantProfile: 'dominantprofile',
   secondaryProfile: 'secondaryprofile',
@@ -128,10 +132,13 @@ function withDateWrapper(row) {
   return next;
 }
 
+const VALID_POSTGREST_OPS = new Set(['eq', 'neq', 'lt', 'lte', 'gt', 'gte', 'like', 'ilike', 'is', 'in', 'cs', 'cd', 'ov', 'sl', 'sr', 'nxr', 'nxl', 'adj', 'not']);
+
 function buildFilterQuery(filters = []) {
   const parts = [];
   for (const f of filters) {
     if (!f || !f.field || !f.op) continue;
+    if (!VALID_POSTGREST_OPS.has(f.op)) throw new Error(`Invalid PostgREST op: "${f.op}"`);
     const dbField = toDBKey(f.field); // convert camelCase → lowercase for PostgREST
     const value = encodeURIComponent(String(f.value));
     parts.push(`${encodeURIComponent(dbField)}=${f.op}.${value}`);
@@ -162,7 +169,10 @@ async function sbRequest(path, { method = 'GET', query = '', body, prefer } = {}
   });
 
   const text = await res.text();
-  const json = text ? JSON.parse(text) : null;
+  let json = null;
+  if (text) {
+    try { json = JSON.parse(text); } catch (_) { /* non-JSON body */ }
+  }
 
   if (!res.ok) {
     // Token expired or invalid — force sign out and reload
@@ -219,6 +229,9 @@ async function insertRow(table, payload, { returning = true } = {}) {
 }
 
 async function updateRows(table, filters, payload, { returning = true } = {}) {
+  if (!Array.isArray(filters) || filters.length === 0) {
+    throw new Error(`updateRows called without filters on "${table}" — refusing to PATCH all rows`);
+  }
   const query = buildFilterQuery(filters);
   const data = await sbRequest(table, {
     method: 'PATCH',
@@ -242,6 +255,9 @@ async function upsertRow(table, payload, conflictColumn = 'id') {
 }
 
 async function deleteRows(table, filters) {
+  if (!Array.isArray(filters) || filters.length === 0) {
+    throw new Error(`deleteRows called without filters on "${table}" — refusing to DELETE all rows`);
+  }
   const query = buildFilterQuery(filters);
   await sbRequest(table, {
     method: 'DELETE',
@@ -267,11 +283,11 @@ export const Timestamp = {
 
 export async function createUser(uid, data) {
   const row = {
-    uid,
-    role: data.role || 'student',
+    ...data,
+    uid,                          // explicit param always wins
+    role: data.role || 'student', // normalize missing role
     createdAt: nowIso(),
     updatedAt: nowIso(),
-    ...data,
   };
   await upsertRow(COLLECTIONS.USERS, row, 'uid');
 }
@@ -279,6 +295,14 @@ export async function createUser(uid, data) {
 export async function getUser(uid) {
   const row = await selectRows(COLLECTIONS.USERS, {
     filters: [{ field: 'uid', op: 'eq', value: uid }],
+    single: true,
+  });
+  return row ? withDateWrapper({ id: row.id || row.uid, ...row }) : null;
+}
+
+export async function getUserByEmail(email) {
+  const row = await selectRows(COLLECTIONS.USERS, {
+    filters: [{ field: 'email', op: 'eq', value: email }],
     single: true,
   });
   return row ? withDateWrapper({ id: row.id || row.uid, ...row }) : null;
@@ -390,8 +414,11 @@ export async function getModule(moduleId) {
 }
 
 export async function getModules(groupId) {
+  const filters = groupId
+    ? [{ field: 'groupId', op: 'eq', value: groupId }]
+    : [];
   const rows = await selectRows(COLLECTIONS.MODULES, {
-    filters: [{ field: 'groupId', op: 'eq', value: groupId }],
+    filters,
     orderBy: 'order',
     ascending: true,
   });
@@ -502,6 +529,7 @@ function flattenProfile(row) {
     challenges: row.challenges ?? ai.challenges ?? [],
     motivators: row.motivators ?? ai.motivators ?? [],
     stressors: row.stressors ?? ai.stressors ?? [],
+    scores: row.scores ?? ai.scores ?? {},
     adminStrategy: row.adminStrategy ?? ai.adminStrategy ?? null,
   };
 }
@@ -662,6 +690,10 @@ export async function encerrarSessao(sessaoId) {
   );
 }
 
+export async function deletarSessao(sessaoId) {
+  await deleteRows(COLLECTIONS.SESSOES, [{ field: 'id', op: 'eq', value: sessaoId }]);
+}
+
 export function subscribeToSessoes(adminUid, callback) {
   getSessoesByAdmin(adminUid).then(callback).catch(() => callback([]));
   return () => {};
@@ -711,6 +743,19 @@ export async function getAvaliadoByToken(token) {
     single: true,
   });
   return row ? withDateWrapper({ id: row.id || row.token, ...row }) : null;
+}
+
+export async function getAvaliadoByEmail(email) {
+  const rows = await selectRows(COLLECTIONS.AVALIADOS, {
+    filters: [
+      { field: 'email', op: 'eq', value: email },
+      { field: 'status', op: 'eq', value: 'concluido' },
+    ],
+    orderBy: 'concluidoEm',
+    ascending: false,
+    limit: 1,
+  });
+  return rows[0] ? withDateWrapper({ id: rows[0].id || rows[0].token, ...rows[0] }) : null;
 }
 
 export async function deleteAvaliado(avaliadoId) {

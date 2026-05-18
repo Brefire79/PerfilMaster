@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
@@ -7,8 +7,10 @@ import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
 import {
   getGroup,
+  getUserByEmail,
   getUsersByGroup,
   getAssessmentsByGroup,
+  addMemberToGroup,
   removeMemberFromGroup,
   updateGroup,
   deleteGroup,
@@ -444,13 +446,17 @@ function AddMemberForm({ groupId, onAdded }) {
     setError('');
     setSuccess('');
     try {
-      // In a real app, look up user by email in Firestore
-      // For now, show a success placeholder
-      setSuccess(t('group.memberAdded', 'Convite enviado para') + ' ' + email);
+      const found = await getUserByEmail(email.trim().toLowerCase());
+      if (!found) {
+        setError(t('group.memberNotFound', 'Nenhum usuário encontrado com este e-mail.'));
+        return;
+      }
+      await addMemberToGroup(groupId, found.uid || found.id);
+      setSuccess(t('group.memberAdded', 'Membro adicionado:') + ' ' + (found.displayName || email));
       setEmail('');
       onAdded?.();
     } catch (err) {
-      setError(t('errors.generic', 'Algo deu errado.'));
+      setError(err?.message || t('errors.generic', 'Algo deu errado.'));
     } finally {
       setLoading(false);
     }
@@ -487,7 +493,10 @@ export default function GroupDetail() {
   const [selectedMember, setSelectedMember] = useState(null);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
 
+  const closeTimerRef = useRef(null);
+
   const handleViewProfile = useCallback((member) => {
+    clearTimeout(closeTimerRef.current);
     setSelectedMember(member);
     setProfilePanelOpen(true);
   }, []);
@@ -495,8 +504,10 @@ export default function GroupDetail() {
   const handleCloseProfile = useCallback(() => {
     setProfilePanelOpen(false);
     // Delay clearing member so the slide-out animation isn't abrupt
-    setTimeout(() => setSelectedMember(null), 300);
+    closeTimerRef.current = setTimeout(() => setSelectedMember(null), 300);
   }, []);
+
+  useEffect(() => () => clearTimeout(closeTimerRef.current), []);
 
   const loadGroup = useCallback(async () => {
     if (!id) return;
@@ -517,6 +528,7 @@ export default function GroupDetail() {
           getAssessmentsByGroup(id),
         ]);
 
+        // Status por uid vindo de app_assessments
         const STATUS_RANK = { completed: 4, analyzed: 4, submitted: 3, in_progress: 2, pending: 1 };
         const bestStatus = {};
         for (const a of assessments) {
@@ -530,7 +542,7 @@ export default function GroupDetail() {
 
         setMembers(memberData.map((m) => ({
           ...m,
-          assessmentStatus: bestStatus[m.id] ?? bestStatus[m.uid] ?? m.assessmentStatus ?? null,
+          assessmentStatus: bestStatus[m.uid] ?? bestStatus[m.id] ?? m.assessmentStatus ?? null,
         })));
       } else {
         setMembers([]);

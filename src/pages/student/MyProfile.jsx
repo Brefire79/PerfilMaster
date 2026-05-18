@@ -57,7 +57,7 @@ function NoProfileState() {
 
 function ProfileHeader({ profile, userName }) {
   const { t } = useTranslation();
-  const type = profile?.primaryType ?? 'D';
+  const type = profile?.dominantProfile ?? profile?.primaryType ?? 'D';
   const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
 
   return (
@@ -367,7 +367,7 @@ function CommunicationCard({ type }) {
 
 function ProfileTab({ profile }) {
   const { t } = useTranslation();
-  const type = profile?.primaryType ?? 'D';
+  const type = profile?.dominantProfile ?? profile?.primaryType ?? 'D';
 
   const summary = profile?.aiSummary ?? t(
     `profiles.${type}.description`,
@@ -432,7 +432,7 @@ function HistoryTab({ userId }) {
       try {
         const assessments = await getAssessmentsByUser(userId);
         const completed = assessments.filter(
-          (a) => a.status === 'analyzed' || a.status === 'submitted'
+          (a) => a.status === 'analyzed' || a.status === 'submitted' || a.status === 'completed'
         );
         setHistory(completed);
       } catch {
@@ -507,15 +507,13 @@ function HistoryTab({ userId }) {
           {t('assessment.history', 'Histórico de Avaliações')}
         </h3>
         {history.map((assessment) => {
-          const type = assessment?.profile?.primaryType ?? 'D';
+          const type = assessment?.profile?.dominantProfile ?? assessment?.profile?.primaryType ?? 'D';
           const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
-          const date = assessment?.submittedAt?.toDate?.()
-            ?? (assessment?.submittedAt ? new Date(assessment.submittedAt) : new Date());
-          const dateStr = date.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric',
-          });
+          const rawDate = assessment?.submittedAt?.toDate?.()
+            ?? (assessment?.submittedAt ? new Date(assessment.submittedAt) : null);
+          const dateStr = rawDate && !isNaN(rawDate)
+            ? rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
+            : '—';
 
           return (
             <div

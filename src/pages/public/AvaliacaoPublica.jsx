@@ -1,8 +1,32 @@
-import React, { useEffect, useReducer, useCallback } from 'react';
+import React, { useEffect, useReducer, useCallback, useRef, Component } from 'react';
 import { useParams } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, message: '' };
+  }
+  static getDerivedStateFromError(err) {
+    return { hasError: true, message: err?.message || 'Erro inesperado' };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center gap-5 text-center max-w-sm">
+          <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">⚠️</div>
+          <div>
+            <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">Algo deu errado</h2>
+            <p className="text-sm text-[#A0A3B1]">Tente recarregar a página ou solicite um novo link ao seu facilitador.</p>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ─── Cores / nomes dos perfis ─────────────────────────────────────────────────
 const PERFIL_CONFIG = {
@@ -38,6 +62,7 @@ const estadoInicial = {
   tela: TELAS.CARREGANDO,
   avaliado: null,
   erro: null,
+  erroSubmit: null,
   questaoAtual: 0,
   respostas: {},
   perfil: null,
@@ -71,9 +96,11 @@ function reducer(state, action) {
     case 'ANALISANDO':
       return { ...state, tela: TELAS.ANALISANDO };
     case 'RESULTADO_OK':
-      return { ...state, tela: TELAS.RESULTADO, perfil: action.perfil };
+      return { ...state, tela: TELAS.RESULTADO, perfil: action.perfil, erroSubmit: null };
     case 'ERRO_SUBMIT':
-      return { ...state, tela: TELAS.AVALIANDO, erro: action.mensagem };
+      return { ...state, tela: TELAS.ANALISANDO, erroSubmit: action.mensagem };
+    case 'TENTAR_NOVAMENTE':
+      return { ...state, erroSubmit: null };
     default:
       return state;
   }
@@ -378,10 +405,34 @@ function TelaResultado({ avaliado, perfil }) {
   );
 }
 
+// ─── Tela de erro no submit ───────────────────────────────────────────────────
+function TelaErroSubmit({ onTentarNovamente }) {
+  return (
+    <div className="flex flex-col items-center gap-5 text-center max-w-sm">
+      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">
+        ⚠️
+      </div>
+      <div>
+        <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">Não foi possível salvar</h2>
+        <p className="text-sm text-[#A0A3B1] mb-4">
+          Suas respostas estão salvas localmente. Tente novamente — se o problema persistir, verifique sua conexão.
+        </p>
+        <button
+          onClick={onTentarNovamente}
+          className="w-full py-3 rounded-xl bg-[#6366F1] hover:bg-[#5558E3] text-white font-semibold text-sm transition-colors"
+        >
+          Tentar novamente
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function AvaliacaoPublica() {
   const { token } = useParams();
   const [state, dispatch] = useReducer(reducer, estadoInicial);
+  const submittingRef = useRef(false);
 
   // Busca dados do avaliado ao montar
   useEffect(() => {
@@ -395,23 +446,37 @@ export default function AvaliacaoPublica() {
       .catch((err) => dispatch({ type: 'ERRO_TOKEN', mensagem: err.message }));
   }, [token]);
 
-  // Quando entra em ANALISANDO, envia as respostas
+  // Quando entra em ANALISANDO (e não tem erro pendente), envia as respostas
   useEffect(() => {
-    if (state.tela !== TELAS.ANALISANDO || Object.keys(state.respostas).length === 0) return;
+    if (state.tela !== TELAS.ANALISANDO) return;
+    if (state.erroSubmit) return; // aguardando o usuário clicar em "Tentar novamente"
+    if (Object.keys(state.respostas).length === 0) return;
+    if (submittingRef.current) return; // evita chamada dupla
 
+    submittingRef.current = true;
     atualizarStatus({ token, novoStatus: 'concluido', respostas: state.respostas })
-      .then((data) => dispatch({ type: 'RESULTADO_OK', perfil: data.perfil }))
-      .catch((err) => dispatch({ type: 'ERRO_SUBMIT', mensagem: err.message }));
-  }, [state.tela]);
+      .then((data) => {
+        submittingRef.current = false;
+        dispatch({ type: 'RESULTADO_OK', perfil: data.perfil });
+      })
+      .catch((err) => {
+        submittingRef.current = false;
+        dispatch({ type: 'ERRO_SUBMIT', mensagem: err.message });
+      });
+  }, [state.tela, state.erroSubmit]);
 
   const handleIniciar = useCallback(async () => {
     try {
       await atualizarStatus({ token, novoStatus: 'em_andamento' });
-      dispatch({ type: 'INICIAR' });
     } catch {
-      dispatch({ type: 'INICIAR' }); // inicia mesmo assim; tentará marcar no submit
+      // ignora falha de em_andamento; o concluido ainda vai funcionar com as transições liberadas
     }
+    dispatch({ type: 'INICIAR' });
   }, [token]);
+
+  const handleTentarNovamente = useCallback(() => {
+    dispatch({ type: 'TENTAR_NOVAMENTE' });
+  }, []);
 
   const handleResponder = useCallback((questionId, valor) => {
     dispatch({ type: 'RESPONDER', questionId, valor });
@@ -421,6 +486,7 @@ export default function AvaliacaoPublica() {
   const respostaAtual = questaoAtual ? state.respostas[questaoAtual.id] : undefined;
 
   return (
+    <ErrorBoundary>
     <SiglaProvider>
       <div className="min-h-screen bg-[#0F1117] flex flex-col">
         {/* Topo */}
@@ -456,7 +522,11 @@ export default function AvaliacaoPublica() {
             />
           )}
 
-          {state.tela === TELAS.ANALISANDO && <TelaAnalisando />}
+          {state.tela === TELAS.ANALISANDO && !state.erroSubmit && <TelaAnalisando />}
+
+          {state.tela === TELAS.ANALISANDO && state.erroSubmit && (
+            <TelaErroSubmit onTentarNovamente={handleTentarNovamente} />
+          )}
 
           {state.tela === TELAS.RESULTADO && state.avaliado && state.perfil && (
             <TelaResultado avaliado={state.avaliado} perfil={state.perfil} />
@@ -470,5 +540,6 @@ export default function AvaliacaoPublica() {
         </footer>
       </div>
     </SiglaProvider>
+    </ErrorBoundary>
   );
 }

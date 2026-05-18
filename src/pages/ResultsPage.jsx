@@ -6,8 +6,33 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase, callEdgeFunction } from '../lib/supabase.js';
+import { supabase } from '../lib/supabase.js';
+import { generateAnalysis, loadApiKey } from '../lib/apiKeyManager.js';
 import ResultsDashboard from '../../ResultsDashboard.jsx';
+
+// Mapeia resultado Supabase → formato { D, I, S, C } e { judge, ... }
+function mapResultadoToScores(resultado) {
+  return {
+    discScores: {
+      D: Number(resultado.score_dominante ?? 0),
+      I: Number(resultado.score_influente  ?? 0),
+      S: Number(resultado.score_estavel    ?? 0),
+      C: Number(resultado.score_analitico  ?? 0),
+    },
+    sabotadorScores: {
+      judge:          Number(resultado.score_juiz              ?? 0),
+      stickler:       Number(resultado.score_insistente        ?? 0),
+      pleaser:        Number(resultado.score_prestativo        ?? 0),
+      hyperAchiever:  Number(resultado.score_hiper_realizador  ?? 0),
+      victim:         Number(resultado.score_vitima            ?? 0),
+      hyperRational:  Number(resultado.score_hiper_racional    ?? 0),
+      hyperVigilant:  Number(resultado.score_hiper_vigilante   ?? 0),
+      restless:       Number(resultado.score_inquieto          ?? 0),
+      controller:     Number(resultado.score_controlador       ?? 0),
+      avoider:        Number(resultado.score_esquivo           ?? 0),
+    },
+  };
+}
 
 // ─── Estilos ─────────────────────────────────────────────────────────────────
 const S = {
@@ -69,9 +94,100 @@ const ETAPAS = [
   { label: 'Buscando seu resultado…',          pct: 20 },
   { label: 'Analisando seu perfil DISC…',       pct: 45 },
   { label: 'Avaliando sabotadores internos…',   pct: 65 },
-  { label: 'Gerando relatório com IA…',         pct: 85 },
+  { label: 'Aprimorando análise com IA…',       pct: 85 },
   { label: 'Finalizando análise…',              pct: 95 },
 ];
+
+// Badge de origem da análise
+const SOURCE_BADGE = {
+  local:    { icon: '📊', label: 'Análise local',               bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', color: '#3498db' },
+  error:    { icon: '⚠️', label: 'Análise local (erro na API)', bg: 'rgba(255,193,7,0.10)', border: 'rgba(255,193,7,0.3)',  color: '#ffc107' },
+  ai:       { icon: '✨', label: 'Análise por IA',              bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)', color: '#818cf8' },
+  xai:      { icon: '⚡', label: 'Análise por Grok (xAI)',      bg: 'rgba(233,69,96,0.12)',  border: 'rgba(233,69,96,0.3)',  color: '#e94560' },
+};
+
+// Converte análise estruturada em markdown (mantém retrocompatibilidade)
+function buildRelatorioFromAnalysis(analysis, resultado) {
+  const { disc, sabotadores, summary, recommendations, correlations } = analysis;
+  const dataStr = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+
+  const recLines = recommendations.map((r, i) =>
+    `${i + 1}. **[${r.priority?.toUpperCase() ?? 'MÉDIA'}] ${r.category}** — ${r.action}`
+  ).join('\n');
+
+  const corrLines = correlations.length
+    ? correlations.map(c => `- **${c.disc} × ${c.sabotador}:** ${c.insight}`).join('\n')
+    : '- Nenhuma correlação crítica identificada.';
+
+  const discScores = disc.scores;
+  const discNomes = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+  const discLinhas = ['D', 'I', 'S', 'C'].map(k => {
+    const tag = k === disc.primary ? ' ← Perfil Primário' : k === disc.secondary ? ' ← Perfil Secundário' : '';
+    return `- **${discNomes[k]} (${k}):** ${Number(discScores[k]).toFixed(1)}/5.0${tag}`;
+  }).join('\n');
+
+  const sabNomes = { judge: 'Juiz', stickler: 'Insistente', pleaser: 'Prestativo', hyperAchiever: 'Hiper-Realizador', victim: 'Vítima', hyperRational: 'Hiper-Racional', hyperVigilant: 'Hiper-Vigilante', restless: 'Inquieto', controller: 'Controlador', avoider: 'Esquivo' };
+  const top3Lines = sabotadores.top3.map((k, i) =>
+    `${i + 1}. **${sabNomes[k] ?? k}** — ${Number(sabotadores.scores[k] ?? 0).toFixed(1)}/10`
+  ).join('\n');
+
+  const pq = sabotadores.pqScore;
+  const nivel = pq >= 75 ? 'Excelente (75+)' : pq >= 63 ? 'Bom (63–74)' : pq >= 51 ? 'Médio (51–62)' : 'Atenção (≤50)';
+
+  const deepBlock = analysis.deepInsights?.length
+    ? `\n\n## Insights Aprofundados\n\n${analysis.deepInsights.map(i => `- ${i}`).join('\n')}`
+    : '';
+
+  const coachBlock = analysis.coachingQuestions?.length
+    ? `\n\n## Perguntas de Coaching\n\n${analysis.coachingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+    : '';
+
+  const sourceLabel = analysis.source === 'local' || analysis.apiError
+    ? 'Análise calculada localmente — Motor Local v1.0'
+    : `Análise aprimorada por IA (${analysis.source})`;
+
+  return `# Relatório de Perfil Comportamental
+**ProfileAI · AMB FUSI · ${dataStr}**
+
+---
+
+## Perfil DISC: ${discNomes[disc.primary]} + ${discNomes[disc.secondary]} (Subtipo: ${disc.subtype})
+
+${summary}
+
+---
+
+## Scores DISC
+
+${discLinhas}
+
+---
+
+## Top 3 Sabotadores Mais Ativos
+
+${top3Lines}
+
+---
+
+## PQ Score: ${pq}/100 — ${nivel}
+
+---
+
+## Correlações DISC × Sabotadores
+
+${corrLines}
+
+---
+
+## Recomendações de Desenvolvimento
+
+${recLines}${deepBlock}${coachBlock}
+
+---
+
+*${sourceLabel}*
+*ProfileAI · AMB FUSI — "Damos vida à inovação"*`;
+}
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 export default function ResultsPage({ user }) {
@@ -79,7 +195,9 @@ export default function ResultsPage({ user }) {
   const navigate   = useNavigate();
 
   const [fase, setFase]         = useState(0);      // índice em ETAPAS
-  const [dados, setDados]       = useState(null);   // { resultado, relatorio }
+  const [dados, setDados]       = useState(null);   // { resultado, relatorio, analysis }
+  const [analysisSource, setAnalysisSource] = useState(null); // 'local' | provider | null
+  const [analysisError, setAnalysisError]   = useState(null);
   const [erro, setErro]         = useState('');
   const [pronto, setPronto]     = useState(false);
 
@@ -120,22 +238,30 @@ export default function ResultsPage({ user }) {
 
       let relatorio = relExistente;
 
-      // 3. Se não existe, tentar gerar via Edge Function (falha graciosamente)
+      // 3. Se não existe, gerar análise via motor local + API key (se disponível)
       if (!relatorio) {
-        setFase(3); // Etapa "Gerando relatório com IA"
+        setFase(3);
         try {
-          const respEdge = await callEdgeFunction('generate-report', {
-            assessment_result_id: resultadoId,
-          });
-          relatorio = respEdge.report ?? respEdge;
-        } catch (reportErr) {
-          // Falha no relatório IA não bloqueia a exibição dos resultados
-          console.warn('[ResultsPage] generate-report falhou — exibindo resultados sem análise IA:', reportErr.message);
+          const { discScores, sabotadorScores } = mapResultadoToScores(resultado);
+          const apiKey = await loadApiKey();
+          const analysis = await generateAnalysis(discScores, sabotadorScores, apiKey);
+
+          setAnalysisSource(analysis.source);
+          if (analysis.apiError) setAnalysisError(analysis.apiError);
+
+          relatorio = buildRelatorioFromAnalysis(analysis, resultado);
+          setDados({ resultado, relatorio, analysis });
+          setPronto(true);
+          return;
+        } catch (analysisErr) {
+          console.warn('[ResultsPage] generateAnalysis falhou:', analysisErr.message);
           relatorio = null;
         }
+      } else {
+        setAnalysisSource('cached');
       }
 
-      setDados({ resultado, relatorio });
+      setDados({ resultado, relatorio, analysis: null });
       setPronto(true);
 
     } catch (err) {
@@ -341,15 +467,45 @@ ${pqMsg}
   }
 
   // ── Dashboard ─────────────────────────────────────────────────────────────
-  // Props do ResultsDashboard: resultado, relatorio, proximaAvaliacao, onReavaliar, onExportarPDF
+  const badgeKey = analysisError ? 'error'
+    : analysisSource === 'xai' ? 'xai'
+    : (analysisSource && analysisSource !== 'local' && analysisSource !== 'cached') ? 'ai'
+    : 'local';
+  const badge = SOURCE_BADGE[badgeKey];
+
   return (
-    <ResultsDashboard
-      resultado={dados.resultado}
-      relatorio={dados.relatorio}
-      proximaAvaliacao={dados.resultado?.proxima_avaliacao ?? null}
-      onReavaliar={() => navigate('/assessment')}
-      onExportarPDF={handleExportPDF}
-      onVoltar={() => navigate('/')}
-    />
+    <div style={{ position: 'relative' }}>
+      {analysisSource && analysisSource !== 'cached' && (
+        <div style={{
+          position: 'fixed',
+          bottom: '1rem',
+          right: '1rem',
+          zIndex: 50,
+          padding: '0.4rem 0.85rem',
+          borderRadius: '20px',
+          background: badge.bg,
+          border: `1px solid ${badge.border}`,
+          color: badge.color,
+          fontSize: '0.78rem',
+          fontWeight: '600',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.4rem',
+          backdropFilter: 'blur(8px)',
+        }}>
+          <span>{badge.icon}</span>
+          <span>{badge.label}</span>
+        </div>
+      )}
+      <ResultsDashboard
+        resultado={dados.resultado}
+        relatorio={dados.relatorio}
+        analysis={dados.analysis}
+        proximaAvaliacao={dados.resultado?.proxima_avaliacao ?? null}
+        onReavaliar={() => navigate('/assessment')}
+        onExportarPDF={handleExportPDF}
+        onVoltar={() => navigate('/')}
+      />
+    </div>
   );
 }

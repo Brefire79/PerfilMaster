@@ -38,7 +38,8 @@
     "noData": "No se encontraron datos",
     "seeAll": "Ver todos",
     "seeMore": "Ver más",
-    "seeLess": "Ver menos"
+    "seeLess": "Ver menos",
+    "saved": "¡Guardado!"
   },
   "time": {
     "justNow": "ahora mismo",
@@ -158,7 +159,8 @@
       "joinedAt": "Se unió el",
       "lastActive": "Último acceso",
       "noStudents": "No se encontraron estudiantes.",
-      "removeConfirm": "¿Estás seguro de que deseas eliminar este estudiante?"
+      "removeConfirm": "¿Estás seguro de que deseas eliminar este estudiante?",
+      "refreshList": "Actualizar lista"
     },
     "modules": {
       "title": "Módulos",
@@ -180,7 +182,8 @@
       "period": "Período",
       "from": "Desde",
       "to": "Hasta"
-    }
+    },
+    "noRecentActivityHint": "Crea grupos e invita alumnos para comenzar."
   },
   "profiles": {
     "title": "Perfiles de Comportamiento",
@@ -337,7 +340,8 @@
         "Médico(a) especialista",
         "Jurista / Abogado(a)"
       ]
-    }
+    },
+    "allProfiles": "Todos los perfiles"
   },
   "assessment": {
     "title": "Evaluación DISC",
@@ -414,7 +418,12 @@
     "dominantProfile": "Perfil Dominante en el Grupo",
     "noData": "Datos insuficientes para el análisis",
     "pendingMembers": "Miembros Pendientes",
-    "activeMembers": "Miembros Activos"
+    "activeMembers": "Miembros Activos",
+    "allGroups": "Todos los grupos",
+    "noProfile": "Sin perfil",
+    "addMember": "Agregar",
+    "memberAdded": "Miembro agregado:",
+    "memberNotFound": "No se encontró ningún usuario con este correo."
   },
   "module": {
     "title": "Módulo",
@@ -466,23 +475,6 @@
     "evolution": "Evolución",
     "comparison": "Comparativo"
   },
-  "navigation": {
-    "dashboard": "Panel",
-    "groups": "Grupos",
-    "students": "Estudiantes",
-    "modules": "Módulos",
-    "reports": "Informes",
-    "settings": "Configuración",
-    "assessment": "Evaluación",
-    "myProfile": "Mi Perfil",
-    "profile": "Perfil",
-    "home": "Inicio",
-    "back": "Volver",
-    "menu": "Menú",
-    "notifications": "Notificaciones",
-    "help": "Ayuda",
-    "logout": "Cerrar sesión"
-  },
   "errors": {
     "generic": "Algo salió mal. Inténtalo de nuevo.",
     "network": "Error de conexión. Verifica tu internet.",
@@ -510,5 +502,19 @@
     "popupBlocked": "Ventana emergente bloqueada. Permite ventanas emergentes para la autenticación con Google.",
     "operationCancelled": "Operación cancelada.",
     "assessmentIncomplete": "Por favor, responde todas las preguntas antes de enviar."
+  },
+  "settings": {
+    "aiTitle": "Inteligencia Artificial",
+    "aiDesc": "Configura una API key para análisis mejorados por IA. Sin key, los análisis se generan localmente."
+  },
+  "students": {
+    "defaultModule": "⭐ Evaluación DISC Estándar (24 + 50 preguntas)",
+    "noCustomModules": "Este grupo no tiene módulos personalizados. Se asignará la evaluación DISC estándar.",
+    "subtitle": "Todos los alumnos en todos los grupos",
+    "assignNote": "La evaluación aparecerá en el dashboard del alumno una vez asignada. Se abrirá automáticamente un correo de notificación.",
+    "sendReminder": "Enviar recordatorio"
+  },
+  "student": {
+    "greeting": "Hola, {{name}} 👋"
   }
 }

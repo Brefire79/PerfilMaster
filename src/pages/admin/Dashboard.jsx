@@ -13,6 +13,7 @@ const ACTIVITY_PROFILE_COLORS = {
 };
 
 function formatRelativeTime(date, t) {
+  if (!date || isNaN(date)) return '—';
   const now = Date.now();
   const diff = now - date.getTime();
   const minutes = Math.floor(diff / 60000);
@@ -184,30 +185,33 @@ export default function AdminDashboard() {
 
             for (const a of assessments) {
               if (['submitted', 'analyzed', 'completed'].includes(a.status) && a.submittedAt) {
-                allEvents.push({
+                const ts = a.submittedAt?.toDate?.() ?? (a.submittedAt?.raw ? new Date(a.submittedAt.raw) : null);
+                if (ts && !isNaN(ts)) allEvents.push({
                   type: 'completed',
                   name: memberMap[a.uid] || 'Aluno',
                   groupName: g.name, groupId: g.id, uid: a.uid,
-                  timestamp: new Date(a.submittedAt),
+                  timestamp: ts,
                 });
               }
             }
             for (const p of profiles) {
               if (p.dominantProfile && p.updatedAt) {
-                allEvents.push({
+                const ts = p.updatedAt?.toDate?.() ?? (p.updatedAt?.raw ? new Date(p.updatedAt.raw) : null);
+                if (ts && !isNaN(ts)) allEvents.push({
                   type: 'profile', name: memberMap[p.uid] || 'Aluno',
                   profile: p.dominantProfile, groupName: g.name, groupId: g.id, uid: p.uid,
-                  timestamp: new Date(p.updatedAt),
+                  timestamp: ts,
                 });
               }
             }
             for (const m of members) {
-              const created = m.createdAt ? new Date(m.createdAt).getTime() : 0;
+              const ts = m.createdAt?.toDate?.() ?? (m.createdAt?.raw ? new Date(m.createdAt.raw) : null);
+              const created = ts && !isNaN(ts) ? ts.getTime() : 0;
               if (created > thirtyDaysAgo) {
                 allEvents.push({
                   type: 'joined', name: m.displayName || m.name || m.email || 'Aluno',
                   groupName: g.name, groupId: g.id, uid: m.uid || m.id,
-                  timestamp: new Date(m.createdAt),
+                  timestamp: ts,
                 });
               }
             }
@@ -215,11 +219,12 @@ export default function AdminDashboard() {
         );
 
         for (const g of groups) {
-          const created = g.createdAt ? new Date(g.createdAt).getTime() : 0;
+          const ts = g.createdAt?.toDate?.() ?? (g.createdAt?.raw ? new Date(g.createdAt.raw) : null);
+          const created = ts && !isNaN(ts) ? ts.getTime() : 0;
           if (created > thirtyDaysAgo) {
             allEvents.push({
               type: 'group', name: g.name, groupId: g.id,
-              timestamp: new Date(g.createdAt),
+              timestamp: ts,
             });
           }
         }
@@ -446,7 +451,7 @@ export default function AdminDashboard() {
               </div>
               <p className="text-[#A0A3B1] text-sm">{t('admin.noRecentActivity', 'Nenhuma atividade recente')}</p>
               <p className="text-[#A0A3B1] text-xs mt-1">
-                Crie grupos e convide alunos para começar.
+                {t('admin.noRecentActivityHint', 'Crie grupos e convide alunos para começar.')}
               </p>
             </div>
           ) : (

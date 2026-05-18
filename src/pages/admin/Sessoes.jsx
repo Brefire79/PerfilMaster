@@ -112,6 +112,7 @@ export default function Sessoes() {
     getLinkWhatsApp,
     getLinkAvaliacao,
     removerAvaliado,
+    deletarSessaoById,
   } = useSessaoStore();
 
   const [modalSessao, setModalSessao] = useState(false);
@@ -119,6 +120,8 @@ export default function Sessoes() {
   const [linkCopiado, setLinkCopiado] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteSessao, setConfirmDeleteSessao] = useState(null);
+  const [deletingSessao, setDeletingSessao] = useState(false);
 
   useEffect(() => {
     if (user?.uid) iniciarListenerSessoes(user.uid);
@@ -162,6 +165,19 @@ export default function Sessoes() {
       console.error('Erro ao remover avaliado:', err);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function confirmarDeleteSessao() {
+    if (!confirmDeleteSessao) return;
+    setDeletingSessao(true);
+    try {
+      await deletarSessaoById(confirmDeleteSessao.id);
+      setConfirmDeleteSessao(null);
+    } catch (err) {
+      console.error('Erro ao deletar sessão:', err);
+    } finally {
+      setDeletingSessao(false);
     }
   }
 
@@ -209,32 +225,46 @@ export default function Sessoes() {
             ) : (
               <div className="flex flex-col gap-2 overflow-y-auto">
                 {sessoes.map((s) => (
-                  <button
+                  <div
                     key={s.id}
-                    onClick={() => selecionarSessao(s)}
                     className={`
-                      text-left p-3 rounded-xl border transition-colors
+                      relative group p-3 rounded-xl border transition-colors cursor-pointer
                       ${sessaoAtiva?.id === s.id
                         ? 'border-[#6366F1] bg-[#6366F1]/10'
                         : 'border-[#2D3047] bg-[#1A1C2A] hover:border-[#4A4D6A]'}
                     `}
+                    onClick={() => selecionarSessao(s)}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-medium text-[#F7F8FC] truncate">{s.titulo}</p>
-                      <span
-                        className={`text-xs px-1.5 py-0.5 rounded-full shrink-0 ${
-                          s.status === 'ativa'
-                            ? 'bg-[#22C55E]/20 text-[#22C55E]'
-                            : 'bg-[#4A4D6A]/30 text-[#A0A3B1]'
-                        }`}
-                      >
-                        {s.status === 'ativa' ? 'Ativa' : 'Encerrada'}
-                      </span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span
+                          className={`text-xs px-1.5 py-0.5 rounded-full ${
+                            s.status === 'ativa'
+                              ? 'bg-[#22C55E]/20 text-[#22C55E]'
+                              : 'bg-[#4A4D6A]/30 text-[#A0A3B1]'
+                          }`}
+                        >
+                          {s.status === 'ativa' ? 'Ativa' : 'Encerrada'}
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setConfirmDeleteSessao(s); }}
+                          title="Deletar sessão"
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#4A4D6A] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-all"
+                        >
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                            <path d="M10 11v6M14 11v6" />
+                            <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                     {s.descricao && (
                       <p className="text-xs text-[#4A4D6A] mt-1 truncate">{s.descricao}</p>
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             )}
@@ -350,6 +380,44 @@ export default function Sessoes() {
           sessaoId={sessaoAtiva.id}
           onFechar={() => setModalAvaliado(false)}
         />
+      )}
+
+      {/* Modal de confirmação: deletar sessão */}
+      {confirmDeleteSessao && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
+            <div className="px-5 py-4 border-b border-[#2D3047]">
+              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+                Deletar sessão
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm text-[#A0A3B1]">
+                Tem certeza que deseja deletar a sessão{' '}
+                <strong className="text-[#F7F8FC]">{confirmDeleteSessao.titulo}</strong>?
+              </p>
+              <p className="text-xs text-[#A0A3B1] mt-2">
+                Todos os avaliados e respostas desta sessão serão apagados permanentemente.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">
+              <button
+                onClick={() => setConfirmDeleteSessao(null)}
+                disabled={deletingSessao}
+                className="px-4 py-2 text-sm font-medium text-[#A0A3B1] hover:text-[#F7F8FC] rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarDeleteSessao}
+                disabled={deletingSessao}
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+              >
+                {deletingSessao ? 'Deletando...' : 'Deletar sessão'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Modal de confirmação de exclusão */}

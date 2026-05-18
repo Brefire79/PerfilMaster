@@ -9,7 +9,7 @@ import ProgressRing from '@/components/ui/ProgressRing.jsx';
 
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
-import { getGroupReportsByAdmin } from '@/firebase/firestore.js';
+import { getGroupReportsByAdmin, getAssessmentsByGroup, getUsersByGroup } from '@/firebase/firestore.js';
 import { getGroupColor } from '@/utils/groupColors.js';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
@@ -88,13 +88,16 @@ function MiniDonut({ distribution = {} }) {
 }
 
 // ─── Group Report Card ────────────────────────────────────────────────────────
-function GroupCard({ group, report, onGenerateAI, generating }) {
+function GroupCard({ group, report, liveData, onGenerateAI, generating }) {
   const navigate    = useNavigate();
   const groupColor  = getGroupColor(group.id);
   const memberCount = group.memberIds?.length ?? 0;
 
-  const completionRate = report?.completedCount && report?.memberCount
-    ? Math.round((report.completedCount / report.memberCount) * 100)
+  // Usa dados reais de assessments (liveData) se disponível, senão cai pro relatório salvo
+  const completedCount = liveData?.completedCount ?? report?.completedCount ?? 0;
+  const totalMembers   = liveData?.memberCount ?? report?.memberCount ?? memberCount;
+  const completionRate = totalMembers > 0
+    ? Math.round((completedCount / totalMembers) * 100)
     : 0;
 
   const reportDate = report?.generatedAt
@@ -180,7 +183,7 @@ function GroupCard({ group, report, onGenerateAI, generating }) {
             variant="primary"
             size="sm"
             fullWidth
-            onClick={() => navigate(`/admin/groups/${group.id}/report`)}
+            onClick={() => navigate(`/admin/groups/${group.id}`)}
           >
             Ver Relatório
           </Button>
@@ -215,10 +218,13 @@ function GroupCard({ group, report, onGenerateAI, generating }) {
 }
 
 // ─── Stats overview row ───────────────────────────────────────────────────────
-function OverviewStats({ groups, reports }) {
+function OverviewStats({ groups, reports, liveStats = {} }) {
   const totalGroups      = groups.length;
   const totalMembers     = groups.reduce((s, g) => s + (g.memberIds?.length ?? 0), 0);
-  const totalCompleted   = reports.reduce((s, r) => s + (r.completedCount ?? 0), 0);
+  // Usa dados reais de conclusão se disponíveis, senão usa os de relatórios salvos
+  const totalCompleted   = Object.keys(liveStats).length > 0
+    ? Object.values(liveStats).reduce((s, d) => s + (d.completedCount ?? 0), 0)
+    : reports.reduce((s, r) => s + (r.completedCount ?? 0), 0);
   const totalReports     = reports.length;
 
   const statItems = [
@@ -353,16 +359,62 @@ export default function Reports() {
   const [reportsLoading,   setReportsLoading]  = useState(false);
   const [generatingId,     setGeneratingId]    = useState(null);
   const [searchQuery,      setSearchQuery]     = useState('');
+  // Dados reais de conclusão por grupo: { [groupId]: { completedCount, memberCount } }
+  const [liveStats,        setLiveStats]       = useState({});
 
-  // Load reports map on mount
+  // Load reports + live assessment stats
   useEffect(() => {
     if (!user?.uid) return;
     setReportsLoading(true);
+
     getGroupReportsByAdmin(user.uid)
       .then(setReports)
       .catch(() => setReports([]))
       .finally(() => setReportsLoading(false));
   }, [user?.uid]);
+
+  // Quando os grupos carregam, busca stats reais de conclusão
+  useEffect(() => {
+    if (!groups.length) return;
+    const STATUS_DONE = new Set(['submitted', 'completed', 'analyzed']);
+
+    Promise.all(
+      groups.map(async (g) => {
+        try {
+          const [members, assessments] = await Promise.all([
+            getUsersByGroup(g.id),
+            getAssessmentsByGroup(g.id),
+          ]);
+          // Melhor status por usuário
+          const bestByUid = {};
+          for (const a of assessments) {
+            if (!a.uid) continue;
+            const cur = bestByUid[a.uid];
+            const rank = { analyzed: 3, completed: 3, submitted: 2, in_progress: 1, pending: 0 };
+            if (!cur || (rank[a.status] ?? -1) > (rank[cur] ?? -1)) {
+              bestByUid[a.uid] = a.status;
+            }
+          }
+          const memberCount = members.length;
+          // Conta membros cujo melhor status é "done" — também cobre status do app_users
+          const completedCount = members.filter((m) => {
+            const uid = m.uid || m.id;
+            const fromAssessment = bestByUid[uid];
+            const fromUser = m.assessmentStatus;
+            const isDone = (s) => STATUS_DONE.has(s);
+            return isDone(fromAssessment) || isDone(fromUser);
+          }).length;
+          return { groupId: g.id, completedCount, memberCount };
+        } catch {
+          return { groupId: g.id, completedCount: 0, memberCount: 0 };
+        }
+      })
+    ).then((results) => {
+      const map = {};
+      for (const r of results) map[r.groupId] = r;
+      setLiveStats(map);
+    });
+  }, [groups]);
 
   // Build a map: groupId → report
   const reportsMap = useMemo(() => {
@@ -383,7 +435,7 @@ export default function Reports() {
   // Navigate to group report and trigger AI generation
   const handleGenerateAI = useCallback(
     (groupId) => {
-      navigate(`/admin/groups/${groupId}/report`);
+      navigate(`/admin/groups/${groupId}`);
     },
     [navigate]
   );
@@ -414,7 +466,7 @@ export default function Reports() {
 
       {/* ── Overview Stats ────────────────────────────────────────────── */}
       {groups.length > 0 && (
-        <OverviewStats groups={groups} reports={reports} />
+        <OverviewStats groups={groups} reports={reports} liveStats={liveStats} />
       )}
 
       {/* ── Search bar ───────────────────────────────────────────────── */}
@@ -480,6 +532,7 @@ export default function Reports() {
                 key={group.id}
                 group={group}
                 report={reportsMap[group.id] || null}
+                liveData={liveStats[group.id] || null}
                 onGenerateAI={handleGenerateAI}
                 generating={generatingId === group.id}
               />

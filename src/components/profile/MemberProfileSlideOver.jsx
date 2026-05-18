@@ -1,10 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { getProfile, getAssessmentsByUser } from '@/firebase/firestore.js';
-import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
+import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail } from '@/firebase/firestore.js';
+import { generateAnalysis, loadApiKey } from '@/lib/apiKeyManager.js';
+import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
 import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
+
+const TOTAL_DISC = 28;
+const TOTAL_QUESTIONS = 78; // 28 DISC + 50 sabotadores
+
+// Recalcula scores DISC a partir das respostas brutas armazenadas na avaliação
+function calcularScoresFromAnswers(answers) {
+  const questions = Array.isArray(SAMPLE_QUESTIONS) ? SAMPLE_QUESTIONS.slice(0, TOTAL_QUESTIONS) : [];
+  const acc = { D: [], I: [], S: [], C: [] };
+  for (const q of questions) {
+    const dim = q.dimension;
+    if (!dim || !acc[dim]) continue;
+    const valor = answers?.[q.id];
+    if (valor != null) acc[dim].push(Number(valor));
+  }
+  const scores = {};
+  for (const dim of ['D', 'I', 'S', 'C']) {
+    const arr = acc[dim];
+    scores[dim] = arr.length === 0 ? 0 : Math.round((arr.reduce((s, v) => s + v, 0) / arr.length / 5) * 100);
+  }
+  return scores;
+}
 
 /**
  * MemberProfileSlideOver — painel lateral com perfil completo de um membro
@@ -13,6 +35,63 @@ import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
  * @param {boolean} isOpen
  * @param {() => void} onClose
  */
+// ─── Constrói adminStrategy a partir da análise do motor local ────────────────
+function buildAdminStrategy(analysis) {
+  const { disc, sabotadores, correlations, recommendations, strengths, watchouts, summary } = analysis;
+  const prim = disc?.primary ?? 'I';
+  const top3Names = sabotadores?.topNames ?? [];
+  const pq = sabotadores?.pqScore ?? 0;
+
+  const APPROACH = {
+    D: 'Seja direto e objetivo. Foque em resultados e desafios. Evite rodeios — este perfil valoriza eficiência e autonomia.',
+    I: 'Use linguagem entusiasta e reconheça publicamente. Este perfil se energiza com conexão social e ideias novas. Mantenha reuniões dinâmicas.',
+    S: 'Crie um ambiente seguro e previsível. Seja consistente, mostre que valoriza o processo e dê tempo para processamento emocional.',
+    C: 'Apresente dados e lógica. Seja preciso, respeite a necessidade de análise antes de decidir. Evite pressão por respostas rápidas.',
+  };
+  const FEEDBACK = {
+    D: 'Feedback direto e orientado a impacto nos resultados. Evite exposição pública — prefira 1:1 assertivo.',
+    I: 'Comece pelo reconhecimento, contextualize o desenvolvimento como oportunidade de crescimento visível.',
+    S: 'Feedback gentil e privado. Dê tempo para absorver. Mostre que há suporte disponível na mudança.',
+    C: 'Feedback baseado em dados e evidências concretas. Seja específico, lógico e dê tempo para análise.',
+  };
+  const DELEG = {
+    D: ['tomada de decisão rápida e projetos de alta visibilidade', 'tarefas repetitivas sem impacto claro'],
+    I: ['comunicação, persuasão e articulação com pessoas', 'trabalho isolado e detalhado por longos períodos'],
+    S: ['processos que requerem consistência e suporte contínuo', 'mudanças bruscas sem aviso ou justificativa'],
+    C: ['análise detalhada, qualidade e revisão de processos', 'decisões sob alta pressão sem dados suficientes'],
+  };
+  const COMPAT = {
+    D: { D:'Alta competitividade — útil em desafios mútuos.', I:'Complementar — D executa, I engaja.', S:'D pode pressionar S; calibrar ritmo.', C:'Tensão velocidade vs. precisão — negociar prazos.' },
+    I: { D:'Complementar — I motiva, D direciona.', I:'Alta energia, mas pode faltar foco.', S:'Parceria harmoniosa — I inspira, S sustenta.', C:'C pode frear I — alinhar comunicação.' },
+    S: { D:'S prefere estabilidade; comunicar mudanças com antecedência.', I:'Parceria eficaz — S ancora, I energiza.', S:'Alta harmonia, mas pode evitar conflitos necessários.', C:'Parceria sólida para projetos detalhados.' },
+    C: { D:'Negociar ritmo — C precisa de dados, D quer ação.', I:'Alinhar profundidade — C acha I superficial.', S:'Parceria estável para processos rigorosos.', C:'Alta precisão, mas risco de paralisia por análise.' },
+  };
+
+  const recTextos = (recommendations ?? []).slice(0, 4).map(r =>
+    typeof r === 'string' ? r : `[${(r.priority ?? 'MÉDIA').toUpperCase()}] ${r.action}`
+  );
+  const coachQs = correlations?.slice(0, 3).map(c =>
+    typeof c === 'string'
+      ? `Como você percebe: "${c.substring(0, 80)}..."?`
+      : `Como você percebe a interação entre seu perfil **${c.disc}** e o sabotador **${c.sabotador}** no seu dia a dia?`
+  ) ?? [];
+
+  const d = DELEG[prim] ?? DELEG.I;
+  return {
+    executiveBrief: `${summary ?? ''}\n\nPerfil primário: ${prim} (${disc?.label ?? ''}). PQ Score: ${pq}/100. Sabotadores principais: ${top3Names.slice(0, 2).join(' e ') || '—'}.`,
+    approachStyle: APPROACH[prim] ?? APPROACH.I,
+    coachingQuestions: coachQs.length ? coachQs : ['O que está funcionando bem para você ultimamente?', 'Onde você sente mais resistência ou dificuldade?', 'Que tipo de suporte seria mais útil agora?'],
+    feedbackApproach: FEEDBACK[prim] ?? FEEDBACK.I,
+    motivationLevers: (strengths ?? []).slice(0, 4),
+    redFlags: (watchouts ?? []).slice(0, 4),
+    nextAssessmentFocus: recTextos[0] ?? 'Reavaliar após 90 dias de desenvolvimento.',
+    actionPlan: recTextos,
+    compatibilityMap: COMPAT[prim] ?? COMPAT.I,
+    delegationGuide: `Delegue tarefas que envolvam ${d[0]}. Evite sobrecarregá-lo com ${d[1]}.`,
+    stretchAreas: (watchouts ?? []).slice(0, 3),
+  };
+}
+
 export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
   const { t } = useTranslation();
   const [profileData, setProfileData] = useState(null);
@@ -73,19 +152,75 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
     setRegenerating(true);
     setRegenError('');
     try {
-      // Busca a avaliação mais recente do usuário para passar à Edge Function
-      const assessments = await getAssessmentsByUser(memberUid);
-      const latest = assessments.find((a) => a.status === 'analyzed' || a.status === 'completed' || a.status === 'submitted');
-      if (!latest) {
-        setRegenError('Nenhuma avaliação concluída encontrada para este aluno.');
-        return;
+      // 1. Tenta usar scores salvos no perfil
+      let discScores = {
+        D: Number(profileData?.scores?.D ?? profileObj?.scores?.D ?? 0),
+        I: Number(profileData?.scores?.I ?? profileObj?.scores?.I ?? 0),
+        S: Number(profileData?.scores?.S ?? profileObj?.scores?.S ?? 0),
+        C: Number(profileData?.scores?.C ?? profileObj?.scores?.C ?? 0),
+      };
+
+      // 2. Se perfil sem scores, tenta recalcular a partir das fontes disponíveis
+      const hasAnyScore = Object.values(discScores).some((v) => v > 0);
+      if (!hasAnyScore) {
+        let resolved = false;
+
+        // 2a. Fluxo AssessmentWizard: busca respostas em app_assessments
+        const assessments = await getAssessmentsByUser(memberUid);
+        const completedAssessment = assessments.find(
+          (a) => (a.status === 'completed' || a.status === 'analyzed' || a.status === 'submitted') && a.answers
+        );
+        if (completedAssessment?.answers && Object.keys(completedAssessment.answers).length > 0) {
+          const recalculated = calcularScoresFromAnswers(completedAssessment.answers);
+          if (Object.values(recalculated).some((v) => v > 0)) {
+            discScores = recalculated;
+            resolved = true;
+          }
+        }
+
+        // 2b. Fluxo AvaliacaoPublica: busca perfil calculado em app_avaliados por email
+        if (!resolved && member?.email) {
+          const avaliado = await getAvaliadoByEmail(member.email);
+          if (avaliado?.perfil) {
+            const p = avaliado.perfil;
+            // app_avaliados.perfil usa { dominante, influente, estavel, analitico }
+            discScores = {
+              D: Number(p.dominante ?? p.D ?? 0),
+              I: Number(p.influente ?? p.I ?? 0),
+              S: Number(p.estavel   ?? p.S ?? 0),
+              C: Number(p.analitico ?? p.C ?? 0),
+            };
+            if (Object.values(discScores).some((v) => v > 0)) resolved = true;
+          }
+        }
+
+        if (!resolved) {
+          setRegenError('Sem dados de avaliação encontrados. O aluno precisa completar a avaliação primeiro.');
+          return;
+        }
+
+        // Salva scores recalculados no perfil para não buscar de novo
+        await updateProfile(memberUid, { scores: discScores });
+        await updateUser(memberUid, { assessmentStatus: 'completed' });
       }
-      await buildProfileAI({ assessmentId: latest.id, uid: memberUid, language: 'ptBR' });
-      // Recarrega o profile com os novos dados
+
+      // 3. Gera análise com motor local
+      const emptySabScores = {
+        judge: 0, stickler: 0, pleaser: 0, hyperAchiever: 0, victim: 0,
+        hyperRational: 0, hyperVigilant: 0, restless: 0, controller: 0, avoider: 0,
+      };
+      const apiKey = await loadApiKey();
+      const analysis = await generateAnalysis(discScores, emptySabScores, apiKey);
+
+      // 4. Constrói e salva adminStrategy
+      const adminStrategy = buildAdminStrategy(analysis);
+      await updateProfile(memberUid, { adminStrategy });
+
+      // 5. Recarrega o profile
       const fresh = await getProfile(memberUid);
       setProfileData(fresh || null);
     } catch (err) {
-      setRegenError(err?.message || 'Falha ao regenerar perfil.');
+      setRegenError(err?.message || 'Falha ao gerar painel estratégico.');
       console.error('[MemberProfileSlideOver] regenerate error:', err);
     } finally {
       setRegenerating(false);

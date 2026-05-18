@@ -13,6 +13,13 @@ const PROFILE_HEX = {
   C: '#3182CE',
 };
 
+const PROFILE_NAMES = {
+  D: 'Dominante',
+  I: 'Influente',
+  S: 'Estável',
+  C: 'Analítico',
+};
+
 // ─── Score pill ───────────────────────────────────────────────────────────────
 function ScorePill({ label, value, profileKey }) {
   const hex = PROFILE_HEX[profileKey] || '#6366F1';
@@ -130,23 +137,30 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
     dominantProfileName,
     secondaryProfile,
     secondaryProfileName,
-    scores = {},
+    scores: rawScores,
     summary,
-    strengths = [],
-    challenges = [],
+    strengths: rawStrengths,
+    challenges: rawChallenges,
     roleRecommendation,
     workStyleRecommendation,
     teamBehavior,
     communicationTips,
-    saboteurPatterns = [],
-    derailmentRisks = [],
+    saboteurPatterns: rawSaboteurPatterns,
+    derailmentRisks: rawDerailmentRisks,
     therapyIndicator,
     userName,
     displayName,
   } = profile;
 
-  const profileName = dominantProfile ? PROFILE_HEX[dominantProfile] : undefined;
+  // DB can return null for JSONB arrays — normalize all array fields here
+  const scores = rawScores ?? {};
+  const strengths = Array.isArray(rawStrengths) ? rawStrengths : [];
+  const challenges = Array.isArray(rawChallenges) ? rawChallenges : [];
+  const saboteurPatterns = Array.isArray(rawSaboteurPatterns) ? rawSaboteurPatterns : [];
+  const derailmentRisks = Array.isArray(rawDerailmentRisks) ? rawDerailmentRisks : [];
+
   const resolvedName = userName || displayName || profile.name || '';
+  const hasScores = Object.values(scores).some((v) => v > 0);
 
   // ── Compact view ─────────────────────────────────────────────────────────────
   if (compact) {
@@ -159,14 +173,16 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               <p className="text-base font-semibold text-[#F7F8FC] truncate">{resolvedName}</p>
             )}
             <p className="text-sm text-[#A0A3B1]">
-              Perfil {dominantProfileName || dominantProfile}
-              {secondaryProfile && ` · ${secondaryProfileName || secondaryProfile}`}
+              Perfil {dominantProfileName || PROFILE_NAMES[dominantProfile] || dominantProfile}
+              {secondaryProfile && ` · ${secondaryProfileName || PROFILE_NAMES[secondaryProfile] || secondaryProfile}`}
             </p>
-            <div className="flex gap-2 mt-2">
-              {['D', 'I', 'S', 'C'].map((k) => (
-                <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
-              ))}
-            </div>
+            {hasScores && (
+              <div className="flex gap-2 mt-2">
+                {['D', 'I', 'S', 'C'].map((k) => (
+                  <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
         {summary && (
@@ -190,7 +206,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
           size="xl"
           scores={scores}
           showLabel={true}
-          showBars={true}
+          showBars={hasScores}
         />
         <div className="flex-1 min-w-0 space-y-2">
           {resolvedName && (
@@ -202,7 +218,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               className="font-semibold"
               style={{ color: PROFILE_HEX[dominantProfile] }}
             >
-              {dominantProfile} — {dominantProfileName || dominantProfile}
+              {dominantProfile} — {dominantProfileName || PROFILE_NAMES[dominantProfile] || dominantProfile}
             </span>
             {secondaryProfile && (
               <>
@@ -211,17 +227,23 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
                   className="font-semibold"
                   style={{ color: PROFILE_HEX[secondaryProfile] }}
                 >
-                  {secondaryProfile} — {secondaryProfileName || secondaryProfile}
+                  {secondaryProfile} — {secondaryProfileName || PROFILE_NAMES[secondaryProfile] || secondaryProfile}
                 </span>
               </>
             )}
           </p>
-          {/* Score pills row */}
-          <div className="flex flex-wrap gap-2 mt-1">
-            {['D', 'I', 'S', 'C'].map((k) => (
-              <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
-            ))}
-          </div>
+          {/* Score pills row — only when scores are available */}
+          {hasScores ? (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {['D', 'I', 'S', 'C'].map((k) => (
+                <ScorePill key={k} label={k} value={scores[k] ?? 0} profileKey={k} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-[#4A4D6A] mt-1 italic">
+              Scores detalhados não disponíveis — perfil identificado via triagem inicial.
+            </p>
+          )}
           {/* Admin-only therapy alert */}
           {isAdmin && therapyIndicator?.flagged && (
             <div className="mt-2">
@@ -231,13 +253,15 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
         </div>
       </div>
 
-      {/* ── Radar Chart ─────────────────────────────────────────────────────── */}
-      <Card variant="default">
-        <SectionTitle icon="📊">Mapa de Perfil</SectionTitle>
-        <div className="flex justify-center">
-          <RadarChart scores={scores} size={260} showLabels={true} animated={true} />
-        </div>
-      </Card>
+      {/* ── Radar Chart — only when scores are available ─────────────────────── */}
+      {hasScores && (
+        <Card variant="default">
+          <SectionTitle icon="📊">Mapa de Perfil</SectionTitle>
+          <div className="flex justify-center">
+            <RadarChart scores={scores} size={260} showLabels={true} animated={true} />
+          </div>
+        </Card>
+      )}
 
       {/* ── Summary ─────────────────────────────────────────────────────────── */}
       {summary && (

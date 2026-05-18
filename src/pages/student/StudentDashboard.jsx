@@ -145,7 +145,7 @@ export default function StudentDashboard() {
       {/* Greeting */}
       <div>
         <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
-          Olá, {displayName} 👋
+          {t('student.greeting', 'Olá, {{name}} 👋', { name: displayName })}
         </h1>
         <p className="text-[#A0A3B1] text-sm mt-1">
           {currentProfile

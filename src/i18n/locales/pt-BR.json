@@ -38,7 +38,8 @@
     "noData": "Nenhum dado encontrado",
     "seeAll": "Ver todos",
     "seeMore": "Ver mais",
-    "seeLess": "Ver menos"
+    "seeLess": "Ver menos",
+    "saved": "Salvo!"
   },
   "time": {
     "justNow": "agora mesmo",
@@ -159,7 +160,8 @@
       "joinedAt": "Entrou em",
       "lastActive": "Último acesso",
       "noStudents": "Nenhum aluno encontrado.",
-      "removeConfirm": "Tem certeza que deseja remover este aluno?"
+      "removeConfirm": "Tem certeza que deseja remover este aluno?",
+      "refreshList": "Atualizar lista"
     },
     "modules": {
       "title": "Módulos",
@@ -181,7 +183,8 @@
       "period": "Período",
       "from": "De",
       "to": "Até"
-    }
+    },
+    "noRecentActivityHint": "Crie grupos e convide alunos para começar."
   },
   "profiles": {
     "title": "Perfis Comportamentais",
@@ -338,7 +341,8 @@
         "Médico(a) especialista",
         "Jurista / Advogado(a)"
       ]
-    }
+    },
+    "allProfiles": "Todos os perfis"
   },
   "assessment": {
     "title": "Avaliação DISC",
@@ -415,7 +419,12 @@
     "dominantProfile": "Perfil Dominante no Grupo",
     "noData": "Dados insuficientes para análise",
     "pendingMembers": "Membros Pendentes",
-    "activeMembers": "Membros Ativos"
+    "activeMembers": "Membros Ativos",
+    "allGroups": "Todos os grupos",
+    "noProfile": "Sem perfil",
+    "addMember": "Adicionar",
+    "memberAdded": "Membro adicionado:",
+    "memberNotFound": "Nenhum usuário encontrado com este e-mail."
   },
   "module": {
     "title": "Módulo",
@@ -555,5 +564,19 @@
     "popupBlocked": "Popup bloqueado. Permita popups para autenticação com Google.",
     "operationCancelled": "Operação cancelada.",
     "assessmentIncomplete": "Por favor, responda todas as perguntas antes de enviar."
+  },
+  "settings": {
+    "aiTitle": "Inteligência Artificial",
+    "aiDesc": "Configure uma API key para análises aprimoradas por IA. Sem key, as análises são geradas localmente."
+  },
+  "students": {
+    "defaultModule": "⭐ Avaliação DISC Padrão (24 + 50 perguntas)",
+    "noCustomModules": "Este grupo não tem módulos customizados. A avaliação DISC padrão será atribuída.",
+    "subtitle": "Todos os alunos em todos os grupos",
+    "assignNote": "A avaliação aparecerá no dashboard do aluno assim que for atribuída. Um e-mail de notificação será aberto automaticamente.",
+    "sendReminder": "Enviar lembrete"
+  },
+  "student": {
+    "greeting": "Olá, {{name}} 👋"
   }
 }

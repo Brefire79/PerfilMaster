@@ -25,7 +25,7 @@ export function jsonResponse(body: unknown, status = 200, req?: Request): Respon
   return new Response(JSON.stringify(body), {
     status,
     headers: {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
       ...(req ? corsHeaders(req) : {
         'Access-Control-Allow-Origin': ALLOWED_ORIGINS[0],
         'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',

@@ -38,7 +38,8 @@
     "noData": "No data found",
     "seeAll": "See all",
     "seeMore": "See more",
-    "seeLess": "See less"
+    "seeLess": "See less",
+    "saved": "Saved!"
   },
   "time": {
     "justNow": "just now",
@@ -158,7 +159,8 @@
       "joinedAt": "Joined at",
       "lastActive": "Last active",
       "noStudents": "No students found.",
-      "removeConfirm": "Are you sure you want to remove this student?"
+      "removeConfirm": "Are you sure you want to remove this student?",
+      "refreshList": "Refresh list"
     },
     "modules": {
       "title": "Modules",
@@ -180,7 +182,8 @@
       "period": "Period",
       "from": "From",
       "to": "To"
-    }
+    },
+    "noRecentActivityHint": "Create groups and invite students to get started."
   },
   "profiles": {
     "title": "Behavioral Profiles",
@@ -337,7 +340,8 @@
         "Medical Specialist",
         "Lawyer / Attorney"
       ]
-    }
+    },
+    "allProfiles": "All profiles"
   },
   "assessment": {
     "title": "DISC Assessment",
@@ -414,7 +418,12 @@
     "dominantProfile": "Dominant Profile in Group",
     "noData": "Insufficient data for analysis",
     "pendingMembers": "Pending Members",
-    "activeMembers": "Active Members"
+    "activeMembers": "Active Members",
+    "allGroups": "All groups",
+    "noProfile": "No profile",
+    "addMember": "Add",
+    "memberAdded": "Member added:",
+    "memberNotFound": "No user found with this email."
   },
   "module": {
     "title": "Module",
@@ -493,5 +502,19 @@
     "popupBlocked": "Popup blocked. Allow popups for Google authentication.",
     "operationCancelled": "Operation cancelled.",
     "assessmentIncomplete": "Please answer all questions before submitting."
+  },
+  "settings": {
+    "aiTitle": "Artificial Intelligence",
+    "aiDesc": "Configure an API key for enhanced AI-powered analysis. Without a key, analyses are generated locally."
+  },
+  "students": {
+    "defaultModule": "⭐ Standard DISC Assessment (24 + 50 questions)",
+    "noCustomModules": "This group has no custom modules. The standard DISC assessment will be assigned.",
+    "subtitle": "All students across all groups",
+    "assignNote": "The assessment will appear on the student dashboard once assigned. A notification email will open automatically.",
+    "sendReminder": "Send reminder"
+  },
+  "student": {
+    "greeting": "Hello, {{name}} 👋"
   }
 }

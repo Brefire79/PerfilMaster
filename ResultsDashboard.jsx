@@ -1,480 +1,464 @@
 /**
- * ProfileAI — AMB FUSI | "Damos vida à inovação"
- * ResultsDashboard.jsx — Dashboard de resultados do Assessment
- * Exibe: Radar DISC (SVG) · Barras Sabotadores · PQ Score Gauge · Relatório IA
- * Boas práticas React: memoização, derivação de estado, sem efeitos desnecessários
- * Versão: 1.0 | Abril 2026
+ * ProfileAI — AMB FUSI
+ * ResultsDashboard — dark-theme redesign v2.0
  */
 
 import { useState, useMemo, useCallback, memo } from 'react';
 
-// ============================================================
-// CONSTANTES (hoistadas fora do componente — sem re-criação)
-// ============================================================
-
-const DISC_CONFIG = {
-  D: { nome: 'Dominante', cor: '#e74c3c', corClara: '#fde8e8' },
-  I: { nome: 'Influente',  cor: '#f39c12', corClara: '#fef3cd' },
-  S: { nome: 'Estável',    cor: '#2ecc71', corClara: '#d4f5e3' },
-  C: { nome: 'Analítico',  cor: '#3498db', corClara: '#dbeffe' },
+// ─── Paleta ───────────────────────────────────────────────────────────────────
+const DISC_COR = { D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE' };
+const DISC_NOME = { D: 'Dominância', I: 'Influência', S: 'Estabilidade', C: 'Conformidade' };
+const DISC_DESC = {
+  D: 'Orientado a resultados, direto e assertivo. Toma decisões rápidas e aceita desafios.',
+  I: 'Entusiasta, otimista e sociável. Motiva os outros e prospera em ambientes colaborativos.',
+  S: 'Confiável, paciente e consistente. Cria ambientes estáveis e valoriza relacionamentos.',
+  C: 'Analítico, preciso e sistemático. Foca em qualidade e segue processos rigorosos.',
 };
 
-const SABOTEUR_CONFIG = {
-  judge:         { nome: 'Juiz',            cor: '#DC2626' },
-  stickler:      { nome: 'Insistente',      cor: '#7C3AED' },
-  pleaser:       { nome: 'Prestativo',      cor: '#DB2777' },
-  hyperAchiever: { nome: 'Hiper-Realizador',cor: '#EA580C' },
-  victim:        { nome: 'Vítima',          cor: '#64748B' },
-  hyperRational: { nome: 'Hiper-Racional',  cor: '#2563EB' },
-  hyperVigilant: { nome: 'Hiper-Vigilante', cor: '#D97706' },
-  restless:      { nome: 'Inquieto',        cor: '#0891B2' },
-  controller:    { nome: 'Controlador',     cor: '#B45309' },
-  avoider:       { nome: 'Esquivo',         cor: '#16A34A' },
+const SABOTADOR = {
+  judge:         { nome: 'Juiz',             icon: '⚖️',  desc: 'Crítico consigo mesmo, com os outros e com as circunstâncias.' },
+  stickler:      { nome: 'Insistente',       icon: '📐',  desc: 'Perfeccionista em excesso, com padrões rígidos e intolerância ao erro.' },
+  pleaser:       { nome: 'Agradador',        icon: '😊',  desc: 'Foca em agradar os outros para evitar conflitos, sacrificando necessidades próprias.' },
+  hyperAchiever: { nome: 'Hiper-Realizador', icon: '🏆',  desc: 'Deriva seu senso de valor do desempenho e das realizações externas.' },
+  victim:        { nome: 'Vítima',           icon: '😢',  desc: 'Foca nas emoções negativas e cria empatia ao exibir vulnerabilidade.' },
+  hyperRational: { nome: 'Hiper-Racional',   icon: '🧠',  desc: 'Dependência excessiva da razão para processar sentimentos e emoções.' },
+  hyperVigilant: { nome: 'Hiper-Vigilante',  icon: '👁️', desc: 'Ansiedade constante sobre perigos e riscos potenciais no ambiente.' },
+  restless:      { nome: 'Inquieto',         icon: '🌪️', desc: 'Busca constante por novas atividades para evitar sentimentos desconfortáveis.' },
+  controller:    { nome: 'Controlador',      icon: '🎯',  desc: 'Tende a assumir o controle para reduzir ansiedade em situações de incerteza.' },
+  avoider:       { nome: 'Esquivo',          icon: '🚪',  desc: 'Foca no positivo e no agradável, evitando tarefas e conflitos difíceis.' },
 };
 
-const SUBTIPO_DESCRICOES = {
-  DC: 'Desafiador — direto, cético e exigente',
-  D:  'Realizador — focado, competitivo e decisivo',
-  Di: 'Dinâmico — ativo, ousado e persuasivo',
-  iD: 'Inspirador — energético, assertivo e visionário',
-  i:  'Comunicador — expressivo, otimista e sociável',
-  iS: 'Acolhedor — amigável, paciente e colaborativo',
-  Si: 'Apoiador — calmo, atencioso e receptivo',
-  S:  'Leal — confiável, estável e consistente',
-  SC: 'Técnico — meticuloso, estável e cuidadoso',
-  CS: 'Deliberado — cauteloso, preciso e reflexivo',
-  C:  'Criterioso — detalhista, lógico e independente',
-  CD: 'Resoluto — analítico, determinado e objetivo',
+const SUBTIPO_LABEL = {
+  DC:'Desafiador', D:'Realizador', Di:'Dinâmico', iD:'Inspirador',
+  i:'Comunicador', iS:'Acolhedor', Si:'Apoiador', S:'Leal',
+  SC:'Técnico', CS:'Deliberado', C:'Criterioso', CD:'Resoluto',
 };
 
-const INTENSIDADE_CORES = {
-  baixa:      { bg: '#f0fdf4', text: '#15803d', label: 'Baixa' },
-  moderada:   { bg: '#fffbeb', text: '#d97706', label: 'Moderada' },
-  alta:       { bg: '#fff7ed', text: '#ea580c', label: 'Alta' },
-  muito_alta: { bg: '#fef2f2', text: '#dc2626', label: 'Muito Alta' },
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function pqCor(s) { return s >= 75 ? '#38A169' : s >= 60 ? '#D69E2E' : '#E53E3E' }
+function sabCor(s) { return s >= 6 ? '#E53E3E' : s >= 4 ? '#D69E2E' : '#38A169' }
+function formatData(iso) {
+  return new Date(iso).toLocaleDateString('pt-BR', { day:'2-digit', month:'long', year:'numeric' });
+}
+function pct5(v) { return Math.round((v / 5) * 100) }   // 1-5 → %
+function Bold({ children }) {
+  if (typeof children !== 'string') return children;
+  const parts = children.split(/\*\*(.*?)\*\*/g);
+  return parts.map((p, i) =>
+    i % 2 === 1
+      ? <strong key={i} style={{ color: '#e2e8f0' }}>{p}</strong>
+      : <span key={i}>{p}</span>
+  );
+}
+
+// ─── Estilos base ─────────────────────────────────────────────────────────────
+const C = {
+  wrap:      { minHeight:'100vh', background:'#0a0a1a', color:'#e2e8f0',
+               fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif' },
+  inner:     { maxWidth:'900px', margin:'0 auto', padding:'2rem 1rem 3rem' },
+  card:      { background:'#1a1a2e', borderRadius:'14px', padding:'1.5rem',
+               border:'1px solid #1e2a3a', marginBottom:'1.5rem' },
+  cardSm:    { background:'#0f172a', borderRadius:'10px', padding:'1rem', marginBottom:'.75rem' },
+  secTitle:  { fontSize:'.95rem', fontWeight:700, color:'#e2e8f0', marginBottom:'1rem', letterSpacing:'.01em' },
+  tabs:      { display:'flex', gap:'.25rem', marginBottom:'1.5rem', background:'#1a1a2e',
+               borderRadius:'10px', padding:'.3rem', border:'1px solid #1e2a3a', overflowX:'auto' },
+  tabBtn:    (active) => ({
+    flex:1, padding:'.6rem .5rem', borderRadius:'8px', border:'none',
+    cursor:'pointer', fontWeight:600, fontSize:'.83rem', whiteSpace:'nowrap',
+    transition:'all .2s',
+    background: active ? '#e94560' : 'transparent',
+    color: active ? '#fff' : '#64748b',
+  }),
+  grid2:     { display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1.5rem', marginBottom:'1.5rem' },
+  checkItem: { display:'flex', gap:'.5rem', marginBottom:'.6rem', fontSize:'.85rem',
+               color:'#94a3b8', lineHeight:1.5 },
 };
 
-// ============================================================
-// HELPERS (module-level — sem re-criação por render)
-// ============================================================
-
-function getSaboteurIntensity(score) {
-  if (score <= 3.0) return 'baixa';
-  if (score <= 5.0) return 'moderada';
-  if (score <= 7.0) return 'alta';
-  return 'muito_alta';
-}
-
-function getDISCLevel(score) {
-  if (score <= 2.0) return 'Baixo';
-  if (score <= 3.0) return 'Moderado';
-  if (score <= 4.0) return 'Alto';
-  return 'Dominante';
-}
-
-/** Formata data ISO para pt-BR */
-function formatarData(iso) {
-  return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-}
-
-/** Pontos do radar DISC em SVG (escala 1–5 → raio proporcional) */
-function calcularPontosRadar(scores, cx, cy, raioMax) {
-  const perfis = ['D', 'I', 'S', 'C'];
-  const angulos = perfis.map((_, i) => (i * 2 * Math.PI) / perfis.length - Math.PI / 2);
-
-  return perfis.map((code, i) => {
-    const raio = ((scores[code] - 1) / 4) * raioMax; // normaliza 1–5 para 0–raioMax
-    return {
-      x: cx + raio * Math.cos(angulos[i]),
-      y: cy + raio * Math.sin(angulos[i]),
-      labelX: cx + (raioMax + 28) * Math.cos(angulos[i]),
-      labelY: cy + (raioMax + 28) * Math.sin(angulos[i]),
-      code,
-    };
-  });
-}
-
-// ============================================================
-// SUBCOMPONENTES MEMORIZADOS
-// ============================================================
-
-/**
- * Gráfico Radar DISC — puro SVG, sem dependências externas
- * Boas práticas: rendering-animate-svg-wrapper (animações no wrapper, não no SVG)
- */
+// ─── Radar DISC ───────────────────────────────────────────────────────────────
 const RadarDISC = memo(function RadarDISC({ scores }) {
-  const CX = 120, CY = 120, RAIO = 80;
-  const pontos = useMemo(() => calcularPontosRadar(scores, CX, CY, RAIO), [scores]);
+  const cx = 120, cy = 120, r = 90;
+  const keys = ['D','I','S','C'];
+  const angles = [-90, 0, 90, 180];
 
-  // Polígono do perfil
-  const poligonoPath = pontos
-    .map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`)
-    .join(' ') + ' Z';
+  function pt(ang, rad) {
+    const a = ang * Math.PI / 180;
+    return { x: cx + rad * Math.cos(a), y: cy + rad * Math.sin(a) };
+  }
 
-  // Grid concêntrico (níveis 1–5)
-  const niveis = [1, 2, 3, 4, 5];
+  const levels = [.25, .5, .75, 1];
+  const dataPoints = keys.map((k, i) => pt(angles[i], (scores[k] / 5) * r));
+  const polyPts = dataPoints.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <svg width={240} height={240} viewBox="0 0 240 240" aria-label="Gráfico radar DISC">
-        {/* Grid concêntrico */}
-        {niveis.map(nivel => {
-          const r = ((nivel - 1) / 4) * RAIO;
-          const gridPontos = [0, 1, 2, 3].map(i => {
-            const ang = (i * 2 * Math.PI) / 4 - Math.PI / 2;
-            return `${(CX + r * Math.cos(ang)).toFixed(1)},${(CY + r * Math.sin(ang)).toFixed(1)}`;
-          }).join(' ');
-          return (
-            <polygon
-              key={nivel}
-              points={gridPontos}
-              fill="none"
-              stroke="#e5e7eb"
-              strokeWidth={1}
-            />
-          );
-        })}
+    <svg width="240" height="240" viewBox="0 0 240 240" style={{ overflow:'visible' }}>
+      {levels.map(lv => {
+        const gpts = keys.map((_, i) => { const p = pt(angles[i], lv*r); return `${p.x.toFixed(1)},${p.y.toFixed(1)}`; }).join(' ');
+        return <polygon key={lv} points={gpts} fill="none" stroke="#1e2a3a" strokeWidth="1"/>;
+      })}
+      {keys.map((_, i) => { const p = pt(angles[i], r); return <line key={i} x1={cx} y1={cy} x2={p.x.toFixed(1)} y2={p.y.toFixed(1)} stroke="#1e2a3a" strokeWidth="1"/>; })}
+      <polygon points={polyPts} fill="#e9456022" stroke="#e94560" strokeWidth="2"/>
+      {dataPoints.map((p, i) => (
+        <circle key={i} cx={p.x.toFixed(1)} cy={p.y.toFixed(1)} r="5" fill={DISC_COR[keys[i]]} stroke="#0a0a1a" strokeWidth="2"/>
+      ))}
+      {keys.map((k, i) => { const lp = pt(angles[i], r+18); return (
+        <text key={k} x={lp.x.toFixed(1)} y={lp.y.toFixed(1)} textAnchor="middle" dominantBaseline="middle"
+          fill={DISC_COR[k]} fontSize="14" fontWeight="800">{k}</text>
+      ); })}
+    </svg>
+  );
+});
 
-        {/* Linhas dos eixos */}
-        {pontos.map(p => (
-          <line
-            key={p.code}
-            x1={CX} y1={CY}
-            x2={(CX + RAIO * Math.cos(Math.atan2(p.y - CY, p.x - CX))).toFixed(1)}
-            y2={(CY + RAIO * Math.sin(Math.atan2(p.y - CY, p.x - CX))).toFixed(1)}
-            stroke="#e5e7eb"
-            strokeWidth={1}
-          />
-        ))}
+// ─── PQ Gauge ─────────────────────────────────────────────────────────────────
+const PQGauge = memo(function PQGauge({ score }) {
+  const cor = pqCor(score);
+  const circumference = 2 * Math.PI * 52;
+  const arcFrac = 0.75;
+  const offset = circumference * (1 - (score / 100) * arcFrac);
+  const trackOffset = circumference * (1 - arcFrac);
+  const label = score >= 75 ? 'Mente Sábia' : score >= 60 ? 'Em Desenvolvimento' : 'Sabotadores Ativos';
 
-        {/* Área do perfil */}
-        <path
-          d={poligonoPath}
-          fill="rgba(99, 102, 241, 0.15)"
-          stroke="#6366f1"
-          strokeWidth={2.5}
-          strokeLinejoin="round"
-        />
-
-        {/* Pontos nos vértices */}
-        {pontos.map(p => (
-          <circle
-            key={p.code}
-            cx={p.x.toFixed(1)}
-            cy={p.y.toFixed(1)}
-            r={5}
-            fill={DISC_CONFIG[p.code].cor}
-            stroke="#fff"
-            strokeWidth={2}
-          />
-        ))}
-
-        {/* Labels dos perfis */}
-        {pontos.map(p => (
-          <text
-            key={`label-${p.code}`}
-            x={p.labelX.toFixed(1)}
-            y={p.labelY.toFixed(1)}
-            textAnchor="middle"
-            dominantBaseline="middle"
-            fontSize={11}
-            fontWeight={700}
-            fill={DISC_CONFIG[p.code].cor}
-          >
-            {p.code}
-          </text>
-        ))}
+  return (
+    <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'.5rem' }}>
+      <svg width="160" height="110" viewBox="0 0 160 110">
+        <circle cx="80" cy="95" r="52" fill="none" stroke="#1e2a3a" strokeWidth="12"
+          strokeDasharray={circumference.toFixed(1)}
+          strokeDashoffset={trackOffset.toFixed(1)}
+          transform="rotate(-135 80 95)" strokeLinecap="round"/>
+        <circle cx="80" cy="95" r="52" fill="none" stroke={cor} strokeWidth="12"
+          strokeDasharray={circumference.toFixed(1)}
+          strokeDashoffset={offset.toFixed(1)}
+          transform="rotate(-135 80 95)" strokeLinecap="round"/>
+        <text x="80" y="88" textAnchor="middle" fill={cor} fontSize="28" fontWeight="800">{score}</text>
+        <text x="80" y="103" textAnchor="middle" fill="#64748b" fontSize="11">/ 100</text>
       </svg>
+      <span style={{ fontSize:'.8rem', fontWeight:600, padding:'.2rem .75rem', borderRadius:'99px',
+        background:`${cor}22`, color:cor, border:`1px solid ${cor}44` }}>{label}</span>
+    </div>
+  );
+});
 
-      {/* Legenda */}
-      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
-        {Object.entries(DISC_CONFIG).map(([code, cfg]) => (
-          <div key={code} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <div style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: cfg.cor }} />
-            <span style={{ fontSize: 11, color: '#6b7280' }}>
-              {code} — {cfg.nome}: <strong style={{ color: '#1f2937' }}>{(scores[code] ?? 0).toFixed(1)}</strong>
-            </span>
+// ─── Aba Visão Geral ──────────────────────────────────────────────────────────
+function AbaVisaoGeral({ discScores, pqScore, analysis, subtipo, perfilPrimario, perfilSecundario }) {
+  const subLabel = SUBTIPO_LABEL[subtipo] ?? subtipo;
+  const corPrim = DISC_COR[perfilPrimario] ?? '#e94560';
+
+  return (
+    <>
+      {/* Hero do perfil */}
+      <div style={{ ...C.card, display:'flex', alignItems:'center', gap:'1.25rem', marginBottom:'1.5rem', flexWrap:'wrap' }}>
+        <div style={{ width:'56px', height:'56px', borderRadius:'14px', background:corPrim,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          fontSize:'1.8rem', fontWeight:900, color:'#fff', flexShrink:0 }}>
+          {perfilPrimario}
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:'1.2rem', fontWeight:800, color:'#f1f5f9' }}>
+            Perfil {subLabel || perfilPrimario}
+            {perfilSecundario && <span style={{ color:'#64748b', fontWeight:400, fontSize:'1rem' }}> + {perfilSecundario}</span>}
           </div>
-        ))}
-      </div>
-    </div>
-  );
-});
-
-/** Gauge circular para PQ Score */
-const PQScoreGauge = memo(function PQScoreGauge({ score }) {
-  const CX = 80, CY = 80, RAIO = 60;
-  const angInicio = Math.PI * 0.75;   // 135°
-  const angFim    = Math.PI * 2.25;   // 405° (270° de arco)
-  const angValor  = angInicio + (score / 100) * (angFim - angInicio);
-
-  // Calcular ponto final do arco preenchido
-  const x2 = (CX + RAIO * Math.cos(angValor)).toFixed(1);
-  const y2 = (CY + RAIO * Math.sin(angValor)).toFixed(1);
-
-  // Extremos do arco de fundo
-  const xInicioFundo = (CX + RAIO * Math.cos(angInicio)).toFixed(1);
-  const yInicioFundo = (CY + RAIO * Math.sin(angInicio)).toFixed(1);
-  const xFimFundo    = (CX + RAIO * Math.cos(angFim)).toFixed(1);
-  const yFimFundo    = (CY + RAIO * Math.sin(angFim)).toFixed(1);
-
-  // Cor do gauge baseada no score
-  const cor = score >= 75 ? '#2ecc71' : score >= 63 ? '#f39c12' : score >= 51 ? '#e67e22' : '#e74c3c';
-  const nivel = score >= 75 ? 'Excelente' : score >= 63 ? 'Bom' : score >= 51 ? 'Médio' : 'Atenção';
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-      <svg width={160} height={120} viewBox="0 0 160 120" aria-label={`PQ Score: ${score}`}>
-        {/* Arco de fundo */}
-        <path
-          d={`M ${xInicioFundo} ${yInicioFundo} A ${RAIO} ${RAIO} 0 1 1 ${xFimFundo} ${yFimFundo}`}
-          fill="none"
-          stroke="#e5e7eb"
-          strokeWidth={12}
-          strokeLinecap="round"
-        />
-
-        {/* Arco preenchido */}
-        {score > 0 && (
-          <path
-            d={`M ${xInicioFundo} ${yInicioFundo} A ${RAIO} ${RAIO} 0 ${score > 50 ? 1 : 0} 1 ${x2} ${y2}`}
-            fill="none"
-            stroke={cor}
-            strokeWidth={12}
-            strokeLinecap="round"
-          />
-        )}
-
-        {/* Score central */}
-        <text x={CX} y={CY + 6} textAnchor="middle" fontSize={28} fontWeight={800} fill="#1f2937">
-          {score}
-        </text>
-        <text x={CX} y={CY + 24} textAnchor="middle" fontSize={10} fill="#9ca3af">
-          / 100
-        </text>
-
-        {/* Labels dos extremos */}
-        <text x={20} y={115} textAnchor="middle" fontSize={9} fill="#9ca3af">0</text>
-        <text x={140} y={115} textAnchor="middle" fontSize={9} fill="#9ca3af">100</text>
-        <text x={80} y={14} textAnchor="middle" fontSize={9} fill="#9ca3af">75 ótimo</text>
-      </svg>
-
-      <div style={{
-        fontSize: 13, fontWeight: 700,
-        color: cor,
-        backgroundColor: cor + '18',
-        padding: '4px 14px',
-        borderRadius: 999,
-        marginTop: -8,
-      }}>
-        {nivel}
-      </div>
-    </div>
-  );
-});
-
-/** Barra horizontal de sabotador */
-const BarraSabotador = memo(function BarraSabotador({ code, score, isTop3 }) {
-  const cfg = SABOTEUR_CONFIG[code];
-  const intensidade = getSaboteurIntensity(score);
-  const intensCfg = INTENSIDADE_CORES[intensidade];
-  const percentual = (score / 10) * 100;
-
-  return (
-    <div style={{
-      padding: '8px 0',
-      borderBottom: '1px solid #f3f4f6',
-      opacity: isTop3 ? 1 : 0.75,
-    }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {isTop3 && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', backgroundColor: cfg.cor, borderRadius: 4, padding: '1px 6px' }}>
-              TOP
-            </span>
-          )}
-          <span style={{ fontSize: 13, fontWeight: isTop3 ? 700 : 500, color: '#1f2937' }}>
-            {cfg.nome}
-          </span>
+          <div style={{ color:'#64748b', fontSize:'.85rem', marginTop:'.15rem' }}>Subtipo DISC: {subtipo}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{
-            fontSize: 11, fontWeight: 600,
-            color: intensCfg.text,
-            backgroundColor: intensCfg.bg,
-            padding: '2px 8px',
-            borderRadius: 999,
-          }}>
-            {intensCfg.label}
-          </span>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#374151', minWidth: 36, textAlign: 'right' }}>
-            {score.toFixed(1)}
-          </span>
+        <div style={{ display:'flex', gap:'1rem' }}>
+          <div style={{ textAlign:'center', background:'#0f172a', padding:'.75rem 1.25rem', borderRadius:'10px',
+            border:`1px solid ${corPrim}33` }}>
+            <div style={{ fontSize:'1.8rem', fontWeight:900, color:corPrim, lineHeight:1 }}>{perfilPrimario}</div>
+            <div style={{ color:'#64748b', fontSize:'.7rem', marginTop:'2px' }}>Primário</div>
+          </div>
+          <div style={{ textAlign:'center', background:'#0f172a', padding:'.75rem 1.25rem', borderRadius:'10px',
+            border:`1px solid ${pqCor(pqScore)}33` }}>
+            <div style={{ fontSize:'1.8rem', fontWeight:900, color:pqCor(pqScore), lineHeight:1 }}>{pqScore}</div>
+            <div style={{ color:'#64748b', fontSize:'.7rem', marginTop:'2px' }}>PQ Score</div>
+          </div>
         </div>
       </div>
 
-      {/* Barra de progresso */}
-      <div style={{ backgroundColor: '#f3f4f6', borderRadius: 999, height: 8, overflow: 'hidden' }}>
-        <div style={{
-          height: '100%',
-          width: `${percentual}%`,
-          backgroundColor: cfg.cor,
-          borderRadius: 999,
-          transition: 'width 0.6s ease',
-        }} />
-      </div>
-    </div>
-  );
-});
-
-/** Card de sabotador do Top 3 */
-const CardSabotadorTop = memo(function CardSabotadorTop({ code, score, rank }) {
-  const cfg = SABOTEUR_CONFIG[code];
-  const intensidade = getSaboteurIntensity(score);
-  const intensCfg = INTENSIDADE_CORES[intensidade];
-
-  return (
-    <div style={{
-      borderRadius: 16,
-      border: `2px solid ${cfg.cor}30`,
-      backgroundColor: cfg.cor + '08',
-      padding: '20px 16px',
-      flex: 1,
-      minWidth: 160,
-    }}>
-      <div style={{ fontSize: 11, color: cfg.cor, fontWeight: 700, marginBottom: 4 }}>
-        #{rank} MAIS ATIVO
-      </div>
-      <div style={{ fontSize: 16, fontWeight: 800, color: '#1f2937', marginBottom: 4 }}>
-        {cfg.nome}
-      </div>
-      <div style={{ fontSize: 28, fontWeight: 900, color: cfg.cor, lineHeight: 1 }}>
-        {score.toFixed(1)}
-        <span style={{ fontSize: 13, fontWeight: 400, color: '#9ca3af' }}>/10</span>
-      </div>
-      <div style={{
-        marginTop: 8, fontSize: 11, fontWeight: 600,
-        color: intensCfg.text,
-        backgroundColor: intensCfg.bg,
-        padding: '3px 10px',
-        borderRadius: 999,
-        display: 'inline-block',
-      }}>
-        {intensCfg.label}
-      </div>
-    </div>
-  );
-});
-
-/** Seção de relatório IA com markdown básico */
-const RelatorioIA = memo(function RelatorioIA({ relatorio, focos, recomendacoes, pontoFortes }) {
-  const [expandido, setExpandido] = useState(false);
-
-  const toggleExpandir = useCallback(() => setExpandido(prev => !prev), []);
-
-  return (
-    <div style={estilos.card}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <h3 style={estilos.cardTitulo}>✨ Análise por Inteligência Artificial</h3>
-        <span style={estilos.badgeIA}>Gemini AI</span>
-      </div>
-
-      {/* Recomendações */}
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={estilos.secaoTitulo}>5 Recomendações Práticas</h4>
-        <ol style={{ paddingLeft: 20, margin: 0 }}>
-          {recomendacoes?.map((rec, i) => (
-            <li key={i} style={estilos.listaItem}>{rec}</li>
-          ))}
-        </ol>
-      </div>
-
-      {/* Focos de mentoria */}
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={estilos.secaoTitulo}>3 Focos de Mentoria</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {focos?.map((foco, i) => (
-            <div key={i} style={{
-              display: 'flex', gap: 12, alignItems: 'flex-start',
-              backgroundColor: '#eff6ff', borderRadius: 10, padding: '10px 14px',
-            }}>
-              <div style={{
-                minWidth: 24, height: 24, borderRadius: '50%',
-                backgroundColor: '#6366f1', color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 11, fontWeight: 800,
-              }}>
-                {i + 1}
-              </div>
-              <p style={{ margin: 0, fontSize: 13, color: '#1e3a5f', lineHeight: 1.5 }}>{foco}</p>
-            </div>
-          ))}
+      {/* Radar + Gauge */}
+      <div style={C.grid2}>
+        <div style={{ ...C.card, marginBottom:0 }}>
+          <div style={C.secTitle}>Mapa DISC</div>
+          <div style={{ display:'flex', justifyContent:'center', padding:'.5rem 0' }}>
+            <RadarDISC scores={discScores}/>
+          </div>
+        </div>
+        <div style={{ ...C.card, marginBottom:0 }}>
+          <div style={C.secTitle}>PQ Score</div>
+          <div style={{ padding:'1rem 0', display:'flex', flexDirection:'column', alignItems:'center' }}>
+            <PQGauge score={pqScore}/>
+            <p style={{ color:'#94a3b8', fontSize:'.78rem', textAlign:'center', maxWidth:'240px',
+              lineHeight:1.5, marginTop:'1rem' }}>
+              O PQ mede quanto de seu tempo mental você age como aliado versus sabotador de si mesmo.
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* Pontos fortes */}
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={estilos.secaoTitulo}>Pontos Fortes a Potencializar</h4>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {pontoFortes?.map((pf, i) => (
-            <div key={i} style={{
-              backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
-              borderRadius: 8, padding: '6px 12px',
-              fontSize: 12, color: '#15803d', fontWeight: 500,
-            }}>
-              ✓ {pf}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Relatório completo expandível */}
-      <button onClick={toggleExpandir} style={estilos.btnExpandir}>
-        {expandido ? '▲ Ocultar relatório completo' : '▼ Ver relatório completo'}
-      </button>
-
-      {expandido && (
-        <div style={{
-          marginTop: 16, padding: 16,
-          backgroundColor: '#f8fafc',
-          borderRadius: 12,
-          fontSize: 13, color: '#374151',
-          lineHeight: 1.7,
-          whiteSpace: 'pre-wrap',
-          fontFamily: 'Georgia, serif',
-        }}>
-          {relatorio}
+      {/* Resumo */}
+      {analysis?.summary && (
+        <div style={{ ...C.card, marginBottom:'1.5rem' }}>
+          <div style={C.secTitle}>Resumo Executivo</div>
+          <p style={{ color:'#94a3b8', lineHeight:1.7, fontSize:'.9rem' }}>
+            <Bold>{analysis.summary}</Bold>
+          </p>
         </div>
       )}
-    </div>
+
+      {/* Forças + Atenções */}
+      {(analysis?.strengths?.length > 0 || analysis?.watchouts?.length > 0) && (
+        <div style={C.grid2}>
+          {analysis.strengths?.length > 0 && (
+            <div style={{ ...C.card, marginBottom:0 }}>
+              <div style={{ ...C.secTitle, color:'#38A169' }}>Pontos Fortes</div>
+              {analysis.strengths.map((s, i) => (
+                <div key={i} style={C.checkItem}>
+                  <span style={{ color:'#38A169', flexShrink:0 }}>✓</span> {s}
+                </div>
+              ))}
+            </div>
+          )}
+          {analysis.watchouts?.length > 0 && (
+            <div style={{ ...C.card, marginBottom:0 }}>
+              <div style={{ ...C.secTitle, color:'#E53E3E' }}>Pontos de Atenção</div>
+              {analysis.watchouts.map((w, i) => (
+                <div key={i} style={C.checkItem}>
+                  <span style={{ color:'#E53E3E', flexShrink:0 }}>!</span> {w}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
-});
+}
 
-// ============================================================
-// COMPONENTE PRINCIPAL
-// ============================================================
+// ─── Aba DISC ─────────────────────────────────────────────────────────────────
+function AbaDisc({ discScores, perfilPrimario, perfilSecundario }) {
+  return (
+    <>
+      <div style={C.card}>
+        <div style={{ display:'flex', alignItems:'center', gap:'1rem', marginBottom:'1.5rem' }}>
+          <div style={{ width:'56px', height:'56px', borderRadius:'14px',
+            background:DISC_COR[perfilPrimario] ?? '#e94560',
+            display:'flex', alignItems:'center', justifyContent:'center',
+            fontSize:'1.8rem', fontWeight:900, color:'#fff' }}>
+            {perfilPrimario}
+          </div>
+          <div>
+            <div style={{ fontSize:'1.1rem', fontWeight:700, color:'#e2e8f0' }}>
+              Perfil {perfilPrimario} — {DISC_NOME[perfilPrimario]}
+            </div>
+            <div style={{ color:'#64748b', fontSize:'.83rem' }}>Dimensão dominante</div>
+          </div>
+        </div>
 
-/**
- * ResultsDashboard
- * @param {Object} props
- * @param {Object} props.resultado         - Dados do assessment_results
- * @param {Object} props.relatorio         - Dados do user_reports
- * @param {string} props.proximaAvaliacao  - ISO date da próxima avaliação
- * @param {Function} props.onReavaliar     - Callback para reiniciar o assessment
- * @param {Function} props.onExportarPDF   - Callback para exportar PDF
- */
+        {(['D','I','S','C']).map(dim => {
+          const score = discScores[dim] ?? 0;
+          const pct = pct5(score);
+          const cor = DISC_COR[dim];
+          return (
+            <div key={dim} style={{ marginBottom:'1.25rem' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'.35rem' }}>
+                <span style={{ fontWeight:700, fontSize:'.95rem', color:cor }}>
+                  {dim} <span style={{ color:'#94a3b8', fontWeight:400, fontSize:'.8rem' }}>— {DISC_NOME[dim]}</span>
+                  {dim === perfilPrimario && <span style={{ marginLeft:'.5rem', fontSize:'.7rem', background:`${cor}22`, color:cor,
+                    padding:'1px 6px', borderRadius:'4px', border:`1px solid ${cor}44` }}>Primário</span>}
+                  {dim === perfilSecundario && <span style={{ marginLeft:'.5rem', fontSize:'.7rem', background:'#1e2a3a', color:'#94a3b8',
+                    padding:'1px 6px', borderRadius:'4px' }}>Secundário</span>}
+                </span>
+                <span style={{ fontWeight:700, color:cor, fontSize:'.95rem' }}>{score.toFixed(1)}/5</span>
+              </div>
+              <div style={{ height:'10px', background:'#1e2a3a', borderRadius:'99px', overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${pct}%`,
+                  background:`linear-gradient(90deg,${cor}aa,${cor})`,
+                  borderRadius:'99px', transition:'width .8s cubic-bezier(.4,0,.2,1)' }}/>
+              </div>
+              <p style={{ color:'#64748b', fontSize:'.78rem', marginTop:'.35rem' }}>{DISC_DESC[dim]}</p>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Como se manifesta */}
+      <div style={{ ...C.card, marginBottom:0 }}>
+        <div style={C.secTitle}>Como esse perfil se manifesta no trabalho</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem' }}>
+          {[
+            { icon:'🗣️', label:'Comunicação', desc:'Estilo baseado no perfil dominante — expressão, escuta e preferências de canal.' },
+            { icon:'🎯', label:'Tomada de decisão', desc:'Velocidade e critérios de decisão influenciados pelo seu DISC primário.' },
+            { icon:'⚡', label:'Sob pressão', desc:'Reações comportamentais típicas em situações de alta demanda ou conflito.' },
+            { icon:'🤝', label:'Em equipe', desc:'Contribuição natural, papel preferido e zonas de atrito em grupo.' },
+          ].map((item, i) => (
+            <div key={i} style={C.cardSm}>
+              <div style={{ fontSize:'1.5rem', marginBottom:'.35rem' }}>{item.icon}</div>
+              <div style={{ fontWeight:700, fontSize:'.85rem', color:'#e2e8f0', marginBottom:'.25rem' }}>{item.label}</div>
+              <div style={{ color:'#64748b', fontSize:'.78rem', lineHeight:1.5 }}>{item.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ─── Aba PQ & Sabotadores ─────────────────────────────────────────────────────
+function AbaPQ({ pqScore, sabotadoresOrdenados, top3 }) {
+  return (
+    <>
+      <div style={C.grid2}>
+        {/* Gauge */}
+        <div style={{ ...C.card, marginBottom:0, display:'flex', flexDirection:'column',
+          alignItems:'center', justifyContent:'center' }}>
+          <PQGauge score={pqScore}/>
+          <p style={{ color:'#64748b', fontSize:'.8rem', lineHeight:1.6, marginTop:'1rem', textAlign:'center' }}>
+            Pessoas com PQ acima de <strong style={{ color:'#38A169' }}>75</strong> atingem consistentemente
+            melhores resultados, relações mais satisfatórias e menor nível de estresse.
+          </p>
+        </div>
+
+        {/* O que é o PQ */}
+        <div style={{ ...C.card, marginBottom:0 }}>
+          <div style={C.secTitle}>O que é o PQ?</div>
+          <p style={{ color:'#94a3b8', fontSize:'.83rem', lineHeight:1.7, marginBottom:'.75rem' }}>
+            O <strong style={{ color:'#e2e8f0' }}>Positive Intelligence Quotient</strong> foi desenvolvido
+            por Shirzad Chamine e mede a proporção de tempo em que sua mente age como aliada versus sabotadora.
+          </p>
+          <div style={{ display:'flex', gap:'.75rem' }}>
+            {[
+              { range:'0–59', label:'Crítico',  cor:'#E53E3E' },
+              { range:'60–74', label:'Moderado', cor:'#D69E2E' },
+              { range:'75–100', label:'Alto',    cor:'#38A169' },
+            ].map(r => (
+              <div key={r.range} style={{ flex:1, background:'#0f172a', borderRadius:'8px',
+                padding:'.6rem', textAlign:'center', border:`1px solid ${r.cor}33` }}>
+                <div style={{ fontWeight:800, color:r.cor, fontSize:'.85rem' }}>{r.range}</div>
+                <div style={{ color:'#64748b', fontSize:'.7rem', marginTop:'2px' }}>{r.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Sabotadores */}
+      <div style={{ ...C.card, marginTop:'1.5rem', marginBottom:0 }}>
+        <div style={C.secTitle}>Sabotadores Identificados</div>
+        <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
+          Ranqueados por intensidade (escala 1–10). Sabotadores acima de 6 têm impacto significativo.
+        </p>
+        {sabotadoresOrdenados.map(({ code, score }, idx) => {
+          const cfg = SABOTADOR[code] ?? { nome: code, icon:'🔹', desc:'' };
+          const cor = sabCor(score);
+          const isPrincipal = idx === 0;
+          return (
+            <div key={code} style={{ ...C.cardSm, marginBottom:'.75rem' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:'.6rem', marginBottom:'.5rem' }}>
+                <span style={{ fontSize:'1.4rem' }}>{cfg.icon}</span>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between' }}>
+                    <span style={{ fontWeight:700, fontSize:'.9rem', color:'#e2e8f0' }}>
+                      {isPrincipal && <span style={{ color:'#E53E3E', fontSize:'.7rem', marginRight:'4px' }}>● Principal</span>}
+                      {cfg.nome}
+                    </span>
+                    <span style={{ fontWeight:700, color:cor, fontSize:'.9rem' }}>{score.toFixed(1)}</span>
+                  </div>
+                  <div style={{ height:'6px', background:'#1e2a3a', borderRadius:'99px',
+                    marginTop:'.35rem', overflow:'hidden' }}>
+                    <div style={{ height:'100%', width:`${(score/10)*100}%`,
+                      background:cor, borderRadius:'99px' }}/>
+                  </div>
+                </div>
+              </div>
+              <p style={{ color:'#64748b', fontSize:'.78rem', lineHeight:1.5, marginLeft:'2rem' }}>{cfg.desc}</p>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// ─── Aba Insights ─────────────────────────────────────────────────────────────
+function AbaInsights({ analysis }) {
+  if (!analysis) {
+    return (
+      <div style={{ ...C.card, textAlign:'center' }}>
+        <div style={{ fontSize:'2rem', marginBottom:'.75rem' }}>📊</div>
+        <p style={{ color:'#64748b', fontSize:'.9rem' }}>
+          Insights detalhados serão exibidos após a próxima análise.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Correlações */}
+      {analysis.correlations?.length > 0 && (
+        <div style={C.card}>
+          <div style={C.secTitle}>Correlações DISC × PQ</div>
+          <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
+            Padrões identificados pela combinação do perfil comportamental com os sabotadores ativos.
+          </p>
+          {analysis.correlations.map((corr, i) => {
+            const texto = typeof corr === 'string'
+              ? corr
+              : `O perfil **${corr.disc}** interage com o sabotador **${corr.sabotador}**: ${corr.insight}`;
+            return (
+              <div key={i} style={{ display:'flex', gap:'1rem', padding:'1rem', background:'#0f172a',
+                borderRadius:'10px', marginBottom:'.75rem', borderLeft:'3px solid #e94560' }}>
+                <span style={{ color:'#e94560', fontSize:'1.1rem', flexShrink:0, marginTop:'2px' }}>◆</span>
+                <p style={{ color:'#94a3b8', fontSize:'.85rem', lineHeight:1.6, margin:0 }}>
+                  <Bold>{texto}</Bold>
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Recomendações */}
+      {analysis.recommendations?.length > 0 && (
+        <div style={{ ...C.card, marginBottom:0 }}>
+          <div style={C.secTitle}>Recomendações Práticas</div>
+          <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
+            Ações concretas baseadas no seu perfil único.
+          </p>
+          {analysis.recommendations.map((rec, i) => {
+            const texto = typeof rec === 'string'
+              ? rec
+              : `**${rec.category}** — ${rec.action}`;
+            return (
+              <div key={i} style={{ display:'flex', gap:'1rem', padding:'1rem', background:'#0f172a',
+                borderRadius:'10px', marginBottom:'.75rem' }}>
+                <div style={{ minWidth:'28px', height:'28px', borderRadius:'50%',
+                  background:'#e9456022', border:'1px solid #e9456044',
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  color:'#e94560', fontWeight:800, fontSize:'.8rem', flexShrink:0 }}>
+                  {i + 1}
+                </div>
+                <p style={{ color:'#94a3b8', fontSize:'.85rem', lineHeight:1.6, margin:0 }}>
+                  <Bold>{texto}</Bold>
+                </p>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ─── Componente principal ─────────────────────────────────────────────────────
 export default function ResultsDashboard({
   resultado,
   relatorio,
+  analysis,
   proximaAvaliacao,
   onReavaliar,
   onExportarPDF,
   onVoltar,
 }) {
-  // ---- Estado: aba selecionada no dashboard ----
-  const [abaAtiva, setAbaAtiva] = useState('visao-geral'); // 'visao-geral' | 'disc' | 'sabotadores' | 'relatorio'
+  const [aba, setAba] = useState('visao-geral');
 
-  // ---- Dados derivados (sem useEffect) ----
   const discScores = useMemo(() => ({
     D: resultado?.score_dominante ?? 0,
     I: resultado?.score_influente  ?? 0,
@@ -501,460 +485,108 @@ export default function ResultsDashboard({
       .sort((a, b) => b.score - a.score);
   }, [resultado]);
 
-  const topSabotadores = useMemo(
-    () => resultado?.top_sabotadores ?? sabotadoresOrdenados.slice(0, 3).map(s => s.code),
-    [resultado, sabotadoresOrdenados]
-  );
-
-  const pqScore = resultado?.pq_score ?? 0;
-  const subtipo = resultado?.subtipo_disc ?? '';
-  const perfilPrimario = resultado?.perfil_primario ?? '';
+  const pqScore        = resultado?.pq_score          ?? 0;
+  const perfilPrimario = resultado?.perfil_primario    ?? '';
   const perfilSecundario = resultado?.perfil_secundario ?? '';
+  const subtipo        = resultado?.subtipo_disc       ?? '';
+  const completadoEm   = resultado?.completed_at ? formatData(resultado.completed_at) : null;
 
-  const assessmentBloqueado = proximaAvaliacao && new Date() < new Date(proximaAvaliacao);
+  const bloqueado = proximaAvaliacao && new Date() < new Date(proximaAvaliacao);
   const diasRestantes = proximaAvaliacao
-    ? Math.ceil((new Date(proximaAvaliacao) - new Date()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(proximaAvaliacao) - new Date()) / 86400000)
     : 0;
 
-  const completadoEm = resultado?.completed_at
-    ? formatarData(resultado.completed_at)
-    : null;
-
-  // ---- Handlers memorizados ----
-  const handleReavaliar = useCallback(() => {
-    if (!assessmentBloqueado && onReavaliar) onReavaliar();
-  }, [assessmentBloqueado, onReavaliar]);
-
   const handleExportar = useCallback(() => {
-    if (onExportarPDF) onExportarPDF(relatorio?.relatorio_completo ?? '');
+    if (onExportarPDF) onExportarPDF(typeof relatorio === 'string' ? relatorio : relatorio?.relatorio_completo ?? '');
   }, [onExportarPDF, relatorio]);
 
-  // ---- Sem dados ----
-  if (!resultado) {
-    return (
-      <div style={{ ...estilos.container, justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <p style={{ color: '#9ca3af', fontSize: 15 }}>Nenhum resultado encontrado.</p>
-      </div>
-    );
-  }
+  if (!resultado) return (
+    <div style={{ ...C.wrap, display:'flex', alignItems:'center', justifyContent:'center', minHeight:'60vh' }}>
+      <p style={{ color:'#64748b' }}>Nenhum resultado encontrado.</p>
+    </div>
+  );
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+  const ABAS = [
+    { id:'visao-geral', label:'Visão Geral' },
+    { id:'disc',        label:'DISC' },
+    { id:'pq',          label:'PQ & Sabotadores' },
+    { id:'insights',    label:'Insights' },
+  ];
+
   return (
-    <div style={estilos.container}>
-
+    <div style={C.wrap}>
       {/* Header */}
-      <div style={estilos.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {onVoltar && (
-            <button
-              onClick={onVoltar}
-              style={{ ...estilos.btnSecundario, padding: '6px 12px', fontSize: 13 }}
-              title="Voltar para a página inicial"
-            >
-              ← Início
-            </button>
-          )}
-          <div>
-            <div style={estilos.logo}>ProfileAI</div>
-            <div style={estilos.logoSub}>AMB FUSI — Damos vida à inovação</div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            onClick={handleExportar}
-            style={estilos.btnSecundario}
-            title="Exportar relatório em PDF"
-          >
-            ↓ PDF
-          </button>
-          <button
-            onClick={handleReavaliar}
-            disabled={assessmentBloqueado}
-            style={assessmentBloqueado ? estilos.btnDesabilitado : estilos.btnPrimario}
-            title={assessmentBloqueado ? `Disponível em ${diasRestantes} dias` : 'Iniciar nova avaliação'}
-          >
-            {assessmentBloqueado ? `🔒 ${diasRestantes}d` : '↺ Reavaliar'}
-          </button>
-        </div>
-      </div>
-
-      {/* Subtítulo com data */}
-      {completadoEm && (
-        <p style={{ textAlign: 'center', color: '#9ca3af', fontSize: 12, margin: '0 0 20px' }}>
-          Avaliação realizada em {completadoEm}
-          {proximaAvaliacao && ` · Próxima em ${formatarData(proximaAvaliacao)}`}
-        </p>
-      )}
-
-      {/* Card do perfil DISC */}
-      <div style={{
-        ...estilos.card,
-        background: `linear-gradient(135deg, ${DISC_CONFIG[perfilPrimario]?.cor ?? '#6366f1'}15, ${DISC_CONFIG[perfilSecundario]?.cor ?? '#8b5cf6'}10)`,
-        border: `2px solid ${DISC_CONFIG[perfilPrimario]?.cor ?? '#6366f1'}30`,
-        textAlign: 'center',
-      }}>
-        <div style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 4 }}>
-          Seu Subtipo DISC
-        </div>
-        <div style={{ fontSize: 32, fontWeight: 900, color: '#1f2937', letterSpacing: -1 }}>
-          {subtipo}
-        </div>
-        <div style={{ fontSize: 15, color: DISC_CONFIG[perfilPrimario]?.cor ?? '#6366f1', fontWeight: 600, marginTop: 4 }}>
-          {SUBTIPO_DESCRICOES[subtipo] ?? ''}
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <span style={{ ...estilos.badge, backgroundColor: DISC_CONFIG[perfilPrimario]?.cor ?? '#6366f1', color: '#fff' }}>
-            Primário: {DISC_CONFIG[perfilPrimario]?.nome}
-          </span>
-          {perfilSecundario && (
-            <span style={{ ...estilos.badge, backgroundColor: DISC_CONFIG[perfilSecundario]?.cor + '30', color: DISC_CONFIG[perfilSecundario]?.cor }}>
-              Secundário: {DISC_CONFIG[perfilSecundario]?.nome}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Abas de navegação */}
-      <div style={estilos.abas}>
-        {[
-          { id: 'visao-geral', label: 'Visão Geral' },
-          { id: 'disc',        label: 'Perfil DISC' },
-          { id: 'sabotadores', label: 'Sabotadores' },
-          { id: 'relatorio',   label: '✨ Relatório IA' },
-        ].map(aba => (
-          <button
-            key={aba.id}
-            onClick={() => setAbaAtiva(aba.id)}
-            style={{
-              ...estilos.abaBtn,
-              ...(abaAtiva === aba.id ? estilos.abaBtnAtiva : {}),
-            }}
-          >
-            {aba.label}
-          </button>
-        ))}
-      </div>
-
-      {/* ---- ABA: Visão Geral ---- */}
-      {abaAtiva === 'visao-geral' && (
-        <div style={estilos.grid2}>
-
-          {/* PQ Score */}
-          <div style={{ ...estilos.card, textAlign: 'center' }}>
-            <h3 style={estilos.cardTitulo}>PQ Score</h3>
-            <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px' }}>
-              Quociente de Inteligência Positiva
-            </p>
-            <PQScoreGauge score={pqScore} />
-            <p style={{ fontSize: 12, color: '#6b7280', marginTop: 12, lineHeight: 1.5 }}>
-              {pqScore >= 75
-                ? 'Acima do ponto crítico de desempenho ótimo (75+)'
-                : pqScore >= 63
-                  ? 'Acima da média populacional'
-                  : 'Sabotadores têm impacto significativo no desempenho'}
-            </p>
-          </div>
-
-          {/* Radar DISC resumido */}
-          <div style={{ ...estilos.card, textAlign: 'center' }}>
-            <h3 style={estilos.cardTitulo}>Perfil DISC</h3>
-            <RadarDISC scores={discScores} />
-          </div>
-
-          {/* Top 3 Sabotadores */}
-          <div style={{ ...estilos.card, gridColumn: 'span 2' }}>
-            <h3 style={estilos.cardTitulo}>Top 3 Sabotadores Mais Ativos</h3>
-            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-              {topSabotadores.slice(0, 3).map((code, i) => {
-                const dados = sabotadoresOrdenados.find(s => s.code === code);
-                return dados ? (
-                  <CardSabotadorTop key={code} code={code} score={dados.score} rank={i + 1} />
-                ) : null;
-              })}
+      <div style={{ background:'#0f0f23', borderBottom:'1px solid #1e2a3a', padding:'1rem 0' }}>
+        <div style={{ maxWidth:'900px', margin:'0 auto', padding:'0 1rem',
+          display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <div style={{ display:'flex', alignItems:'center', gap:'.75rem' }}>
+            {onVoltar && (
+              <button onClick={onVoltar} style={{ background:'transparent', border:'1px solid #1e2a3a',
+                color:'#94a3b8', borderRadius:'8px', padding:'.4rem .8rem', cursor:'pointer',
+                fontSize:'.8rem', fontWeight:600 }}>← Início</button>
+            )}
+            <div style={{ display:'flex', alignItems:'center', gap:'.5rem' }}>
+              <div style={{ width:'32px', height:'32px', borderRadius:'8px',
+                background:'linear-gradient(135deg,#e94560,#c0392b)',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                fontSize:'.9rem', fontWeight:900, color:'#fff' }}>P</div>
+              <span style={{ fontWeight:800, fontSize:'1rem', letterSpacing:'-.02em' }}>
+                Perfil<span style={{ color:'#e94560' }}>Master</span>
+              </span>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* ---- ABA: Perfil DISC ---- */}
-      {abaAtiva === 'disc' && (
-        <div style={estilos.card}>
-          <h3 style={estilos.cardTitulo}>Análise Detalhada do Perfil DISC</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0, alignItems: 'center', marginBottom: 24 }}>
-            <RadarDISC scores={discScores} />
-          </div>
-
-          {/* Barras DISC */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {Object.entries(DISC_CONFIG)
-              .sort(([a], [b]) => discScores[b] - discScores[a])
-              .map(([code, cfg]) => {
-                const score = discScores[code];
-                const percentual = ((score - 1) / 4) * 100;
-                return (
-                  <div key={code}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: cfg.cor }} />
-                        <span style={{ fontSize: 13, fontWeight: 600, color: '#1f2937' }}>
-                          {cfg.nome} ({code})
-                        </span>
-                        {code === perfilPrimario && (
-                          <span style={{ ...estilos.badge, backgroundColor: cfg.cor, color: '#fff', fontSize: 10 }}>Primário</span>
-                        )}
-                        {code === perfilSecundario && (
-                          <span style={{ ...estilos.badge, backgroundColor: cfg.cor + '20', color: cfg.cor, fontSize: 10 }}>Secundário</span>
-                        )}
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 11, color: '#9ca3af' }}>{getDISCLevel(score)}</span>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: '#1f2937' }}>{score.toFixed(1)}/5</span>
-                      </div>
-                    </div>
-                    <div style={{ backgroundColor: '#f3f4f6', borderRadius: 999, height: 10, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%',
-                        width: `${percentual}%`,
-                        backgroundColor: cfg.cor,
-                        borderRadius: 999,
-                      }} />
-                    </div>
-                  </div>
-                );
-              })}
+          <div style={{ display:'flex', gap:'.5rem', alignItems:'center' }}>
+            {completadoEm && (
+              <span style={{ color:'#475569', fontSize:'.75rem' }}>{completadoEm}</span>
+            )}
+            <button onClick={handleExportar}
+              style={{ background:'transparent', border:'1px solid #1e2a3a', color:'#94a3b8',
+                borderRadius:'8px', padding:'.4rem .8rem', cursor:'pointer', fontSize:'.8rem', fontWeight:600 }}>
+              ↓ PDF
+            </button>
+            <button onClick={() => { if (!bloqueado && onReavaliar) onReavaliar(); }}
+              disabled={bloqueado}
+              style={{ background: bloqueado ? '#1e2a3a' : '#e94560', color: bloqueado ? '#64748b' : '#fff',
+                border:'none', borderRadius:'8px', padding:'.4rem .8rem',
+                cursor: bloqueado ? 'not-allowed' : 'pointer', fontSize:'.8rem', fontWeight:600 }}>
+              {bloqueado ? `🔒 ${diasRestantes}d` : '↺ Reavaliar'}
+            </button>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ---- ABA: Sabotadores ---- */}
-      {abaAtiva === 'sabotadores' && (
-        <div style={estilos.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-            <h3 style={{ ...estilos.cardTitulo, margin: 0 }}>Intensidade dos Sabotadores</h3>
-            <span style={{ fontSize: 12, color: '#9ca3af' }}>escala 1–10</span>
-          </div>
-          <p style={{ fontSize: 12, color: '#9ca3af', margin: '0 0 16px' }}>
-            Ordenados por intensidade · TOP = top 3 mais ativos
-          </p>
-
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {sabotadoresOrdenados.map(({ code, score }) => (
-              <BarraSabotador
-                key={code}
-                code={code}
-                score={score}
-                isTop3={topSabotadores.includes(code)}
-              />
-            ))}
-          </div>
-
-          {/* Legenda de intensidades */}
-          <div style={{ marginTop: 20, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {Object.entries(INTENSIDADE_CORES).map(([key, cfg]) => (
-              <div key={key} style={{
-                fontSize: 11, padding: '3px 10px', borderRadius: 999,
-                backgroundColor: cfg.bg, color: cfg.text, fontWeight: 600,
-              }}>
-                {cfg.label}
-              </div>
-            ))}
-          </div>
+      {/* Main */}
+      <div style={C.inner}>
+        {/* Tabs */}
+        <div style={C.tabs}>
+          {ABAS.map(a => (
+            <button key={a.id} onClick={() => setAba(a.id)} style={C.tabBtn(aba === a.id)}>
+              {a.label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* ---- ABA: Relatório IA ---- */}
-      {abaAtiva === 'relatorio' && relatorio && (
-        <RelatorioIA
-          relatorio={relatorio.relatorio_completo}
-          focos={relatorio.focos_mentoria}
-          recomendacoes={relatorio.recomendacoes}
-          pontoFortes={relatorio.pontos_fortes}
-        />
-      )}
+        {aba === 'visao-geral' && (
+          <AbaVisaoGeral
+            discScores={discScores} pqScore={pqScore} analysis={analysis}
+            subtipo={subtipo} perfilPrimario={perfilPrimario} perfilSecundario={perfilSecundario}
+          />
+        )}
+        {aba === 'disc' && (
+          <AbaDisc discScores={discScores} perfilPrimario={perfilPrimario} perfilSecundario={perfilSecundario}/>
+        )}
+        {aba === 'pq' && (
+          <AbaPQ pqScore={pqScore} sabotadoresOrdenados={sabotadoresOrdenados}
+            top3={resultado?.top_sabotadores ?? []}/>
+        )}
+        {aba === 'insights' && <AbaInsights analysis={analysis}/>}
 
-      {abaAtiva === 'relatorio' && !relatorio && (
-        <div style={{ ...estilos.card, textAlign: 'center' }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🤖</div>
-          <p style={{ color: '#1f2937', fontWeight: 600, marginBottom: 8 }}>
-            Análise de IA temporariamente indisponível
-          </p>
-          <p style={{ color: '#6b7280', fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>
-            O serviço de geração de relatório está inacessível no momento (Gemini API indisponível ou não configurada).
-            Seus dados foram salvos — você pode exportar o PDF com os resultados calculados ou tentar novamente mais tarde.
-          </p>
-          <button
-            onClick={handleExportar}
-            style={{
-              background: '#6366f1', color: '#fff', border: 'none',
-              borderRadius: 10, padding: '10px 24px',
-              fontSize: 14, fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            ↓ Exportar PDF com dados calculados
-          </button>
+        {/* Rodapé */}
+        <div style={{ textAlign:'center', marginTop:'2.5rem', paddingTop:'1.5rem',
+          borderTop:'1px solid #1e2a3a', color:'#334155', fontSize:'.75rem' }}>
+          Gerado por <strong style={{ color:'#e94560' }}>PerfilMaster</strong> · Motor local v2.0
         </div>
-      )}
-
-      {/* Rodapé */}
-      <p style={estilos.rodape}>
-        ProfileAI v1.0 · AMB FUSI · Frameworks: Positive Intelligence + DISC
-      </p>
+      </div>
     </div>
   );
 }
-
-// ============================================================
-// ESTILOS (hoistados fora do componente — regra: rendering-hoist-jsx)
-// ============================================================
-
-const estilos = {
-  container: {
-    minHeight: '100vh',
-    backgroundColor: '#f8fafc',
-    padding: '24px 16px 48px',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-    maxWidth: 800,
-    margin: '0 auto',
-  },
-  header: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  logo: {
-    fontSize: 22,
-    fontWeight: 800,
-    background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text',
-  },
-  logoSub: {
-    fontSize: 11,
-    color: '#9ca3af',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 20,
-    padding: '24px 20px',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.06)',
-    marginBottom: 16,
-    border: '1px solid #f3f4f6',
-  },
-  cardTitulo: {
-    fontSize: 15,
-    fontWeight: 700,
-    color: '#111827',
-    margin: '0 0 4px',
-  },
-  grid2: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, 1fr)',
-    gap: 16,
-  },
-  abas: {
-    display: 'flex',
-    gap: 4,
-    marginBottom: 16,
-    backgroundColor: '#f3f4f6',
-    padding: 4,
-    borderRadius: 12,
-    overflowX: 'auto',
-  },
-  abaBtn: {
-    flex: 1,
-    padding: '8px 12px',
-    border: 'none',
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-    fontSize: 12,
-    fontWeight: 500,
-    color: '#6b7280',
-    cursor: 'pointer',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.15s',
-  },
-  abaBtnAtiva: {
-    backgroundColor: '#fff',
-    color: '#1f2937',
-    fontWeight: 700,
-    boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
-  },
-  badge: {
-    fontSize: 11,
-    fontWeight: 600,
-    padding: '2px 8px',
-    borderRadius: 999,
-    display: 'inline-block',
-  },
-  secaoTitulo: {
-    fontSize: 13,
-    fontWeight: 700,
-    color: '#374151',
-    margin: '0 0 10px',
-  },
-  listaItem: {
-    fontSize: 13,
-    color: '#374151',
-    lineHeight: 1.6,
-    marginBottom: 8,
-  },
-  badgeIA: {
-    fontSize: 11,
-    fontWeight: 600,
-    color: '#7c3aed',
-    backgroundColor: '#f5f3ff',
-    padding: '3px 10px',
-    borderRadius: 999,
-    border: '1px solid #ddd6fe',
-  },
-  btnExpandir: {
-    width: '100%',
-    padding: '10px',
-    border: '1.5px solid #e5e7eb',
-    borderRadius: 10,
-    backgroundColor: 'transparent',
-    color: '#6b7280',
-    fontSize: 13,
-    cursor: 'pointer',
-    fontWeight: 500,
-  },
-  btnPrimario: {
-    padding: '8px 16px',
-    backgroundColor: '#6366f1',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-  btnSecundario: {
-    padding: '8px 16px',
-    backgroundColor: 'transparent',
-    color: '#6b7280',
-    border: '1.5px solid #d1d5db',
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 500,
-    cursor: 'pointer',
-  },
-  btnDesabilitado: {
-    padding: '8px 16px',
-    backgroundColor: '#f3f4f6',
-    color: '#9ca3af',
-    border: '1.5px solid #e5e7eb',
-    borderRadius: 10,
-    fontSize: 13,
-    cursor: 'not-allowed',
-  },
-  rodape: {
-    fontSize: 11,
-    color: '#d1d5db',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-};

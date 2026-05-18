@@ -1,74 +1,105 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { calcularPerfil } from '../_shared/disc.ts';
-import { handleCors, jsonResponse } from '../_shared/response.ts';
-
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 );
-
+const ALLOWED_ORIGINS = [
+  'https://perfilmaster.netlify.app',
+  'https://profileai.netlify.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+function corsHeaders(req: Request) {
+  const origin = req.headers.get('origin') || '';
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'Access-Control-Allow-Origin': allowed,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  };
+}
+function jsonResponse(body: unknown, status = 200, req?: Request) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json; charset=utf-8', ...(req ? corsHeaders(req) : {}) },
+  });
+}
+const QUESTIONS = [
+  { id: 'q_d_01', dimension: 'D', type: 'likert5', weight: 1.0 }, { id: 'q_d_02', dimension: 'D', type: 'likert5', weight: 1.0 },
+  { id: 'q_d_03', dimension: 'D', type: 'forced_choice', weight: 1.2 }, { id: 'q_d_04', dimension: 'D', type: 'likert5', weight: 1.1 },
+  { id: 'q_d_05', dimension: 'D', type: 'scenario', weight: 1.5 }, { id: 'q_d_06', dimension: 'D', type: 'likert5', weight: 1.5 },
+  { id: 'q_i_01', dimension: 'I', type: 'likert5', weight: 1.0 }, { id: 'q_i_02', dimension: 'I', type: 'likert5', weight: 1.0 },
+  { id: 'q_i_03', dimension: 'I', type: 'forced_choice', weight: 1.2 }, { id: 'q_i_04', dimension: 'I', type: 'likert5', weight: 1.1 },
+  { id: 'q_i_05', dimension: 'I', type: 'scenario', weight: 1.5 }, { id: 'q_i_06', dimension: 'I', type: 'likert5', weight: 1.5 },
+  { id: 'q_s_01', dimension: 'S', type: 'likert5', weight: 1.0 }, { id: 'q_s_02', dimension: 'S', type: 'likert5', weight: 1.0 },
+  { id: 'q_s_03', dimension: 'S', type: 'forced_choice', weight: 1.2 }, { id: 'q_s_04', dimension: 'S', type: 'likert5', weight: 1.1 },
+  { id: 'q_s_05', dimension: 'S', type: 'scenario', weight: 1.5 }, { id: 'q_s_06', dimension: 'S', type: 'likert5', weight: 1.5 },
+  { id: 'q_c_01', dimension: 'C', type: 'likert5', weight: 1.0 }, { id: 'q_c_02', dimension: 'C', type: 'likert5', weight: 1.0 },
+  { id: 'q_c_03', dimension: 'C', type: 'forced_choice', weight: 1.2 }, { id: 'q_c_04', dimension: 'C', type: 'likert5', weight: 1.1 },
+  { id: 'q_c_05', dimension: 'C', type: 'scenario', weight: 1.5 }, { id: 'q_c_06', dimension: 'C', type: 'likert5', weight: 1.5 },
+];
+const QUESTION_MAP = new Map(QUESTIONS.map((q) => [q.id, q]));
+function calcularPerfil(respostas: Record<string, number>) {
+  const acumulado = { D: 0, I: 0, S: 0, C: 0 };
+  const pesosTotal = { D: 0, I: 0, S: 0, C: 0 };
+  for (const [questionId, valor] of Object.entries(respostas || {})) {
+    const q = QUESTION_MAP.get(questionId);
+    if (!q) continue;
+    const range = q.type === 'likert5' ? 4 : 3;
+    const normalizado = Math.max(0, Math.min(1, (Number(valor) - 1) / range));
+    acumulado[q.dimension] += normalizado * q.weight;
+    pesosTotal[q.dimension] += q.weight;
+  }
+  const scores = {
+    D: pesosTotal.D > 0 ? Math.round((acumulado.D / pesosTotal.D) * 100) : 0,
+    I: pesosTotal.I > 0 ? Math.round((acumulado.I / pesosTotal.I) * 100) : 0,
+    S: pesosTotal.S > 0 ? Math.round((acumulado.S / pesosTotal.S) * 100) : 0,
+    C: pesosTotal.C > 0 ? Math.round((acumulado.C / pesosTotal.C) * 100) : 0,
+  };
+  const ordenado = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+  const perfilPrimario = ordenado[0]?.[0] || 'D';
+  const perfilSecundario = ordenado[1] && ordenado[1][1] >= Number(ordenado[0][1]) * 0.8 ? ordenado[1][0] : undefined;
+  return { dominante: scores.D, influente: scores.I, estavel: scores.S, analitico: scores.C, perfilPrimario, perfilSecundario };
+}
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
-  pendente: ['em_andamento'],
-  em_andamento: ['concluido'],
+  pendente: ['em_andamento', 'concluido'],
+  em_andamento: ['em_andamento', 'concluido'],
   concluido: [],
 };
-
 Deno.serve(async (req) => {
-  const cors = handleCors(req);
-  if (cors) return cors;
-
+  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
   try {
     const { token, novoStatus, respostas } = await req.json();
-    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100) {
+    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100)
       return jsonResponse({ error: 'token inválido' }, 400, req);
-    }
     if (!novoStatus) return jsonResponse({ error: 'novoStatus is required' }, 400, req);
-
     const { data: avaliado, error: avaliadoError } = await supabase
-      .from('app_avaliados')
-      .select('*')
-      .eq('token', token)
-      .single();
-
-    if (avaliadoError || !avaliado) {
+      .from('app_avaliados').select('*').eq('token', token).single();
+    if (avaliadoError || !avaliado)
       return jsonResponse({ error: 'Token inválido ou expirado.' }, 404, req);
-    }
-
     const statusAtual = avaliado.status;
-    if (!TRANSICOES_VALIDAS[statusAtual]?.includes(novoStatus)) {
+    if (!TRANSICOES_VALIDAS[statusAtual]?.includes(novoStatus))
       return jsonResponse({ error: `Transição inválida: ${statusAtual} -> ${novoStatus}` }, 400, req);
-    }
-
     const agora = new Date().toISOString();
-    const payload: Record<string, unknown> = {
-      status: novoStatus,
-      atualizadoEm: agora,
-    };
-    if (novoStatus === 'em_andamento') payload.iniciadoEm = agora;
-
+    const payload: Record<string, unknown> = { status: novoStatus, atualizadoem: agora };
+    if (novoStatus === 'em_andamento') payload.iniciadoem = agora;
     let perfil: Record<string, unknown> | null = null;
     if (novoStatus === 'concluido') {
-      if (!respostas || typeof respostas !== 'object' || Object.keys(respostas).length === 0) {
+      if (!respostas || typeof respostas !== 'object' || Object.keys(respostas).length === 0)
         return jsonResponse({ error: 'respostas are required to conclude' }, 400, req);
-      }
-      if (Object.keys(respostas).length > 200) {
-        return jsonResponse({ error: 'respostas object too large' }, 400, req);
-      }
       perfil = calcularPerfil(respostas);
       payload.respostas = respostas;
       payload.perfil = perfil;
-      payload.concluidoEm = agora;
-
+      payload.concluidoem = agora;
       await supabase.from('app_sessao_respostas').insert({
-        avaliadoId: avaliado.id || avaliado.token,
-        sessaoId: avaliado.sessaoId,
+        avaliadoid: avaliado.id || avaliado.token,
+        sessaoid: avaliado.sessaoid,
         respostas,
-        submissaoEm: agora,
+        submissaoem: agora,
       });
     }
-
     await supabase.from('app_avaliados').update(payload).eq('token', token);
-
     return jsonResponse({ success: true, ...(perfil ? { perfil } : {}) }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'atualizarStatus failed' }, 500, req);

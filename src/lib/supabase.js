@@ -9,3 +9,9 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 export default supabase;
+
+export async function callEdgeFunction(name, payload = {}) {
+  const { data, error } = await supabase.functions.invoke(name, { body: payload });
+  if (error) throw error;
+  return data;
+}

@@ -8,6 +8,7 @@ import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Input from '@/components/ui/Input.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
+import ApiKeySection from '@/components/ApiKeySection.jsx';
 
 const LANGUAGES = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
@@ -75,6 +76,7 @@ function Toggle({ checked, onChange, label, description }) {
 
 // ─── Save feedback ─────────────────────────────────────────────────────────────
 function SaveFeedback({ status }) {
+  const { t } = useTranslation();
   if (status === 'idle') return null;
   return (
     <span className={clsx(
@@ -87,14 +89,14 @@ function SaveFeedback({ status }) {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
           </svg>
-          Salvando...
+          {t('app.saving', 'Salvando...')}
         </>
       ) : (
         <>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4" aria-hidden="true">
             <polyline points="20 6 9 17 4 12" />
           </svg>
-          Salvo!
+          {t('app.saved', 'Salvo!')}
         </>
       )}
     </span>
@@ -375,6 +377,16 @@ export default function Settings() {
               {t('settings.notif.placeholder', 'As notificações por e-mail serão ativadas em breve.')}
             </p>
           </div>
+        </Card>
+      </SettingsSection>
+
+      {/* ── API Key de IA ── */}
+      <SettingsSection
+        title={t('settings.aiTitle', 'Inteligência Artificial')}
+        description={t('settings.aiDesc', 'Configure uma API key para análises aprimoradas por IA. Sem key, as análises são geradas localmente.')}
+      >
+        <Card variant="default">
+          <ApiKeySection />
         </Card>
       </SettingsSection>
 

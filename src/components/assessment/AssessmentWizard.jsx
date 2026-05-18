@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
-import { createAssessment, submitAssessment, updateUser, createProfile, getUser } from '@/firebase/firestore.js';
+import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser } from '@/firebase/firestore.js';
 import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
 import Button from '@/components/ui/Button.jsx';
 import useAuthStore from '@/store/authStore.js';
@@ -436,6 +436,9 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
     }, 150);
   }, []);
 
+  // Ref keeps avancar from closing over a stale enviar (enviar is defined below)
+  const enviarRef = useRef(null);
+
   // ─── Advance ──────────────────────────────────────────────────────────────
   const avancar = useCallback(() => {
     if (!perguntaAtual) return;
@@ -460,8 +463,8 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
         // Next saboteur question
         animateTransition('forward', () => setIndice(proximoIndice));
       } else {
-        // All done → submit
-        enviar();
+        // All done → submit (use ref so we always call the latest enviar)
+        enviarRef.current?.();
       }
     }
   }, [etapa, indice, perguntaAtual, respostas, perguntasDisc.length, perguntasSaboteurs.length, animateTransition]);
@@ -528,13 +531,33 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
         } catch (_) { /* segue sem groupId */ }
       }
 
-      // 2. Cria e submete a avaliação
-      const assessmentDocId = await createAssessment({
-        uid: user.uid,
-        moduleId: 'full',
-        groupId,
-        totalQuestions: TOTAL_QUESTIONS,
-      });
+      // 2. Tenta reutilizar assessment já atribuído pelo admin (pending/in_progress)
+      //    Isso garante que o groupId correto seja preservado e o admin veja o status atualizado.
+      let assessmentDocId = null;
+      try {
+        const existing = await getAssessmentsByUser(user.uid);
+        const atribuido = existing.find(
+          (a) => a.status === 'pending' || a.status === 'in_progress'
+        );
+        if (atribuido) {
+          assessmentDocId = atribuido.id;
+          // Usa o groupId do assessment atribuído se o nosso for null
+          if (!groupId && atribuido.groupId) groupId = atribuido.groupId;
+        }
+      } catch (_) { /* segue criando novo */ }
+
+      // Se não há assessment existente, cria um novo
+      if (!assessmentDocId) {
+        assessmentDocId = await createAssessment({
+          uid: user.uid,
+          moduleId: null,
+          groupId,
+          totalQuestions: TOTAL_QUESTIONS,
+          moduleName: 'Avaliação DISC Padrão',
+          moduleObjective: 'Avaliação comportamental DISC + Sabotadores',
+        });
+      }
+
       await submitAssessment(assessmentDocId, { ...respostas });
 
       // 3. Calcula perfil DISC localmente
@@ -576,6 +599,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       submittingRef.current = false;
     }
   }, [user, respostas, perguntasDisc, perguntasSaboteurs, onCompleted, t]);
+  enviarRef.current = enviar; // keep ref current every render
 
   // ─── Transition screen → start saboteurs ──────────────────────────────────
   const iniciarSaboteurs = useCallback(() => {
@@ -698,11 +722,14 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#A0A3B1]">
           <span className="font-medium text-[#F7F8FC]">
-            {t('assessment.question', 'Questão')} {indice + 1}
+            {t('assessment.question', 'Questão')}{' '}
+            {etapa === 'disc' ? indice + 1 : TOTAL_DISC + indice + 1}
           </span>{' '}
-          <span>
-            {t('assessment.of', 'de')} {perguntas.length}
-          </span>
+          <span>{t('assessment.of', 'de')} {TOTAL_QUESTIONS}</span>
+        </p>
+        <p className="text-xs text-[#4A4D6A]">
+          {indice + 1} {t('assessment.of', 'de')} {perguntas.length}{' '}
+          {etapa === 'disc' ? 'nesta etapa' : 'nesta etapa'}
         </p>
       </div>
 

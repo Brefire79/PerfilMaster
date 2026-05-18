@@ -15,7 +15,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 // Versão "embutida" no bundle. Trocada a cada build pelo bump-version.mjs.
 // Precisa bater com public/version.json.
-const APP_VERSION = '1.0.4';
+const APP_VERSION = '1.0.17';
 const CHECK_INTERVAL_MS = 60_000; // 1 minuto
 
 async function fetchRemoteVersion() {
@@ -102,8 +102,8 @@ export default function usePwaUpdate() {
       console.warn('[PWA] applyUpdate cleanup falhou:', err);
     } finally {
       // Reload com cache-bust na URL para garantir HTML/JS novos
-      const sep = window.location.href.includes('?') ? '&' : '?';
-      window.location.href = `${window.location.pathname}${sep}_v=${Date.now()}`;
+      // Sempre usa pathname limpo + ? para evitar URLs inválidas como /rota&_v=
+      window.location.replace(`${window.location.pathname}?_v=${Date.now()}`);
     }
   }, []);
 
