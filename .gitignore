@@ -17,6 +17,7 @@ dev-dist
 # Supabase local
 .supabase
 supabase/.temp
+supabase.exe
 
 # IDE
 .vscode/*
