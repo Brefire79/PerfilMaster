@@ -76,11 +76,8 @@ function ProgressBar({ answered, total, etapaLabel }) {
         <span className="font-medium">{etapaLabel}</span>
         <span className="font-mono">{pct}%</span>
       </div>
-      <div className="h-2 bg-[#2D3047] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[#6366F1] transition-all duration-500 ease-out"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -267,7 +264,7 @@ function LikertQuestion({ question, selectedValue, onSelect, disabled }) {
         })}
       </div>
 
-      {/* Mobile vertical */}
+      {/* Mobile vertical — option-cards (F1) */}
       <div className="flex flex-col gap-2 sm:hidden">
         {LIKERT_OPTIONS.map((opt) => {
           const isSelected = selectedValue === opt.value;
@@ -276,36 +273,22 @@ function LikertQuestion({ question, selectedValue, onSelect, disabled }) {
               key={opt.value}
               type="button"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => onSelect(opt.value)}
-              className={clsx(
-                'flex items-center gap-4 py-3 px-4 rounded-xl border transition-all duration-200',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6366F1] focus-visible:outline-offset-2',
-                isSelected
-                  ? 'bg-[#6366F1]/15 border-[#6366F1] shadow-[0_0_12px_rgba(99,102,241,0.2)]'
-                  : 'bg-[#1A1D2E] border-[#2D3047] hover:border-[#6366F1]/40',
-                disabled && 'opacity-60 cursor-not-allowed',
-              )}
+              className={clsx('option-card', isSelected && 'is-selected')}
             >
               <span
                 className={clsx(
-                  'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold font-mono flex-shrink-0 border transition-colors',
-                  isSelected
-                    ? 'bg-[#6366F1] text-white border-[#6366F1]'
-                    : 'bg-[#242736] text-[#A0A3B1] border-[#2D3047]',
+                  'option-card__lead text-sm font-bold',
+                  isSelected ? 'text-white' : 'text-[#A0A3B1]',
                 )}
+                style={isSelected ? { background: '#6366F1' } : { background: '#1A1D2E' }}
               >
                 {opt.value}
               </span>
-              <span
-                className={clsx(
-                  'text-sm transition-colors',
-                  isSelected ? 'text-[#F7F8FC] font-medium' : 'text-[#A0A3B1]',
-                )}
-              >
-                {opt.label}
-              </span>
+              <span className="flex-1">{opt.label}</span>
               {isSelected && (
-                <span className="ml-auto text-[#6366F1]">
+                <span className="text-[#6366F1]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
