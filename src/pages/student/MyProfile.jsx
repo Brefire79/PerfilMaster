@@ -14,11 +14,12 @@ import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 
 // ─── Profile colors ───────────────────────────────────────────────────────────
 
+// Fonte única de cores DISC (alinhada aos tokens F1): D=#EF4444 I=#F59E0B S=#22C55E C=#6366F1
 const PROFILE_COLORS = {
-  D: { bg: 'bg-[#E53E3E]/10', border: 'border-[#E53E3E]/30', text: 'text-[#E53E3E]', hex: '#E53E3E', ring: 'ring-[#E53E3E]/40' },
-  I: { bg: 'bg-[#D69E2E]/10', border: 'border-[#D69E2E]/30', text: 'text-[#D69E2E]', hex: '#D69E2E', ring: 'ring-[#D69E2E]/40' },
-  S: { bg: 'bg-[#38A169]/10', border: 'border-[#38A169]/30', text: 'text-[#38A169]', hex: '#38A169', ring: 'ring-[#38A169]/40' },
-  C: { bg: 'bg-[#3182CE]/10', border: 'border-[#3182CE]/30', text: 'text-[#3182CE]', hex: '#3182CE', ring: 'ring-[#3182CE]/40' },
+  D: { bg: 'bg-[#EF4444]/10', border: 'border-[#EF4444]/30', text: 'text-[#EF4444]', hex: '#EF4444', ring: 'ring-[#EF4444]/40', fill: 'score-fill--D' },
+  I: { bg: 'bg-[#F59E0B]/10', border: 'border-[#F59E0B]/30', text: 'text-[#F59E0B]', hex: '#F59E0B', ring: 'ring-[#F59E0B]/40', fill: 'score-fill--I' },
+  S: { bg: 'bg-[#22C55E]/10', border: 'border-[#22C55E]/30', text: 'text-[#22C55E]', hex: '#22C55E', ring: 'ring-[#22C55E]/40', fill: 'score-fill--S' },
+  C: { bg: 'bg-[#6366F1]/10', border: 'border-[#6366F1]/30', text: 'text-[#6366F1]', hex: '#6366F1', ring: 'ring-[#6366F1]/40', fill: 'score-fill--C' },
 };
 
 // ─── No Profile CTA ───────────────────────────────────────────────────────────
@@ -62,53 +63,48 @@ function ProfileHeader({ profile, userName }) {
   const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
 
   return (
-    <div className="flex flex-col items-center gap-4 py-6 text-center">
-      {/* Large profile badge */}
+    <div className="relative overflow-hidden rounded-3xl surface-brand p-6 text-center animate-scale-in mb-2">
+      {/* brilho sutil na cor do perfil */}
       <div
-        className={clsx(
-          'w-24 h-24 rounded-3xl flex items-center justify-center text-5xl font-heading font-black border-2 ring-4',
-          colors.bg,
-          colors.border,
-          colors.text,
-          colors.ring
-        )}
-      >
-        {type}
-      </div>
+        className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full blur-3xl opacity-40"
+        style={{ background: colors.hex }}
+        aria-hidden="true"
+      />
+      <div className="relative flex flex-col items-center gap-3">
+        {/* Avatar grande do perfil */}
+        <div
+          className="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl font-heading font-black text-white shadow-card"
+          style={{ background: colors.hex }}
+        >
+          {type}
+        </div>
 
-      <div className="space-y-1">
-        <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
-          {userName}
-        </h1>
-        <p className={clsx('text-sm font-medium', colors.text)}>
-          {t('profiles.yourProfile', 'Seu Perfil')} — {t(`profiles.${type}.name`, type)}
-        </p>
-        <p className="text-xs text-[#A0A3B1]">
-          {t(`profiles.${type}.tagline`, '')}
-        </p>
-      </div>
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-heading font-bold text-white text-balance">
+            {userName}
+          </h1>
+          <p className="text-sm font-medium text-white/90">
+            {t('profiles.yourProfile', 'Seu Perfil')} — {t(`profiles.${type}.name`, type)}
+          </p>
+          <p className="text-xs text-white/75">
+            {t(`profiles.${type}.tagline`, '')}
+          </p>
+        </div>
 
-      {/* Score pills */}
-      {profile?.scores && (
-        <div className="flex gap-2 flex-wrap justify-center">
-          {Object.entries(profile.scores).map(([key, value]) => {
-            const c = PROFILE_COLORS[key] ?? PROFILE_COLORS.D;
-            return (
+        {/* Score pills */}
+        {profile?.scores && (
+          <div className="flex gap-2 flex-wrap justify-center mt-1">
+            {Object.entries(profile.scores).map(([key, value]) => (
               <span
                 key={key}
-                className={clsx(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono font-bold border',
-                  c.bg,
-                  c.border,
-                  c.text
-                )}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-white/15 text-white"
               >
                 {key} {value}%
               </span>
-            );
-          })}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -142,19 +138,26 @@ function Tabs({ tabs, activeTab, onTabChange }) {
 function ScoreBars({ scores }) {
   if (!scores || Object.keys(scores).length === 0) return null;
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {Object.entries(scores).map(([key, value]) => {
         const c = PROFILE_COLORS[key] ?? PROFILE_COLORS.D;
         return (
-          <div key={key} className="flex items-center gap-3">
-            <span className={clsx('text-xs font-mono font-bold w-4', c.text)}>{key}</span>
-            <div className="flex-1 h-2.5 bg-[#2D3047] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${value}%`, backgroundColor: c.hex }}
-              />
+          <div key={key} className="score-row">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <span
+                  className="grid place-items-center w-5 h-5 rounded text-[10px] font-bold text-white"
+                  style={{ background: c.hex }}
+                >
+                  {key}
+                </span>
+                <span className="text-xs text-[#A0A3B1]">{key}</span>
+              </span>
+              <span className="text-xs font-bold tabular-nums" style={{ color: c.hex }}>{value}%</span>
             </div>
-            <span className="text-xs font-mono text-[#A0A3B1] w-8 text-right">{value}%</span>
+            <div className="score-track">
+              <div className={clsx('score-fill', c.fill)} style={{ width: `${value}%` }} />
+            </div>
           </div>
         );
       })}
