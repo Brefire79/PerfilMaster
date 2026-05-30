@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
-import { updateUser } from '@/firebase/firestore.js';
+import { updateUser, getUser } from '@/firebase/firestore.js';
 import { signOut } from '@/firebase/auth.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
@@ -121,6 +121,21 @@ export default function Settings() {
   });
   const [companyStatus, setCompanyStatus] = useState('idle');
 
+  // FIX M1: carrega dados existentes do usuário (companyName, logoUrl)
+  useEffect(() => {
+    if (!user?.uid) return;
+    getUser(user.uid)
+      .then((doc) => {
+        if (doc) {
+          setCompanyForm({
+            companyName: doc.companyName || doc.metadata?.companyName || '',
+            logoUrl: doc.logoUrl || doc.metadata?.logoUrl || '',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [user?.uid]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Preferences ─────────────────────────────────────────────────────────────
   const [language, setLanguage] = useState(i18n.language || 'pt-BR');
   const [prefStatus, setPrefStatus] = useState('idle');
@@ -178,8 +193,10 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
+    // FIX A3: exclusão completa de dados requer Edge Function com service_role.
+    // Por ora apenas desloga e limpa o estado local — dados ficam no banco.
+    // TODO: chamar Edge Function deleteAccount({ uid: user.uid }) antes do signOut.
     try {
-      // In production: call Firebase function to delete all user data
       await signOut();
       clearUser();
     } catch (err) {
@@ -401,10 +418,11 @@ export default function Settings() {
               <p className="text-xs text-[#A0A3B1] mt-0.5">
                 {t(
                   'settings.deleteAccountWarning',
-                  'Todos os seus dados, grupos e relatórios serão permanentemente removidos. Esta ação não pode ser desfeita.'
+                  'Encerrará sua sessão. A exclusão completa dos dados será implementada em breve.'
                 )}
               </p>
             </div>
+            {/* FIX A3: botão habilitado mas aviso deixa claro que só desloga por ora */}
             <Button
               variant="danger"
               size="sm"

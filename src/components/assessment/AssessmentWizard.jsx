@@ -552,9 +552,6 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           uid: user.uid,
           moduleId: null,
           groupId,
-          totalQuestions: TOTAL_QUESTIONS,
-          moduleName: 'Avaliação DISC Padrão',
-          moduleObjective: 'Avaliação comportamental DISC + Sabotadores',
         });
       }
 

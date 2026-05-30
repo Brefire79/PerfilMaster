@@ -1,30 +1,11 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// P1-3: usa CORS centralizado de _shared/response.ts (alinhado com PRD §4.4)
+import { handleCors, jsonResponse } from '../_shared/response.ts';
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 );
-const ALLOWED_ORIGINS = [
-  'https://perfilmaster.netlify.app',
-  'https://profileai.netlify.app',
-  'http://localhost:5173',
-  'http://localhost:3000',
-];
-function corsHeaders(req: Request) {
-  const origin = req.headers.get('origin') || '';
-  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
-  return {
-    'Access-Control-Allow-Origin': allowed,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Vary': 'Origin',
-  };
-}
-function jsonResponse(body: unknown, status = 200, req?: Request) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json; charset=utf-8', ...(req ? corsHeaders(req) : {}) },
-  });
-}
 const QUESTIONS = [
   { id: 'q_d_01', dimension: 'D', type: 'likert5', weight: 1.0 }, { id: 'q_d_02', dimension: 'D', type: 'likert5', weight: 1.0 },
   { id: 'q_d_03', dimension: 'D', type: 'forced_choice', weight: 1.2 }, { id: 'q_d_04', dimension: 'D', type: 'likert5', weight: 1.1 },
@@ -68,7 +49,8 @@ const TRANSICOES_VALIDAS: Record<string, string[]> = {
   concluido: [],
 };
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: corsHeaders(req) });
+  const cors = handleCors(req);
+  if (cors) return cors;
   try {
     const { token, novoStatus, respostas } = await req.json();
     if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100)

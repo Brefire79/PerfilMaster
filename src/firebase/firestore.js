@@ -1,4 +1,4 @@
-import { getAccessToken } from './auth.js';
+import { getValidAccessToken } from './auth.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -147,7 +147,7 @@ function buildFilterQuery(filters = []) {
 }
 
 async function buildHeaders() {
-  const token = getAccessToken();
+  const token = await getValidAccessToken(); // auto-refresh if expired
   const headers = {
     apikey: SUPABASE_ANON_KEY,
     Authorization: `Bearer ${token || SUPABASE_ANON_KEY}`,
@@ -566,15 +566,17 @@ export function subscribeToProfile(uid, callback) {
 // INVITES
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export async function createInvite(groupId, adminUid) {
+// D5b: aceita expiryDays (padrão 7) — InviteLink.jsx passa 7/15/30
+export async function createInvite(groupId, adminUid, expiryDays = 7) {
   const token = crypto.randomUUID();
+  const days = Number(expiryDays) > 0 ? Number(expiryDays) : 7;
   await insertRow(COLLECTIONS.INVITES, {
     token,
     groupId,
     adminUid,
     used: false,
     createdAt: nowIso(),
-    expiresAt: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+    expiresAt: Timestamp.fromDate(new Date(Date.now() + days * 24 * 60 * 60 * 1000)),
   });
   return token;
 }

@@ -14,6 +14,39 @@ function loadSession() {
   }
 }
 
+let _refreshPromise = null;
+
+function isTokenExpired(session) {
+  if (!session?.access_token) return true;
+  try {
+    const payload = JSON.parse(atob(session.access_token.split('.')[1]));
+    return Date.now() / 1000 > payload.exp - 30; // 30s buffer
+  } catch { return true; }
+}
+
+async function refreshSession() {
+  if (!currentSession?.refresh_token) return null;
+  if (_refreshPromise) return _refreshPromise;
+  _refreshPromise = (async () => {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
+        {
+          method: 'POST',
+          headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
+        }
+      );
+      if (!res.ok) { saveSession(null); return null; }
+      const data = await res.json();
+      saveSession(data);
+      return data;
+    } catch { return null; }
+    finally { _refreshPromise = null; }
+  })();
+  return _refreshPromise;
+}
+
 function saveSession(session) {
   currentSession = session || null;
   if (session) {
@@ -160,6 +193,14 @@ export function getAccessToken() {
   return currentSession?.access_token || null;
 }
 
+export async function getValidAccessToken() {
+  if (isTokenExpired(currentSession)) {
+    const refreshed = await refreshSession();
+    return refreshed?.access_token || null;
+  }
+  return currentSession?.access_token || null;
+}
+
 export async function getIdToken() {
-  return getAccessToken();
+  return getValidAccessToken();
 }

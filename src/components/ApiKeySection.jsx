@@ -6,20 +6,13 @@
 import { useState, useEffect } from 'react';
 import { detectApiProvider, loadApiKey, saveApiKey, callAiApi } from '../lib/apiKeyManager.js';
 
+// D5: Somente Gemini (PRD §4.3)
 const PROVIDER_LABELS = {
-  anthropic: '🤖 Claude (Anthropic)',
-  openai: '🧠 GPT (OpenAI)',
-  google: '✨ Gemini (Google)',
-  groq: '⚡ Llama (Groq)',
-  cohere: '🔮 Cohere',
-  unknown: '🔑 Provider (formato OpenAI)',
+  google: '✨ Gemini (Google AI)',
 };
 
 const PROVIDER_LINKS = [
-  { name: 'Anthropic (Claude)', url: 'https://console.anthropic.com/settings/keys', prefix: 'sk-ant-...' },
-  { name: 'OpenAI (GPT)', url: 'https://platform.openai.com/api-keys', prefix: 'sk-...' },
-  { name: 'Google (Gemini)', url: 'https://aistudio.google.com/app/apikey', prefix: 'AIza...' },
-  { name: 'Groq (Llama)', url: 'https://console.groq.com/keys', prefix: 'gsk_...' },
+  { name: 'Google Gemini', url: 'https://aistudio.google.com/app/apikey', prefix: 'AIza...' },
 ];
 
 const S = {
@@ -184,7 +177,7 @@ export default function ApiKeySection() {
             type="password"
             value={apiKey}
             onChange={handleChange}
-            placeholder="Cole sua API key aqui (Anthropic, OpenAI, Google, Groq...)"
+          placeholder="Cole sua chave Gemini aqui (AIza...)"
             style={S.input}
           />
           {provider && (

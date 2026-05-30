@@ -68,13 +68,20 @@ export default function Modal({
       previousFocusRef.current = document.activeElement;
       document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
-      // Focus first focusable element
-      setTimeout(() => {
-        const focusable = dialogRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        focusable?.focus();
-      }, 50);
+      // Só foca automaticamente em desktop — no mobile o teclado virtual
+      // abriria imediatamente e causaria salto de layout antes da animação
+      const isMobile = window.innerWidth < 640 || ('ontouchstart' in window);
+      if (!isMobile) {
+        setTimeout(() => {
+          const firstInput = dialogRef.current?.querySelector(
+            'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
+          );
+          const firstButton = dialogRef.current?.querySelector(
+            'button:not([aria-label="Fechar modal"]):not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+          );
+          (firstInput || firstButton)?.focus();
+        }, 50);
+      }
     } else {
       document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
@@ -90,7 +97,7 @@ export default function Modal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-50 overflow-y-auto animate-fade-in"
       aria-modal="true"
       role="dialog"
       aria-labelledby={title ? 'modal-title' : undefined}
@@ -98,72 +105,76 @@ export default function Modal({
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm"
         onClick={closeOnBackdrop ? onClose : undefined}
         aria-hidden="true"
       />
 
-      {/* Dialog panel */}
-      <div
-        ref={dialogRef}
-        className={clsx(
-          'relative w-full bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.6)]',
-          'animate-slide-up',
-          sizes[size] || sizes.md,
-          className
-        )}
-      >
-        {/* Header */}
-        {(title || onClose) && (
-          <div className="flex items-start justify-between p-5 border-b border-[#2D3047]">
-            <div>
-              {title && (
-                <h2
-                  id="modal-title"
-                  className="text-lg font-heading font-semibold text-[#F7F8FC]"
+      {/* Wrapper — modal ancorado no topo para não pular quando o conteúdo cresce */}
+      <div className="flex min-h-full items-start justify-center p-4 pt-[6vh] sm:pt-[8vh] sm:p-6">
+        {/* Dialog panel */}
+        <div
+          ref={dialogRef}
+          className={clsx(
+            'relative w-full bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-[0_24px_64px_rgba(0,0,0,0.6)]',
+            'animate-slide-up',
+            'max-h-[90vh] flex flex-col',
+            sizes[size] || sizes.md,
+            className
+          )}
+        >
+          {/* Header */}
+          {(title || onClose) && (
+            <div className="flex items-start justify-between p-5 border-b border-[#2D3047] flex-shrink-0">
+              <div>
+                {title && (
+                  <h2
+                    id="modal-title"
+                    className="text-lg font-heading font-semibold text-[#F7F8FC]"
+                  >
+                    {title}
+                  </h2>
+                )}
+                {description && (
+                  <p
+                    id="modal-description"
+                    className="text-sm text-[#A0A3B1] mt-1"
+                  >
+                    {description}
+                  </p>
+                )}
+              </div>
+              {onClose && (
+                <button
+                  onClick={onClose}
+                  className="ml-4 p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors flex-shrink-0"
+                  aria-label="Fechar modal"
                 >
-                  {title}
-                </h2>
-              )}
-              {description && (
-                <p
-                  id="modal-description"
-                  className="text-sm text-[#A0A3B1] mt-1"
-                >
-                  {description}
-                </p>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    className="w-5 h-5"
+                  >
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
               )}
             </div>
-            {onClose && (
-              <button
-                onClick={onClose}
-                className="ml-4 p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors flex-shrink-0"
-                aria-label="Fechar modal"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  className="w-5 h-5"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            )}
-          </div>
-        )}
+          )}
 
-        {/* Body */}
-        <div className="p-5">{children}</div>
+          {/* Body — scrollável quando teclado virtual encolhe o viewport */}
+          <div className="p-5 overflow-y-auto flex-1">{children}</div>
 
-        {/* Footer */}
-        {footer && (
-          <div className="px-5 py-4 border-t border-[#2D3047] flex items-center justify-end gap-3">
-            {footer}
-          </div>
-        )}
+          {/* Footer */}
+          {footer && (
+            <div className="px-5 py-4 border-t border-[#2D3047] flex items-center justify-end gap-3 flex-shrink-0">
+              {footer}
+            </div>
+          )}
+        </div>
       </div>
     </div>,
     document.body

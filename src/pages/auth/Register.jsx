@@ -124,7 +124,7 @@ export default function Register() {
     try {
       const groupId = invite?.groupId || groupIdParam;
 
-      // 1. Create Firebase Auth user
+      // 1. FIX B1: cria usuário no Supabase Auth (não Firebase)
       const firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
 
       // 2. Create Firestore user doc + add to group (batch)

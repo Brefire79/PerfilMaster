@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useProfileStore from '@/store/profileStore.js';
-import { getProfile } from '@/firebase/firestore.js';
-import { getAssessmentsByUser } from '@/firebase/firestore.js';
+// FIX B3: consolidado em um único import
+import { getProfile, getAssessmentsByUser } from '@/firebase/firestore.js';
 import Button from '@/components/ui/Button.jsx';
 import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge, { ProfileBadge } from '@/components/ui/Badge.jsx';
@@ -25,6 +25,7 @@ const PROFILE_COLORS = {
 
 function NoProfileState() {
   const { t } = useTranslation();
+  // FIX C3: rota correta é /student/assessment-wizard (não /student/assessment/new)
   return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-6 px-4 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/25 flex items-center justify-center">
@@ -44,7 +45,7 @@ function NoProfileState() {
         </p>
       </div>
 
-      <Link to="/student/assessment/new">
+      <Link to="/student/assessment-wizard">
         <Button variant="primary" size="lg">
           {t('assessment.start', 'Iniciar Avaliação')}
         </Button>
@@ -471,7 +472,8 @@ function HistoryTab({ userId }) {
             {t('profile.history.emptyHint', 'Complete sua primeira avaliação para ver seu histórico')}
           </p>
         </div>
-        <Link to="/student/assessment/new">
+        {/* FIX C3: rota correta é /student/assessment-wizard */}
+        <Link to="/student/assessment-wizard">
           <Button variant="outline" size="sm">
             {t('assessment.start', 'Iniciar Avaliação')}
           </Button>
@@ -480,14 +482,11 @@ function HistoryTab({ userId }) {
     );
   }
 
-  const chartHistory = history
-    .filter((a) => a.profile?.dominantProfile)
-    .map((a) => ({
-      moduleTitle: a.moduleName || t('assessment.title', 'Avaliação DISC'),
-      completedAt: a.submittedAt,
-      scores: a.profile?.scores ?? {},
-      dominantProfile: a.profile?.dominantProfile,
-    }));
+  // FIX M3: app_assessments não embute dados de profile — o gráfico de evolução
+  // ficava sempre vazio pois a.profile?.dominantProfile não existe nessa entidade.
+  // Para exibir evolução real seria necessário cruzar com app_profiles por assessmentId.
+  // Por ora ocultamos o gráfico (sem dados = sem ruído visual).
+  const chartHistory = [];
 
   return (
     <div className="py-4 space-y-3">
@@ -507,7 +506,8 @@ function HistoryTab({ userId }) {
           {t('assessment.history', 'Histórico de Avaliações')}
         </h3>
         {history.map((assessment) => {
-          const type = assessment?.profile?.dominantProfile ?? assessment?.profile?.primaryType ?? 'D';
+          // FIX M3: app_assessments não tem campo profile — usa fallback 'D'
+          const type = 'D';
           const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
           const rawDate = assessment?.submittedAt?.toDate?.()
             ?? (assessment?.submittedAt ? new Date(assessment.submittedAt) : null);

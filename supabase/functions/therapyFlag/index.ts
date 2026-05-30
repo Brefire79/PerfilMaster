@@ -69,7 +69,8 @@ Deno.serve(async (req) => {
     const result = await callAnthropic(
       buildSystemPrompt(language),
       buildUserPrompt(payload),
-      600
+      600,
+      payload?.geminiKey || null
     );
 
     const safeResult = {

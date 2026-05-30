@@ -1,23 +1,18 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
+// FIX: removidos EN e ES — app é PT-BR exclusivo. Arquivos preservados em /locales mas não importados (não entram no bundle).
 import ptBR from './locales/pt-BR.json';
-import es from './locales/es.json';
-import en from './locales/en.json';
-
-const savedLanguage = localStorage.getItem('profileai_language') || 'pt-BR';
 
 i18n
   .use(initReactI18next)
   .init({
     resources: {
       'pt-BR': { translation: ptBR },
-      es: { translation: es },
-      en: { translation: en },
     },
-    lng: savedLanguage,
+    lng: 'pt-BR',
     fallbackLng: 'pt-BR',
-    debug: import.meta.env.DEV,
+    debug: false,
     interpolation: {
       escapeValue: false,
     },
@@ -26,9 +21,8 @@ i18n
     },
   });
 
-i18n.on('languageChanged', (lng) => {
-  localStorage.setItem('profileai_language', lng);
-  document.documentElement.lang = lng;
-});
+// Garante que o localStorage não force um idioma removido
+localStorage.setItem('profileai_language', 'pt-BR');
+document.documentElement.lang = 'pt-BR';
 
 export default i18n;

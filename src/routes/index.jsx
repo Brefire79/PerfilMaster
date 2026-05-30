@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import { useAuth } from '@/hooks/useAuth.js';
 
@@ -18,22 +18,17 @@ const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
 
 // ─── Lazy-loaded Public Pages (sem login) ────────────────────────────────────
 const AvaliacaoPublica = lazy(() => import('@/pages/public/AvaliacaoPublica.jsx'));
+const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'));
 
 // ─── Lazy-loaded Admin Pages ──────────────────────────────────────────────────
+// FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard.jsx'));
-const AdminGroups = lazy(() => import('@/pages/admin/Groups.jsx'));
-const AdminGroupDetail = lazy(() => import('@/pages/admin/GroupDetail.jsx'));
-const AdminStudents = lazy(() => import('@/pages/admin/Students.jsx'));
-const AdminModules = lazy(() => import('@/pages/admin/Modules.jsx'));
-const AdminModuleBuilder = lazy(() => import('@/pages/admin/ModuleBuilder.jsx'));
-const AdminReports = lazy(() => import('@/pages/admin/Reports.jsx'));
-const AdminSettings = lazy(() => import('@/pages/admin/Settings.jsx'));
 const AdminSessoes = lazy(() => import('@/pages/admin/Sessoes.jsx'));
+const RelatorioOficial = lazy(() => import('@/pages/admin/RelatorioOficial.jsx'));
 
 // ─── Lazy-loaded Student Pages ────────────────────────────────────────────────
+// FIX A2: removidos StudentDashboard, Assessment, MyProfile — usam versão Safe* abaixo
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard.jsx'));
-const Assessment = lazy(() => import('@/pages/student/Assessment.jsx'));
-const MyProfile = lazy(() => import('@/pages/student/MyProfile.jsx'));
 
 // ─── Placeholder component for unimplemented pages ───────────────────────────
 function Placeholder({ title }) {
@@ -131,8 +126,8 @@ function ProtectedRoute({ children, requiredRole }) {
 // ─── Invite Token Handler ─────────────────────────────────────────────────────
 function JoinHandler() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const token = location.pathname.split('/join/')[1];
+  // P1-1: usa useParams() — extração robusta vs. location.pathname.split frágil
+  const { token } = useParams();
 
   useEffect(() => {
     if (token) {
@@ -145,6 +140,17 @@ function JoinHandler() {
   return <PageLoader />;
 }
 
+// ─── Already-Auth Route — redireciona usuários logados fora das telas de auth ────
+// P1-2: impede que usuário autenticado acesse /login, /register, /forgot-password
+function AlreadyAuthRoute({ children }) {
+  const { user, role, loading, initialized } = useAuthStore();
+  if (!initialized || loading) return <PageLoader />;
+  if (user) {
+    return <Navigate to={role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} replace />;
+  }
+  return children;
+}
+
 // ─── Root Redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
   const { user, role, loading, initialized } = useAuthStore();
@@ -154,6 +160,12 @@ function RootRedirect() {
   if (!user) return <Navigate to="/login" replace />;
   if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
   return <Navigate to="/student/dashboard" replace />;
+}
+
+// ─── FIX A5: Wrapper passes onCompleted so student navigates to profile after wizard ───
+function AssessmentWizardPage() {
+  const navigate = useNavigate();
+  return <SafeAssessmentWizard onCompleted={() => navigate('/student/profile', { replace: true })} />;
 }
 
 // ─── App Routes ───────────────────────────────────────────────────────────────
@@ -173,8 +185,11 @@ export default function AppRoutes() {
         {/* Avaliação pública via WhatsApp — sem login */}
         <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
 
-        {/* Auth routes (public) */}
-        <Route element={<AuthLayout />}>
+        {/* Resultado público para o avaliado ver seu perfil — sem login */}
+        <Route path="/resultado/:token" element={<ResultadoPublico />} />
+
+        {/* Auth routes — redireciona usuários já logados para seu dashboard (P1-2) */}
+        <Route element={<AlreadyAuthRoute><AuthLayout /></AlreadyAuthRoute>}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -197,6 +212,7 @@ export default function AppRoutes() {
           <Route path="modules" element={<SafeAdminModules />} />
           <Route path="modules/:id" element={<SafeAdminModuleBuilder />} />
           <Route path="sessoes" element={<AdminSessoes />} />
+          <Route path="relatorio/:token" element={<RelatorioOficial />} />
           <Route path="reports" element={<SafeAdminReports />} />
           <Route path="settings" element={<SafeAdminSettings />} />
         </Route>
@@ -213,7 +229,7 @@ export default function AppRoutes() {
           <Route index element={<Navigate to="/student/dashboard" replace />} />
           <Route path="dashboard" element={<StudentDashboard />} />
           <Route path="assessment/:id" element={<SafeAssessment />} />
-          <Route path="assessment-wizard" element={<SafeAssessmentWizard />} />
+          <Route path="assessment-wizard" element={<AssessmentWizardPage />} />
           <Route path="profile" element={<SafeMyProfile />} />
         </Route>
 

@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import useAuthStore from '@/store/authStore.js';
 import useSessaoStore from '@/store/sessaoStore.js';
+import PhoneInput from '@/components/ui/PhoneInput.jsx';
 
 const INPUT_BASE =
   'w-full bg-[#1A1C2A] border border-[#2D3047] rounded-xl px-4 py-3 text-[#F7F8FC] ' +
   'placeholder:text-[#4A4D6A] focus:outline-none focus:border-[#6366F1] transition-colors';
 
 const ESTADO_INICIAL = { nome: '', telefone: '', email: '' };
-
-function formatarTelefone(valor) {
-  // Mantém apenas dígitos, limite 15
-  return valor.replace(/\D/g, '').slice(0, 15);
-}
 
 /**
  * AvaliadoForm
@@ -33,8 +29,13 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    const processado = name === 'telefone' ? formatarTelefone(value) : value;
-    setForm((prev) => ({ ...prev, [name]: processado }));
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (erroLocal) setErroLocal('');
+    if (erro) limparErro();
+  }
+
+  function handleTelefoneChange(fullNumber) {
+    setForm((prev) => ({ ...prev, telefone: fullNumber }));
     if (erroLocal) setErroLocal('');
     if (erro) limparErro();
   }
@@ -46,7 +47,7 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
       setErroLocal('O nome do avaliado é obrigatório.');
       return;
     }
-    if (form.telefone.length < 10) {
+    if (form.telefone.replace(/\D/g, '').length < 10) {
       setErroLocal('Informe um número de telefone válido (com DDD).');
       return;
     }
@@ -170,22 +171,13 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
               />
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#A0A3B1]">
-                WhatsApp <span className="text-[#EF4444]">*</span>
-              </label>
-              <input
-                name="telefone"
-                value={form.telefone}
-                onChange={handleChange}
-                placeholder="5511999999999 (com DDI e DDD)"
-                className={INPUT_BASE}
-                inputMode="tel"
-              />
-              <p className="text-xs text-[#4A4D6A]">
-                Formato: DDI + DDD + número. Ex: 5511999999999
-              </p>
-            </div>
+            <PhoneInput
+              label="WhatsApp"
+              required
+              value={form.telefone}
+              onChange={handleTelefoneChange}
+              error={erroLocal?.includes('telefone') ? erroLocal : ''}
+            />
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[#A0A3B1]">

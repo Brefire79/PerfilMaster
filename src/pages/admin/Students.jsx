@@ -628,7 +628,8 @@ export default function Students() {
                         onChange={(e) => setAssignModuleId(e.target.value)}
                         className="w-full h-11 px-3 rounded-lg bg-[#242736] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
                       >
-                        <option value="default">{t('students.defaultModule', '⭐ Avaliação DISC Padrão (24 + 50 perguntas)')}</option>
+                        {/* FIX M4: são 28 perguntas DISC, não 24 */}
+                        <option value="default">{t('students.defaultModule', '⭐ Avaliação DISC Padrão (28 + 50 perguntas)')}</option>
                         {assignModules.length > 0 && (
                           <optgroup label="Módulos do grupo">
                             {assignModules.map((m) => (

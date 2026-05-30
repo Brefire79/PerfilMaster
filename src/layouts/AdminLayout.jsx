@@ -8,7 +8,7 @@ export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="h-screen bg-[#0F1117] flex overflow-hidden">
+    <div className="h-screen bg-[#0F1117] flex overflow-hidden min-h-0">
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar role="admin" />

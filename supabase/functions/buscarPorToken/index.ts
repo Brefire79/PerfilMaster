@@ -18,7 +18,8 @@ Deno.serve(async (req) => {
 
     const { data: avaliado, error: avaliadoError } = await supabase
       .from('app_avaliados')
-      .select('nome, status, sessaoid')
+      // D3: adicionado telefone — necessário para RelatorioOficial via URL direta e WhatsApp
+      .select('nome, status, sessaoid, perfil, telefone')
       .eq('token', token)
       .single();
 
@@ -35,8 +36,11 @@ Deno.serve(async (req) => {
     return jsonResponse({
       nome: avaliado.nome,
       status: avaliado.status,
+      // D3: telefone incluído para RelatorioOficial e botão WhatsApp
+      telefone: avaliado.telefone || null,
       sessaoTitulo: sessao?.titulo || 'Avaliação DISC',
       sessaoDescricao: sessao?.descricao || null,
+      perfil: avaliado.perfil || null,
     }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'buscarPorToken failed' }, 500, req);

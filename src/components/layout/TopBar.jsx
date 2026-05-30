@@ -7,13 +7,7 @@ import useGroupStore from '@/store/groupStore.js';
 import useProfileStore from '@/store/profileStore.js';
 import useAssessmentStore from '@/store/assessmentStore.js';
 import { signOut } from '@/firebase/auth.js';
-import i18n from '@/i18n/index.js';
-
-const LANGUAGES = [
-  { code: 'pt-BR', label: 'PT' },
-  { code: 'es', label: 'ES' },
-  { code: 'en', label: 'EN' },
-];
+// FIX: seletor de idioma removido — app é PT-BR exclusivo
 
 export default function TopBar({ role = 'student', onMenuClick }) {
   const { t } = useTranslation();
@@ -22,8 +16,6 @@ export default function TopBar({ role = 'student', onMenuClick }) {
   const resetGroups = useGroupStore((s) => s.reset);
   const resetProfiles = useProfileStore((s) => s.reset);
   const resetAssessment = useAssessmentStore((s) => s.resetAssessment);
-  const currentLang = i18n.language;
-
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -35,10 +27,6 @@ export default function TopBar({ role = 'student', onMenuClick }) {
     } catch (err) {
       console.error('Sign out error:', err);
     }
-  };
-
-  const handleLanguageChange = (langCode) => {
-    i18n.changeLanguage(langCode);
   };
 
   const avatarInitial = user?.displayName
@@ -80,24 +68,7 @@ export default function TopBar({ role = 'student', onMenuClick }) {
 
         {/* Right: Language selector + User info + Logout */}
         <div className="flex items-center gap-2">
-          {/* Language selector */}
-          <div className="flex items-center gap-0.5 bg-[#242736] rounded-lg p-0.5 border border-[#2D3047]">
-            {LANGUAGES.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => handleLanguageChange(lang.code)}
-                className={clsx(
-                  'px-2 py-1 rounded-md text-xs font-medium transition-all duration-150',
-                  currentLang === lang.code || (lang.code === 'pt-BR' && currentLang.startsWith('pt'))
-                    ? 'bg-[#6366F1] text-white'
-                    : 'text-[#A0A3B1] hover:text-[#F7F8FC]'
-                )}
-                aria-label={`Mudar idioma para ${lang.label}`}
-              >
-                {lang.label}
-              </button>
-            ))}
-          </div>
+          {/* FIX: seletor PT/ES/EN removido — app é PT-BR exclusivo */}
 
           {/* User avatar + name */}
           <div className="hidden sm:flex items-center gap-2 px-2 py-1.5 rounded-lg">

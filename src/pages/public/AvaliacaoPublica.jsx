@@ -1,5 +1,5 @@
 import React, { useEffect, useReducer, useCallback, useRef, Component } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
@@ -431,6 +431,7 @@ function TelaErroSubmit({ onTentarNovamente }) {
 // ─── Página principal ─────────────────────────────────────────────────────────
 export default function AvaliacaoPublica() {
   const { token } = useParams();
+  const navigate = useNavigate();
   const [state, dispatch] = useReducer(reducer, estadoInicial);
   const submittingRef = useRef(false);
 
@@ -458,6 +459,8 @@ export default function AvaliacaoPublica() {
       .then((data) => {
         submittingRef.current = false;
         dispatch({ type: 'RESULTADO_OK', perfil: data.perfil });
+        // D2b: PRD §6.5 — redirecionar para /resultado/:token após conclusão
+        navigate(`/resultado/${token}`, { replace: true });
       })
       .catch((err) => {
         submittingRef.current = false;

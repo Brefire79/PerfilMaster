@@ -8,63 +8,18 @@ import { generateLocalAnalysis } from './localEngine.js';
 const API_KEY_STORAGE = 'profileai_api_key';
 
 // ─── Detect Provider ──────────────────────────────────────────────────────────
+// D5: Gemini é o único provider suportado (PRD §4.3). Outros prefixes retornam null.
 export function detectApiProvider(apiKey) {
   if (!apiKey || apiKey.trim().length === 0) return null;
   const key = apiKey.trim();
-  if (key.startsWith('sk-ant-')) return 'anthropic';
   if (key.startsWith('AIza')) return 'google';
-  if (key.startsWith('gsk_')) return 'groq';
-  if (key.startsWith('sk-') && key.length === 51) return 'openai';
-  if (/^sk-[0-9a-f]{40}$/i.test(key)) return 'cohere';
-  if (key.length >= 20) return 'unknown';
-  return null;
+  return null; // provider não reconhecido como Gemini
 }
 
 // ─── API Caller ───────────────────────────────────────────────────────────────
+// D5: Suporta apenas Google Gemini 2.0 Flash (PRD §4.3).
 export async function callAiApi(apiKey, prompt, provider) {
   const key = apiKey.trim();
-
-  if (provider === 'anthropic') {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'x-api-key': key,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Anthropic API: ${res.status} ${res.statusText}${errBody ? ` — ${errBody.slice(0, 120)}` : ''}`);
-    }
-    const data = await res.json();
-    return data.content?.[0]?.text ?? '';
-  }
-
-  if (provider === 'openai') {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`OpenAI API: ${res.status} ${res.statusText}${errBody ? ` — ${errBody.slice(0, 120)}` : ''}`);
-    }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? '';
-  }
 
   if (provider === 'google') {
     const res = await fetch(
@@ -83,45 +38,8 @@ export async function callAiApi(apiKey, prompt, provider) {
     return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   }
 
-  if (provider === 'groq') {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'llama3-8b-8192',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) {
-      const errBody = await res.text().catch(() => '');
-      throw new Error(`Groq API: ${res.status} ${res.statusText}${errBody ? ` — ${errBody.slice(0, 120)}` : ''}`);
-    }
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? '';
-  }
-
-  // unknown / cohere: tenta formato OpenAI
-  try {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    });
-    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-    const data = await res.json();
-    return data.choices?.[0]?.message?.content ?? '';
-  } catch (err) {
-    throw new Error(`Formato de API key não reconhecido. Use uma key da Anthropic, OpenAI, Google ou Groq. Detalhe: ${err.message}`);
-  }
+  // D5: Outros providers removidos. Somente Gemini (AIza...) é aceito.
+  throw new Error('Chave de IA inválida. Use uma chave Gemini do Google AI Studio (prefixo AIza...).');
 }
 
 // ─── Build Prompt ─────────────────────────────────────────────────────────────
@@ -238,23 +156,28 @@ function mergeAiData(localAnalysis, aiData, source) {
 export async function generateAnalysis(discScores, sabotadorScores, apiKey = null) {
   const localAnalysis = generateLocalAnalysis(discScores, sabotadorScores);
 
-  // 1. Usuário configurou sua própria chave de API → usa diretamente (Anthropic/OpenAI/Groq/Google)
+  // 1. Usuário configurou chave Gemini (AIza...) → usa diretamente (D5: único provider)
   if (apiKey) {
     const provider = detectApiProvider(apiKey);
-    const prompt = buildAnalysisPrompt(discScores, sabotadorScores, localAnalysis);
-    try {
-      const aiText = await callAiApi(apiKey, prompt, provider);
-      let aiData;
+    if (provider !== 'google') {
+      // D5: Chave não é Gemini; ignora e cai para fallback sem erro ao usuário
+      console.warn('[generateAnalysis] Chave não é Gemini (AIza...) — provider ignorado, usando fallback.');
+    } else {
+      const prompt = buildAnalysisPrompt(discScores, sabotadorScores, localAnalysis);
       try {
-        const cleaned = aiText.replace(/^```(?:json)?\n?|\n?```$/g, '').trim();
-        aiData = JSON.parse(cleaned);
-      } catch {
-        return { ...localAnalysis, source: provider, rawAiText: aiText };
+        const aiText = await callAiApi(apiKey, prompt, provider);
+        let aiData;
+        try {
+          const cleaned = aiText.replace(/^```(?:json)?\n?|\n?```$/g, '').trim();
+          aiData = JSON.parse(cleaned);
+        } catch {
+          return { ...localAnalysis, source: provider, rawAiText: aiText };
+        }
+        return mergeAiData(localAnalysis, aiData, provider);
+      } catch (err) {
+        console.warn('[generateAnalysis] Chave Gemini falhou, tentando backend:', err.message);
+        // Cai para o backend se a chave do usuário falhar
       }
-      return mergeAiData(localAnalysis, aiData, provider);
-    } catch (err) {
-      console.warn('[generateAnalysis] Chave do usuário falhou, tentando backend xAI:', err.message);
-      // Cai para o backend xAI se a chave do usuário falhar
     }
   }
 
