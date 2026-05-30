@@ -488,6 +488,15 @@
   to   { transform: scaleX(1); }
 }
 
+/* Entrada com leve zoom (heros/banners) — complementa as animações do config */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
 /* Acessibilidade — respeita "reduzir movimento" */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

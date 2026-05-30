@@ -28,15 +28,13 @@ class ErrorBoundary extends Component {
   }
 }
 
-// ─── Cores / nomes dos perfis ─────────────────────────────────────────────────
+// ─── Cores / nomes dos perfis (fonte única — alinhada aos tokens F1) ──────────
 const PERFIL_CONFIG = {
   D: { nome: 'Dominante',  cor: '#EF4444', bg: '#EF444420', emoji: '🔴' },
   I: { nome: 'Influente',  cor: '#F59E0B', bg: '#F59E0B20', emoji: '🟡' },
   S: { nome: 'Estável',    cor: '#22C55E', bg: '#22C55E20', emoji: '🟢' },
   C: { nome: 'Analítico',  cor: '#6366F1', bg: '#6366F120', emoji: '🔵' },
 };
-
-const DIMENSAO_LABEL = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
 
 // ─── Likert5: labels das opções ───────────────────────────────────────────────
 const LIKERT_OPCOES = [
@@ -82,17 +80,27 @@ function reducer(state, action) {
       return { ...state, tela: TELAS.INVALIDO, erro: action.mensagem };
     case 'INICIAR':
       return { ...state, tela: TELAS.AVALIANDO, questaoAtual: 0, respostas: {} };
-    case 'RESPONDER': {
-      const novasRespostas = { ...state.respostas, [action.questionId]: action.valor };
+    // F2: selecionar não avança sozinho — registra a resposta da questão atual
+    case 'SELECIONAR':
+      return {
+        ...state,
+        respostas: { ...state.respostas, [action.questionId]: action.valor },
+      };
+    // F2: avançar via CTA fixo; ao passar da última, vai para ANALISANDO
+    case 'AVANCAR': {
       const proximaQuestao = state.questaoAtual + 1;
       const fim = proximaQuestao >= SAMPLE_QUESTIONS.length;
       return {
         ...state,
-        respostas: novasRespostas,
         questaoAtual: fim ? state.questaoAtual : proximaQuestao,
         tela: fim ? TELAS.ANALISANDO : TELAS.AVALIANDO,
       };
     }
+    case 'VOLTAR':
+      return {
+        ...state,
+        questaoAtual: Math.max(0, state.questaoAtual - 1),
+      };
     case 'ANALISANDO':
       return { ...state, tela: TELAS.ANALISANDO };
     case 'RESULTADO_OK':
@@ -104,6 +112,15 @@ function reducer(state, action) {
     default:
       return state;
   }
+}
+
+// ─── Layouts auxiliares ───────────────────────────────────────────────────────
+function CentralLayout({ children }) {
+  return (
+    <main className="flex-1 flex items-center justify-center px-5 py-8">
+      <div className="app-shell flex flex-col items-center">{children}</div>
+    </main>
+  );
 }
 
 // ─── Componentes de tela ──────────────────────────────────────────────────────
@@ -119,10 +136,8 @@ function TelaCarregando() {
 
 function TelaInvalido({ mensagem }) {
   return (
-    <div className="flex flex-col items-center gap-5 text-center max-w-sm">
-      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">
-        🔗
-      </div>
+    <div className="flex flex-col items-center gap-5 text-center animate-fade-in">
+      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">🔗</div>
       <div>
         <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">Link inválido ou expirado</h2>
         <p className="text-sm text-[#A0A3B1]">
@@ -135,10 +150,8 @@ function TelaInvalido({ mensagem }) {
 
 function TelaConcluido({ avaliado }) {
   return (
-    <div className="flex flex-col items-center gap-5 text-center max-w-sm">
-      <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 flex items-center justify-center text-3xl">
-        ✅
-      </div>
+    <div className="flex flex-col items-center gap-5 text-center animate-fade-in">
+      <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 flex items-center justify-center text-3xl">✅</div>
       <div>
         <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">
           Avaliação já concluída, {avaliado.nome.split(' ')[0]}!
@@ -152,15 +165,15 @@ function TelaConcluido({ avaliado }) {
   );
 }
 
-function TelaBoasVindas({ avaliado, onIniciar }) {
+function TelaBoasVindas({ avaliado }) {
   return (
-    <div className="flex flex-col gap-6 max-w-sm w-full">
+    <div className="flex flex-col gap-6 w-full animate-slide-up">
       {/* Saudação */}
       <div className="text-center">
-        <div className="w-16 h-16 rounded-2xl bg-[#6366F1]/10 flex items-center justify-center text-3xl mx-auto mb-4">
+        <div className="w-16 h-16 rounded-2xl surface-brand flex items-center justify-center text-3xl mx-auto mb-4 shadow-card">
           🧭
         </div>
-        <h2 className="text-xl font-bold text-[#F7F8FC] mb-1">
+        <h2 className="text-2xl font-bold text-[#F7F8FC] mb-1 text-balance">
           Olá, {avaliado.nome.split(' ')[0]}!
         </h2>
         <p className="text-sm text-[#A0A3B1]">
@@ -173,22 +186,22 @@ function TelaBoasVindas({ avaliado, onIniciar }) {
       </div>
 
       {/* Sobre o DISC */}
-      <div className="bg-[#1A1C2A] rounded-2xl p-4 border border-[#2D3047]">
+      <div className="bg-[#1A1D2E] rounded-2xl p-4 border border-[#2D3047]">
         <p className="text-xs font-semibold text-[#A0A3B1] uppercase tracking-wider mb-3">
           O que é o <SiglaComSignificado id="DISC" />?
         </p>
-        <p className="text-sm text-[#A0A3B1] mb-3">
+        <p className="text-sm text-[#A0A3B1] mb-4">
           Um modelo comportamental que identifica como você age em diferentes situações.
           Não há respostas certas ou erradas.
         </p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2.5">
           {Object.entries(PERFIL_CONFIG).map(([letra, cfg]) => (
             <div key={letra} className="flex items-center gap-2">
               <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold"
-                style={{ background: cfg.bg, color: cfg.cor }}
+                className="w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold text-white"
+                style={{ background: cfg.cor }}
               >
-                <SiglaComSignificado id={letra} />
+                {letra}
               </div>
               <span className="text-xs text-[#A0A3B1]">{cfg.nome}</span>
             </div>
@@ -197,7 +210,7 @@ function TelaBoasVindas({ avaliado, onIniciar }) {
       </div>
 
       {/* Instruções */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {[
           { icon: '⏱️', texto: '10 a 15 minutos para concluir' },
           { icon: '📱', texto: 'Pode responder pelo celular' },
@@ -205,108 +218,96 @@ function TelaBoasVindas({ avaliado, onIniciar }) {
           { icon: '💡', texto: 'Responda com honestidade — sem certo ou errado' },
         ].map(({ icon, texto }) => (
           <div key={texto} className="flex items-center gap-3 text-sm text-[#A0A3B1]">
-            <span>{icon}</span>
+            <span aria-hidden="true">{icon}</span>
             <span>{texto}</span>
           </div>
         ))}
       </div>
-
-      <button
-        onClick={onIniciar}
-        className="w-full py-4 rounded-2xl bg-[#6366F1] hover:bg-[#5558E3] text-white font-semibold text-base transition-colors active:scale-[0.98]"
-      >
-        Iniciar avaliação →
-      </button>
     </div>
   );
 }
 
-function TelaAvaliando({ questao, questaoAtual, total, resposta, onResponder }) {
+function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar }) {
   const progresso = Math.round((questaoAtual / total) * 100);
   const isLikert  = questao.type === 'likert5';
   const opcoes    = isLikert ? LIKERT_OPCOES : questao.options;
+  const cfgDim    = PERFIL_CONFIG[questao.dimension];
 
   return (
-    <div className="flex flex-col gap-5 w-full max-w-lg">
+    <div className="flex flex-col gap-5 w-full animate-fade-in">
       {/* Barra de progresso */}
       <div>
         <div className="flex justify-between text-xs text-[#A0A3B1] mb-1.5">
           <span>Pergunta {questaoAtual + 1} de {total}</span>
-          <span>{progresso}%</span>
+          <span className="tabular-nums">{progresso}%</span>
         </div>
-        <div className="h-1.5 bg-[#2D3047] rounded-full overflow-hidden">
-          <div
-            className="h-full bg-[#6366F1] rounded-full transition-all duration-500"
-            style={{ width: `${progresso}%` }}
-          />
+        <div className="progress-track">
+          <div className="progress-fill" style={{ width: `${progresso}%` }} />
         </div>
       </div>
 
       {/* Dimensão badge */}
-      <div
-        className="self-start text-xs font-semibold px-2.5 py-1 rounded-full"
-        style={{
-          background: PERFIL_CONFIG[questao.dimension]?.bg,
-          color: PERFIL_CONFIG[questao.dimension]?.cor,
-        }}
-      >
-        <SiglaComSignificado id={questao.dimension} />
-      </div>
+      {cfgDim && (
+        <div
+          className="self-start text-xs font-semibold px-2.5 py-1 rounded-full"
+          style={{ background: cfgDim.bg, color: cfgDim.cor }}
+        >
+          <SiglaComSignificado id={questao.dimension} />
+        </div>
+      )}
 
       {/* Texto da pergunta */}
       <div>
         {questao.type === 'scenario' && questao.scenario && (
-          <p className="text-xs text-[#A0A3B1] bg-[#1A1C2A] rounded-xl p-3 mb-3 border border-[#2D3047]">
+          <p className="text-xs text-[#A0A3B1] bg-[#1A1D2E] rounded-xl p-3 mb-3 border border-[#2D3047]">
             📌 {questao.scenario.ptBR}
           </p>
         )}
-        <p className="text-base font-medium text-[#F7F8FC] leading-relaxed">
+        <p className="text-lg font-semibold text-[#F7F8FC] leading-snug text-balance">
           {questao.text.ptBR}
         </p>
       </div>
 
       {/* Opções */}
       {isLikert ? (
-        /* Escala Likert: 5 botões circulares */
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between gap-2">
-            {opcoes.map((op) => (
+        <div className="flex flex-col gap-2">
+          {opcoes.map((op) => {
+            const selected = resposta === op.valor;
+            return (
               <button
                 key={op.valor}
-                onClick={() => onResponder(questao.id, op.valor)}
-                className={`
-                  flex-1 h-11 rounded-xl border text-sm font-bold transition-all
-                  ${resposta === op.valor
-                    ? 'border-[#6366F1] bg-[#6366F1] text-white scale-105'
-                    : 'border-[#2D3047] bg-[#1A1C2A] text-[#A0A3B1] hover:border-[#6366F1] hover:text-[#F7F8FC]'}
-                `}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onSelecionar(questao.id, op.valor)}
+                className={`option-card ${selected ? 'is-selected' : ''}`}
               >
-                {op.valor}
+                <span
+                  className={`option-card__lead text-sm font-bold ${selected ? 'text-white' : 'text-[#A0A3B1]'}`}
+                  style={selected ? { background: '#6366F1' } : { background: '#1A1D2E' }}
+                >
+                  {op.valor}
+                </span>
+                <span className="flex-1">{op.label}</span>
               </button>
-            ))}
-          </div>
-          <div className="flex justify-between text-xs text-[#4A4D6A] px-1">
-            <span>Discordo totalmente</span>
-            <span>Concordo totalmente</span>
-          </div>
+            );
+          })}
         </div>
       ) : (
-        /* Forced choice / Scenario: cards */
         <div className="flex flex-col gap-2">
-          {opcoes.map((op) => (
-            <button
-              key={op.value}
-              onClick={() => onResponder(questao.id, op.value)}
-              className={`
-                w-full text-left px-4 py-3 rounded-xl border text-sm transition-all
-                ${resposta === op.value
-                  ? 'border-[#6366F1] bg-[#6366F1]/10 text-[#F7F8FC]'
-                  : 'border-[#2D3047] bg-[#1A1C2A] text-[#A0A3B1] hover:border-[#4A4D6A] hover:text-[#F7F8FC]'}
-              `}
-            >
-              {op.label.ptBR}
-            </button>
-          ))}
+          {opcoes.map((op) => {
+            const selected = resposta === op.value;
+            return (
+              <button
+                key={op.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => onSelecionar(questao.id, op.value)}
+                className={`option-card ${selected ? 'is-selected' : ''}`}
+              >
+                <span className="flex-1">{op.label.ptBR}</span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -315,7 +316,7 @@ function TelaAvaliando({ questao, questaoAtual, total, resposta, onResponder }) 
 
 function TelaAnalisando() {
   return (
-    <div className="flex flex-col items-center gap-5 text-center">
+    <div className="flex flex-col items-center gap-5 text-center animate-fade-in">
       <div className="relative w-20 h-20">
         <div className="absolute inset-0 rounded-full border-4 border-[#6366F1]/20" />
         <div className="absolute inset-0 rounded-full border-4 border-[#6366F1] border-t-transparent animate-spin" />
@@ -331,95 +332,19 @@ function TelaAnalisando() {
   );
 }
 
-function TelaResultado({ avaliado, perfil }) {
-  const primario  = PERFIL_CONFIG[perfil.perfilPrimario];
-  const secundario = perfil.perfilSecundario ? PERFIL_CONFIG[perfil.perfilSecundario] : null;
-
-  const barras = [
-    { key: 'D', label: 'Dominante',  valor: perfil.dominante  },
-    { key: 'I', label: 'Influente',  valor: perfil.influente  },
-    { key: 'S', label: 'Estável',    valor: perfil.estavel    },
-    { key: 'C', label: 'Analítico',  valor: perfil.analitico  },
-  ];
-
-  return (
-    <div className="flex flex-col gap-6 max-w-sm w-full">
-      {/* Badge principal */}
-      <div className="text-center">
-        <div
-          className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-3 text-4xl font-black border-2"
-          style={{ background: primario.bg, borderColor: primario.cor, color: primario.cor }}
-        >
-          <SiglaComSignificado id={perfil.perfilPrimario} />
-        </div>
-        <h2 className="text-xl font-bold text-[#F7F8FC]">
-          Perfil {primario.nome}
-        </h2>
-        {secundario && (
-          <p className="text-sm text-[#A0A3B1] mt-1">
-            com tendência{' '}
-            <span style={{ color: secundario.cor }}>{secundario.nome}</span>
-          </p>
-        )}
-        <p className="text-xs text-[#4A4D6A] mt-2">
-          Avaliação de {avaliado.nome}
-        </p>
-      </div>
-
-      {/* Barras de pontuação */}
-      <div className="bg-[#1A1C2A] rounded-2xl p-4 border border-[#2D3047] flex flex-col gap-3">
-        <p className="text-xs font-semibold text-[#A0A3B1] uppercase tracking-wider">
-          Distribuição <SiglaComSignificado id="DISC" />
-        </p>
-        {barras.map(({ key, label, valor }) => {
-          const cfg = PERFIL_CONFIG[key];
-          return (
-            <div key={key}>
-              <div className="flex justify-between text-xs mb-1">
-                <span className="text-[#A0A3B1]">
-                  <SiglaComSignificado id={key} /> — {label}
-                </span>
-                <span className="font-semibold" style={{ color: cfg.cor }}>{valor}%</span>
-              </div>
-              <div className="h-2 bg-[#2D3047] rounded-full overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${valor}%`, background: cfg.cor }}
-                />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Mensagem de encerramento */}
-      <div className="bg-[#22C55E]/5 border border-[#22C55E]/20 rounded-2xl p-4 text-center">
-        <p className="text-sm text-[#A0A3B1]">
-          ✅ Avaliação concluída com sucesso!{' '}
-          <span className="text-[#F7F8FC]">
-            Seu facilitador já pode visualizar os resultados.
-          </span>
-        </p>
-      </div>
-    </div>
-  );
-}
-
 // ─── Tela de erro no submit ───────────────────────────────────────────────────
 function TelaErroSubmit({ onTentarNovamente }) {
   return (
-    <div className="flex flex-col items-center gap-5 text-center max-w-sm">
-      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">
-        ⚠️
-      </div>
-      <div>
+    <div className="flex flex-col items-center gap-5 text-center animate-fade-in">
+      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 flex items-center justify-center text-3xl">⚠️</div>
+      <div className="w-full">
         <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">Não foi possível salvar</h2>
         <p className="text-sm text-[#A0A3B1] mb-4">
           Suas respostas estão salvas localmente. Tente novamente — se o problema persistir, verifique sua conexão.
         </p>
         <button
           onClick={onTentarNovamente}
-          className="w-full py-3 rounded-xl bg-[#6366F1] hover:bg-[#5558E3] text-white font-semibold text-sm transition-colors"
+          className="w-full py-3 rounded-xl bg-[#6366F1] hover:bg-[#5558E3] text-white font-semibold text-sm transition-colors active:scale-[0.98]"
         >
           Tentar novamente
         </button>
@@ -459,7 +384,7 @@ export default function AvaliacaoPublica() {
       .then((data) => {
         submittingRef.current = false;
         dispatch({ type: 'RESULTADO_OK', perfil: data.perfil });
-        // D2b: PRD §6.5 — redirecionar para /resultado/:token após conclusão
+        // PRD §6.5 — redirecionar para /resultado/:token após conclusão
         navigate(`/resultado/${token}`, { replace: true });
       })
       .catch((err) => {
@@ -481,66 +406,120 @@ export default function AvaliacaoPublica() {
     dispatch({ type: 'TENTAR_NOVAMENTE' });
   }, []);
 
-  const handleResponder = useCallback((questionId, valor) => {
-    dispatch({ type: 'RESPONDER', questionId, valor });
+  const handleSelecionar = useCallback((questionId, valor) => {
+    dispatch({ type: 'SELECIONAR', questionId, valor });
   }, []);
+
+  const handleAvancar = useCallback(() => dispatch({ type: 'AVANCAR' }), []);
+  const handleVoltar  = useCallback(() => dispatch({ type: 'VOLTAR' }), []);
 
   const questaoAtual = SAMPLE_QUESTIONS[state.questaoAtual];
   const respostaAtual = questaoAtual ? state.respostas[questaoAtual.id] : undefined;
+  const total = SAMPLE_QUESTIONS.length;
+  const isUltima = state.questaoAtual >= total - 1;
+  const podeAvancar = respostaAtual !== undefined && respostaAtual !== null;
+
+  // CTA fixo (definido por tela)
+  let cta = null;
+  if (state.tela === TELAS.BOAS_VINDAS) {
+    cta = (
+      <button
+        onClick={handleIniciar}
+        className="w-full py-4 rounded-2xl surface-brand text-white font-semibold text-base transition-transform active:scale-[0.98] shadow-card"
+      >
+        Iniciar avaliação →
+      </button>
+    );
+  } else if (state.tela === TELAS.AVALIANDO && questaoAtual) {
+    cta = (
+      <div className="flex items-center gap-3">
+        {state.questaoAtual > 0 && (
+          <button
+            onClick={handleVoltar}
+            className="px-4 py-4 rounded-2xl bg-[#1A1D2E] border border-[#2D3047] text-[#A0A3B1] font-semibold text-sm transition-colors hover:text-[#F7F8FC] active:scale-[0.98]"
+          >
+            ← Voltar
+          </button>
+        )}
+        <button
+          onClick={handleAvancar}
+          disabled={!podeAvancar}
+          className="flex-1 py-4 rounded-2xl surface-brand text-white font-semibold text-base transition-transform active:scale-[0.98] shadow-card disabled:opacity-40 disabled:active:scale-100"
+        >
+          {isUltima ? 'Finalizar' : 'Próxima →'}
+        </button>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
     <SiglaProvider>
-      <div className="min-h-screen bg-[#0F1117] flex flex-col">
+      <div className="min-h-[100dvh] bg-[#0F1117] flex flex-col">
         {/* Topo */}
-        <header className="py-4 px-6 border-b border-[#1E2030] flex items-center justify-center">
+        <header className="py-4 px-5 border-b border-[#1E2030] flex items-center justify-center">
           <span className="text-base font-heading font-bold text-[#F7F8FC]">
             Profile<span className="text-[#6366F1]">AI</span>
           </span>
         </header>
 
         {/* Conteúdo */}
-        <main className="flex-1 flex items-center justify-center p-6">
-          {state.tela === TELAS.CARREGANDO && <TelaCarregando />}
+        {state.tela === TELAS.CARREGANDO && (
+          <CentralLayout><TelaCarregando /></CentralLayout>
+        )}
 
-          {state.tela === TELAS.INVALIDO && (
-            <TelaInvalido mensagem={state.erro} />
-          )}
+        {state.tela === TELAS.INVALIDO && (
+          <CentralLayout><TelaInvalido mensagem={state.erro} /></CentralLayout>
+        )}
 
-          {state.tela === TELAS.CONCLUIDO && state.avaliado && (
-            <TelaConcluido avaliado={state.avaliado} />
-          )}
+        {state.tela === TELAS.CONCLUIDO && state.avaliado && (
+          <CentralLayout><TelaConcluido avaliado={state.avaliado} /></CentralLayout>
+        )}
 
-          {state.tela === TELAS.BOAS_VINDAS && state.avaliado && (
-            <TelaBoasVindas avaliado={state.avaliado} onIniciar={handleIniciar} />
-          )}
+        {state.tela === TELAS.BOAS_VINDAS && state.avaliado && (
+          <main className="flex-1 px-5 py-8">
+            <div className="app-shell has-cta-bar">
+              <TelaBoasVindas avaliado={state.avaliado} />
+            </div>
+          </main>
+        )}
 
-          {state.tela === TELAS.AVALIANDO && questaoAtual && (
-            <TelaAvaliando
-              questao={questaoAtual}
-              questaoAtual={state.questaoAtual}
-              total={SAMPLE_QUESTIONS.length}
-              resposta={respostaAtual}
-              onResponder={handleResponder}
-            />
-          )}
+        {state.tela === TELAS.AVALIANDO && questaoAtual && (
+          <main className="flex-1 px-5 py-6">
+            <div className="app-shell has-cta-bar">
+              <TelaAvaliando
+                questao={questaoAtual}
+                questaoAtual={state.questaoAtual}
+                total={total}
+                resposta={respostaAtual}
+                onSelecionar={handleSelecionar}
+              />
+            </div>
+          </main>
+        )}
 
-          {state.tela === TELAS.ANALISANDO && !state.erroSubmit && <TelaAnalisando />}
+        {state.tela === TELAS.ANALISANDO && !state.erroSubmit && (
+          <CentralLayout><TelaAnalisando /></CentralLayout>
+        )}
 
-          {state.tela === TELAS.ANALISANDO && state.erroSubmit && (
-            <TelaErroSubmit onTentarNovamente={handleTentarNovamente} />
-          )}
+        {state.tela === TELAS.ANALISANDO && state.erroSubmit && (
+          <CentralLayout><TelaErroSubmit onTentarNovamente={handleTentarNovamente} /></CentralLayout>
+        )}
 
-          {state.tela === TELAS.RESULTADO && state.avaliado && state.perfil && (
-            <TelaResultado avaliado={state.avaliado} perfil={state.perfil} />
-          )}
-        </main>
+        {/* CTA fixo no rodapé (padrão mobile premium) */}
+        {cta && (
+          <div className="cta-bar">
+            <div className="cta-bar__inner">{cta}</div>
+          </div>
+        )}
 
-        {/* Rodapé */}
-        <footer className="py-3 px-6 text-center text-xs text-[#4A4D6A]">
-          ProfileAI · AmbFusi AI · Avaliação {' '}
-          <SiglaComSignificado id="DISC" /> segura e confidencial
-        </footer>
+        {/* Rodapé (apenas quando não há CTA fixo) */}
+        {!cta && (
+          <footer className="py-3 px-5 text-center text-xs text-[#4A4D6A]">
+            ProfileAI · AmbFusi AI · Avaliação{' '}
+            <SiglaComSignificado id="DISC" /> segura e confidencial
+          </footer>
+        )}
       </div>
     </SiglaProvider>
     </ErrorBoundary>
