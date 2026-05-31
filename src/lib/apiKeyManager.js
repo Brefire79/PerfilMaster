@@ -144,10 +144,11 @@ async function callXaiBackend(discScores, sabotadorScores, localAnalysis) {
 function mergeAiData(localAnalysis, aiData, source) {
   return {
     ...localAnalysis,
-    summary:         aiData.enrichedSummary            || localAnalysis.summary,
-    recommendations: aiData.personalizedRecommendations || localAnalysis.recommendations,
-    deepInsights:    aiData.deepInsights               || [],
-    coachingQuestions: aiData.coachingQuestions        || [],
+    summary:           aiData.enrichedSummary             || localAnalysis.summary,
+    recommendations:   aiData.personalizedRecommendations || localAnalysis.recommendations,
+    // T2: IA tem prioridade quando vem preenchida; caso contrário preserva o conteúdo local
+    deepInsights:      aiData.deepInsights?.length      ? aiData.deepInsights      : localAnalysis.deepInsights,
+    coachingQuestions: aiData.coachingQuestions?.length ? aiData.coachingQuestions : localAnalysis.coachingQuestions,
     source,
   };
 }

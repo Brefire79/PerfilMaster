@@ -100,10 +100,10 @@ const ETAPAS = [
 
 // Badge de origem da análise
 const SOURCE_BADGE = {
-  local:    { icon: '📊', label: 'Análise local',               bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', color: '#3498db' },
-  error:    { icon: '⚠️', label: 'Análise local (erro na API)', bg: 'rgba(255,193,7,0.10)', border: 'rgba(255,193,7,0.3)',  color: '#ffc107' },
-  ai:       { icon: '✨', label: 'Análise por IA',              bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)', color: '#818cf8' },
-  xai:      { icon: '⚡', label: 'Análise por Grok (xAI)',      bg: 'rgba(233,69,96,0.12)',  border: 'rgba(233,69,96,0.3)',  color: '#e94560' },
+  local:    { icon: '📊', label: 'Análise completa (motor ProfileAI)',  bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', color: '#3498db' },
+  error:    { icon: '📊', label: 'Análise completa (motor ProfileAI)',  bg: 'rgba(52,152,219,0.12)', border: 'rgba(52,152,219,0.3)', color: '#3498db' },
+  ai:       { icon: '✨', label: 'Análise aprimorada por IA',           bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)', color: '#818cf8' },
+  xai:      { icon: '✨', label: 'Análise aprimorada por IA (Grok)',    bg: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.3)', color: '#818cf8' },
 };
 
 // Converte análise estruturada em markdown (mantém retrocompatibilidade)
@@ -143,7 +143,7 @@ function buildRelatorioFromAnalysis(analysis, resultado) {
     : '';
 
   const sourceLabel = analysis.source === 'local' || analysis.apiError
-    ? 'Análise calculada localmente — Motor Local v1.0'
+    ? 'Análise completa (motor ProfileAI)'
     : `Análise aprimorada por IA (${analysis.source})`;
 
   return `# Relatório de Perfil Comportamental
