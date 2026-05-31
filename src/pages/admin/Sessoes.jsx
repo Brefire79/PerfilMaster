@@ -242,7 +242,7 @@ function ResultadoModal({ avaliado, onClose }) {
                   )}
                 </div>
               )}
-              {erroIA && <p className="text-xs text-[#E53E3E] bg-[#E53E3E]/10 rounded-lg px-3 py-2">{erroIA}</p>}
+              {erroIA && <p className="text-xs text-[#EF4444] bg-[#EF4444]/10 rounded-lg px-3 py-2">{erroIA}</p>}
 
               {/* Flag clínica — SOMENTE ADMIN, nunca enviada ao aluno */}
               {flagClinica && (
@@ -436,7 +436,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         <button
           onClick={() => onDeletar(avaliado)}
           title="Remover avaliado"
-          className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-colors"
+          className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <polyline points="3 6 5 6 21 6" />
@@ -625,7 +625,7 @@ export default function Sessoes() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setConfirmDeleteSessao(s); }}
                           title="Deletar sessão"
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#4A4D6A] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#4A4D6A] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                             <polyline points="3 6 5 6 21 6" />
@@ -671,7 +671,7 @@ export default function Sessoes() {
                       {/* FIX: botão encerrar sessão */}
                       <button
                         onClick={() => setConfirmEncerrar(true)}
-                        className="px-3 py-2 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/30 hover:bg-[#E53E3E]/20 text-[#E53E3E] text-sm font-medium transition-colors flex items-center gap-2"
+                        className="px-3 py-2 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 hover:bg-[#EF4444]/20 text-[#EF4444] text-sm font-medium transition-colors flex items-center gap-2"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                           <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
@@ -806,7 +806,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarEncerrar}
                 disabled={encerrando}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {encerrando ? 'Encerrando...' : 'Encerrar sessão'}
               </button>
@@ -844,7 +844,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarDeleteSessao}
                 disabled={deletingSessao}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {deletingSessao ? 'Deletando...' : 'Deletar sessão'}
               </button>
@@ -882,7 +882,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarDelete}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {deleting ? 'Removendo...' : 'Remover'}
               </button>

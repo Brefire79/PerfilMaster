@@ -9,7 +9,7 @@ import clsx from 'clsx';
 import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup } from '@/firebase/firestore.js';
 
 const ACTIVITY_PROFILE_COLORS = {
-  D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE',
+  D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1',
 };
 
 function formatRelativeTime(date, t) {
@@ -31,7 +31,7 @@ function ActivityRow({ event, t }) {
   let iconBg, iconColor, iconSvg, message;
 
   if (event.type === 'completed') {
-    iconBg = 'bg-[#38A169]/10'; iconColor = '#38A169';
+    iconBg = 'bg-[#22C55E]/10'; iconColor = '#22C55E';
     iconSvg = <polyline points="20 6 9 17 4 12" />;
     message = (<><strong className="text-[#F7F8FC]">{event.name}</strong> {t('admin.activityCompleted', 'concluiu a avaliação')}</>);
   } else if (event.type === 'profile') {
@@ -44,7 +44,7 @@ function ActivityRow({ event, t }) {
     iconSvg = (<><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></>);
     message = (<><strong className="text-[#F7F8FC]">{event.name}</strong> {t('admin.activityJoined', 'entrou em')} <strong className="text-[#F7F8FC]">{event.groupName}</strong></>);
   } else {
-    iconBg = 'bg-[#D69E2E]/10'; iconColor = '#D69E2E';
+    iconBg = 'bg-[#F59E0B]/10'; iconColor = '#F59E0B';
     iconSvg = (<><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></>);
     message = (<>{t('admin.activityGroupCreated', 'Grupo criado')}: <strong className="text-[#F7F8FC]">{event.name}</strong></>);
   }
@@ -85,15 +85,15 @@ function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', lo
           {trendLabel && !loading && (
             <p className="text-xs text-[#A0A3B1] mt-1.5 flex items-center gap-1">
               {trend > 0 ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-3 h-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2} className="w-3 h-3">
                   <polyline points="18 15 12 9 6 15" />
                 </svg>
               ) : trend < 0 ? (
-                <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-3 h-3">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-3 h-3">
                   <polyline points="6 9 12 15 18 9" />
                 </svg>
               ) : null}
-              <span style={{ color: trend > 0 ? '#38A169' : trend < 0 ? '#E53E3E' : '#A0A3B1' }}>
+              <span style={{ color: trend > 0 ? '#22C55E' : trend < 0 ? '#EF4444' : '#A0A3B1' }}>
                 {trendLabel}
               </span>
             </p>
@@ -284,7 +284,7 @@ export default function AdminDashboard() {
       key: 'totalGroups',
       label: t('admin.totalGroups'),
       value: String(statsData.totalGroups),
-      color: '#38A169',
+      color: '#22C55E',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -298,7 +298,7 @@ export default function AdminDashboard() {
       key: 'totalAssessments',
       label: t('admin.totalAssessments'),
       value: String(statsData.completedAssessments),
-      color: '#D69E2E',
+      color: '#F59E0B',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <path d="M9 11l3 3L22 4" />
@@ -310,7 +310,7 @@ export default function AdminDashboard() {
       key: 'completionRate',
       label: t('admin.completionRate'),
       value: `${statsData.completionRate}%`,
-      color: '#3182CE',
+      color: '#6366F1',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <line x1="18" y1="20" x2="18" y2="10" />
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
       to: '/admin/students',
       label: t('admin.inviteStudents'),
       description: t('admin.students.invite'),
-      color: '#38A169',
+      color: '#22C55E',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
@@ -352,7 +352,7 @@ export default function AdminDashboard() {
       to: '/admin/reports',
       label: t('admin.viewReports'),
       description: t('admin.reports.generate'),
-      color: '#D69E2E',
+      color: '#F59E0B',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -364,7 +364,7 @@ export default function AdminDashboard() {
       to: '/admin/modules',
       label: t('admin.manageModules'),
       description: t('admin.modules.create'),
-      color: '#3182CE',
+      color: '#6366F1',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
           <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />

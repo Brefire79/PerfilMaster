@@ -27,7 +27,7 @@ const Input = forwardRef(function Input(
         >
           {label}
           {inputProps.required && (
-            <span className="ml-0.5 text-[#E53E3E]" aria-hidden="true">
+            <span className="ml-0.5 text-[#EF4444]" aria-hidden="true">
               *
             </span>
           )}
@@ -55,7 +55,7 @@ const Input = forwardRef(function Input(
             'disabled:opacity-50 disabled:cursor-not-allowed',
             icon ? 'pl-10 pr-4' : 'px-4',
             error
-              ? 'border-[#E53E3E] focus:border-[#E53E3E] focus:ring-[#E53E3E]/20'
+              ? 'border-[#EF4444] focus:border-[#EF4444] focus:ring-[#EF4444]/20'
               : 'border-[#2D3047]'
           )}
           aria-invalid={error ? 'true' : undefined}
@@ -70,7 +70,7 @@ const Input = forwardRef(function Input(
         <p
           id={`${id}-error`}
           role="alert"
-          className="text-xs text-[#E53E3E] flex items-center gap-1"
+          className="text-xs text-[#EF4444] flex items-center gap-1"
         >
           <svg
             viewBox="0 0 24 24"

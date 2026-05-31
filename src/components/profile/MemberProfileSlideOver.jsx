@@ -286,7 +286,7 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
                         Este perfil foi gerado antes do upgrade do briefing estratégico. Clique abaixo para enriquecer com IA — gera plano de ação, perguntas de coaching, sinais de alerta e mapa de compatibilidade.
                       </p>
                       {regenError && (
-                        <p className="text-xs text-[#E53E3E] mt-2">{regenError}</p>
+                        <p className="text-xs text-[#EF4444] mt-2">{regenError}</p>
                       )}
                       <button
                         onClick={handleRegenerate}

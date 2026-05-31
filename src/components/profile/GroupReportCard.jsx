@@ -4,10 +4,10 @@ import TherapyAlert from './TherapyAlert.jsx';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
 const PROFILE_CONFIG = {
-  D: { name: 'Dominante',  hex: '#E53E3E', lightHex: '#FED7D7' },
-  I: { name: 'Influente',  hex: '#D69E2E', lightHex: '#FEFCBF' },
-  S: { name: 'Estável',    hex: '#38A169', lightHex: '#C6F6D5' },
-  C: { name: 'Analítico',  hex: '#3182CE', lightHex: '#BEE3F8' },
+  D: { name: 'Dominante',  hex: '#EF4444', lightHex: '#FED7D7' },
+  I: { name: 'Influente',  hex: '#F59E0B', lightHex: '#FEFCBF' },
+  S: { name: 'Estável',    hex: '#22C55E', lightHex: '#C6F6D5' },
+  C: { name: 'Analítico',  hex: '#6366F1', lightHex: '#BEE3F8' },
 };
 
 const PROFILE_ORDER = ['D', 'I', 'S', 'C'];
@@ -174,7 +174,7 @@ export default function GroupReportCard({
           {/* Pontos Fortes */}
           {strengths.length > 0 && (
             <div>
-              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#38A169' }}>
+              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#22C55E' }}>
                 Pontos Fortes
               </p>
               <ul style={{ margin: 0, paddingLeft: 14, listStyle: 'disc' }}>
@@ -190,7 +190,7 @@ export default function GroupReportCard({
           {/* Desafios */}
           {challenges.length > 0 && (
             <div>
-              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#E53E3E' }}>
+              <p style={{ margin: '0 0 6px', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#EF4444' }}>
                 Desafios
               </p>
               <ul style={{ margin: 0, paddingLeft: 14, listStyle: 'disc' }}>

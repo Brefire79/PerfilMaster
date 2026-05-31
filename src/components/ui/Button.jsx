@@ -9,7 +9,7 @@ const variants = {
   ghost:
     'bg-transparent hover:bg-[#242736] text-[#A0A3B1] hover:text-[#F7F8FC] border border-transparent active:scale-[0.98]',
   danger:
-    'bg-[#E53E3E]/10 hover:bg-[#E53E3E]/20 text-[#E53E3E] border border-[#E53E3E]/30 hover:border-[#E53E3E]/60 active:scale-[0.98]',
+    'bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30 hover:border-[#EF4444]/60 active:scale-[0.98]',
   outline:
     'bg-transparent hover:bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/50 hover:border-[#6366F1] active:scale-[0.98]',
 };

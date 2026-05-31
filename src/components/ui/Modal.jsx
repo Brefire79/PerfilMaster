@@ -197,7 +197,7 @@ export function ConfirmModal({
 }) {
   const buttonVariantClass =
     variant === 'danger'
-      ? 'bg-[#E53E3E]/10 hover:bg-[#E53E3E]/20 text-[#E53E3E] border border-[#E53E3E]/30'
+      ? 'bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30'
       : 'bg-[#6366F1] hover:bg-[#4F46E5] text-white border border-transparent';
 
   return (

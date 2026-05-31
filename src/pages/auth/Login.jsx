@@ -83,13 +83,13 @@ export default function Login() {
         <form onSubmit={handleEmailLogin} noValidate className="space-y-4">
           {/* Error message */}
           {error && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/25 animate-fade-in">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/25 animate-fade-in">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <p className="text-sm text-[#E53E3E]">{error}</p>
+              <p className="text-sm text-[#EF4444]">{error}</p>
             </div>
           )}
 

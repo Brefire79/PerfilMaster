@@ -8,8 +8,8 @@ export const DISC_PROFILES = {
   D: {
     key: 'D',
     label: 'Dominante',
-    color: '#E53E3E',
-    hex: '#E53E3E',
+    color: '#EF4444',
+    hex: '#EF4444',
     strengths: ['Decisivo', 'Orientado a resultados', 'Direto', 'Corajoso', 'Competitivo'],
     weaknesses: ['Impaciente', 'Inflexível', 'Pode ser autoritário', 'Pouco empático'],
     motivations: ['Desafios', 'Autonomia', 'Vitória', 'Progresso rápido'],
@@ -23,8 +23,8 @@ export const DISC_PROFILES = {
   I: {
     key: 'I',
     label: 'Influente',
-    color: '#D69E2E',
-    hex: '#D69E2E',
+    color: '#F59E0B',
+    hex: '#F59E0B',
     strengths: ['Entusiasta', 'Persuasivo', 'Criativo', 'Otimista', 'Colaborativo'],
     weaknesses: ['Desorganizado', 'Impulsivo', 'Evita conflitos difíceis', 'Pode ser superficial'],
     motivations: ['Reconhecimento', 'Liberdade', 'Interação social', 'Novas ideias'],
@@ -38,8 +38,8 @@ export const DISC_PROFILES = {
   S: {
     key: 'S',
     label: 'Estável',
-    color: '#38A169',
-    hex: '#38A169',
+    color: '#22C55E',
+    hex: '#22C55E',
     strengths: ['Leal', 'Paciente', 'Confiável', 'Excelente ouvinte', 'Colaborativo'],
     weaknesses: ['Resistente a mudanças', 'Evita conflitos', 'Dificuldade em dizer não'],
     motivations: ['Harmonia', 'Segurança', 'Cooperação', 'Estabilidade'],
@@ -53,8 +53,8 @@ export const DISC_PROFILES = {
   C: {
     key: 'C',
     label: 'Analítico',
-    color: '#3182CE',
-    hex: '#3182CE',
+    color: '#6366F1',
+    hex: '#6366F1',
     strengths: ['Preciso', 'Sistemático', 'Analítico', 'Orientado a qualidade', 'Organizado'],
     weaknesses: ['Perfeccionista', 'Lento para decidir', 'Excessivamente crítico', 'Isolado'],
     motivations: ['Qualidade', 'Precisão', 'Dados concretos', 'Processos claros'],

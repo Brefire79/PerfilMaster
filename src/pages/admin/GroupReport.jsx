@@ -17,10 +17,10 @@ import { exportReportAsPDF } from '@/utils/pdfExport.js';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
 const PROFILE_CONFIG = {
-  D: { name: 'Dominante',  hex: '#E53E3E', lightHex: '#FED7D7', bgClass: 'bg-[#E53E3E]/10', borderClass: 'border-[#E53E3E]/30', textClass: 'text-[#E53E3E]' },
-  I: { name: 'Influente',  hex: '#D69E2E', lightHex: '#FEFCBF', bgClass: 'bg-[#D69E2E]/10', borderClass: 'border-[#D69E2E]/30', textClass: 'text-[#D69E2E]' },
-  S: { name: 'Estável',    hex: '#38A169', lightHex: '#C6F6D5', bgClass: 'bg-[#38A169]/10', borderClass: 'border-[#38A169]/30', textClass: 'text-[#38A169]' },
-  C: { name: 'Analítico',  hex: '#3182CE', lightHex: '#BEE3F8', bgClass: 'bg-[#3182CE]/10', borderClass: 'border-[#3182CE]/30', textClass: 'text-[#3182CE]' },
+  D: { name: 'Dominante',  hex: '#EF4444', lightHex: '#FED7D7', bgClass: 'bg-[#EF4444]/10', borderClass: 'border-[#EF4444]/30', textClass: 'text-[#EF4444]' },
+  I: { name: 'Influente',  hex: '#F59E0B', lightHex: '#FEFCBF', bgClass: 'bg-[#F59E0B]/10', borderClass: 'border-[#F59E0B]/30', textClass: 'text-[#F59E0B]' },
+  S: { name: 'Estável',    hex: '#22C55E', lightHex: '#C6F6D5', bgClass: 'bg-[#22C55E]/10', borderClass: 'border-[#22C55E]/30', textClass: 'text-[#22C55E]' },
+  C: { name: 'Analítico',  hex: '#6366F1', lightHex: '#BEE3F8', bgClass: 'bg-[#6366F1]/10', borderClass: 'border-[#6366F1]/30', textClass: 'text-[#6366F1]' },
 };
 const PROFILE_ORDER = ['D', 'I', 'S', 'C'];
 
@@ -172,13 +172,13 @@ function MemberCard({ user, profile, isAdmin }) {
           <div className="space-y-3 pt-1 border-t border-[#2D3047]">
             {aiSummary.strengths?.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#38A169] mb-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#22C55E] mb-1.5">
                   Pontos Fortes
                 </p>
                 <ul className="space-y-1">
                   {aiSummary.strengths.slice(0, 3).map((s, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-xs text-[#A0A3B1]">
-                      <span className="text-[#38A169] mt-0.5 flex-shrink-0">•</span>
+                      <span className="text-[#22C55E] mt-0.5 flex-shrink-0">•</span>
                       {s}
                     </li>
                   ))}
@@ -188,13 +188,13 @@ function MemberCard({ user, profile, isAdmin }) {
 
             {aiSummary.challenges?.length > 0 && (
               <div>
-                <p className="text-[10px] font-bold uppercase tracking-wide text-[#E53E3E] mb-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-[#EF4444] mb-1.5">
                   Desafios
                 </p>
                 <ul className="space-y-1">
                   {aiSummary.challenges.slice(0, 2).map((c, i) => (
                     <li key={i} className="flex items-start gap-1.5 text-xs text-[#A0A3B1]">
-                      <span className="text-[#E53E3E] mt-0.5 flex-shrink-0">•</span>
+                      <span className="text-[#EF4444] mt-0.5 flex-shrink-0">•</span>
                       {c}
                     </li>
                   ))}
@@ -277,13 +277,13 @@ function AIInsightsSection({ report }) {
           {/* Collaboration tips */}
           {collaborationTips.length > 0 && (
             <div>
-              <p className="text-xs font-bold uppercase tracking-wide text-[#38A169] mb-3">
+              <p className="text-xs font-bold uppercase tracking-wide text-[#22C55E] mb-3">
                 Dicas de colaboração
               </p>
               <ul className="space-y-2">
                 {collaborationTips.map((tip, i) => (
                   <li key={i} className="flex items-start gap-2.5 text-sm text-[#A0A3B1]">
-                    <span className="text-[#38A169] flex-shrink-0 mt-0.5">•</span>
+                    <span className="text-[#22C55E] flex-shrink-0 mt-0.5">•</span>
                     <span className="leading-relaxed">{tip}</span>
                   </li>
                 ))}
@@ -666,8 +666,8 @@ export default function GroupReport() {
   if (error && !group) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <div className="w-14 h-14 rounded-2xl bg-[#E53E3E]/10 border border-[#E53E3E]/30 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={1.8} className="w-7 h-7" aria-hidden="true">
+        <div className="w-14 h-14 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/30 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8} className="w-7 h-7" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -778,7 +778,7 @@ export default function GroupReport() {
               Compartilhar
             </Button>
             {shareToast && (
-              <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-[#38A169] rounded-xl text-xs text-white whitespace-nowrap shadow-lg z-10 animate-fade-in">
+              <div className="absolute top-full right-0 mt-2 px-3 py-1.5 bg-[#22C55E] rounded-xl text-xs text-white whitespace-nowrap shadow-lg z-10 animate-fade-in">
                 Link copiado!
               </div>
             )}
@@ -788,13 +788,13 @@ export default function GroupReport() {
 
       {/* Error banner (non-blocking) */}
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/30">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-5 h-5 flex-shrink-0" aria-hidden="true">
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-5 h-5 flex-shrink-0" aria-hidden="true">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <p className="text-sm text-[#E53E3E]">{error}</p>
+          <p className="text-sm text-[#EF4444]">{error}</p>
         </div>
       )}
 

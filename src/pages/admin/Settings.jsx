@@ -81,7 +81,7 @@ function SaveFeedback({ status }) {
   return (
     <span className={clsx(
       'text-sm flex items-center gap-1.5',
-      status === 'saving' ? 'text-[#A0A3B1]' : 'text-[#38A169]'
+      status === 'saving' ? 'text-[#A0A3B1]' : 'text-[#22C55E]'
     )}>
       {status === 'saving' ? (
         <>
@@ -409,10 +409,10 @@ export default function Settings() {
 
       {/* ── Danger zone ── */}
       <SettingsSection title={t('settings.dangerZone', 'Zona de Perigo')}>
-        <Card variant="default" className="border-[#E53E3E]/20">
+        <Card variant="default" className="border-[#EF4444]/20">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <p className="text-sm font-medium text-[#E53E3E]">
+              <p className="text-sm font-medium text-[#EF4444]">
                 {t('settings.deleteAccount', 'Excluir conta')}
               </p>
               <p className="text-xs text-[#A0A3B1] mt-0.5">

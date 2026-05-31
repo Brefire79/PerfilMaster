@@ -6,10 +6,10 @@ import Button from '@/components/ui/Button.jsx';
 // ─── Profile dimension metadata ───────────────────────────────────────────────
 
 const DIMENSION_META = {
-  D: { label: 'Dominante', color: 'bg-[#E53E3E]/15 text-[#E53E3E] border-[#E53E3E]/30' },
-  I: { label: 'Influente', color: 'bg-[#D69E2E]/15 text-[#D69E2E] border-[#D69E2E]/30' },
-  S: { label: 'Estável', color: 'bg-[#38A169]/15 text-[#38A169] border-[#38A169]/30' },
-  C: { label: 'Analítico', color: 'bg-[#3182CE]/15 text-[#3182CE] border-[#3182CE]/30' },
+  D: { label: 'Dominante', color: 'bg-[#EF4444]/15 text-[#EF4444] border-[#EF4444]/30' },
+  I: { label: 'Influente', color: 'bg-[#F59E0B]/15 text-[#F59E0B] border-[#F59E0B]/30' },
+  S: { label: 'Estável', color: 'bg-[#22C55E]/15 text-[#22C55E] border-[#22C55E]/30' },
+  C: { label: 'Analítico', color: 'bg-[#6366F1]/15 text-[#6366F1] border-[#6366F1]/30' },
 };
 
 const LIKERT_LABELS = {

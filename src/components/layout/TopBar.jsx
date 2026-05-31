@@ -92,7 +92,7 @@ export default function TopBar({ role = 'student', onMenuClick }) {
           <button
             onClick={handleSignOut}
             title={t('navigation.logout')}
-            className="p-2 rounded-lg text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#242736] transition-colors"
+            className="p-2 rounded-lg text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#242736] transition-colors"
             aria-label={t('navigation.logout')}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">

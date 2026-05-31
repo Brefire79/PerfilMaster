@@ -19,10 +19,10 @@ const LANGUAGES = [
 const PROFILE_MODELS = ['DiSC', 'Social Style', 'OCAI', 'Custom'];
 
 const DIMENSIONS = [
-  { key: 'D', color: '#E53E3E', label: 'Dominance' },
-  { key: 'I', color: '#D69E2E', label: 'Influence' },
-  { key: 'S', color: '#38A169', label: 'Steadiness' },
-  { key: 'C', color: '#3182CE', label: 'Conscientiousness' },
+  { key: 'D', color: '#EF4444', label: 'Dominance' },
+  { key: 'I', color: '#F59E0B', label: 'Influence' },
+  { key: 'S', color: '#22C55E', label: 'Steadiness' },
+  { key: 'C', color: '#6366F1', label: 'Conscientiousness' },
 ];
 
 const QUESTION_TYPES = [
@@ -125,7 +125,7 @@ function OptionEditor({ options = [], lang, onChange }) {
           <button
             type="button"
             onClick={() => handleRemove(idx)}
-            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-colors flex-shrink-0"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors flex-shrink-0"
             aria-label="Remover opção"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5" aria-hidden="true">
@@ -248,10 +248,10 @@ function QuestionForm({ question, onSave, onCancel }) {
           rows={3}
           className={clsx(
             'w-full px-4 py-3 rounded-lg bg-[#0F1117] border text-[#F7F8FC] text-sm placeholder:text-[#A0A3B1]/50 focus:border-[#6366F1] outline-none resize-none transition-colors',
-            errors.text ? 'border-[#E53E3E]' : 'border-[#2D3047]'
+            errors.text ? 'border-[#EF4444]' : 'border-[#2D3047]'
           )}
         />
-        {errors.text && <p className="text-xs text-[#E53E3E] mt-1">{errors.text}</p>}
+        {errors.text && <p className="text-xs text-[#EF4444] mt-1">{errors.text}</p>}
       </div>
 
       {/* Options */}
@@ -379,7 +379,7 @@ function QuestionItem({ question, index, total, onEdit, onDelete, onMoveUp, onMo
         <button
           type="button"
           onClick={() => onDelete(index)}
-          className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-colors"
+          className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
           aria-label={t('app.delete', 'Excluir')}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5" aria-hidden="true">
@@ -579,10 +579,10 @@ export default function ModuleBuilder() {
             )}
             {saveStatus === 'saved' && (
               <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2.5} className="w-3.5 h-3.5" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2.5} className="w-3.5 h-3.5" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                <span className="text-[#38A169]">{t('module.saved', 'Salvo')}</span>
+                <span className="text-[#22C55E]">{t('module.saved', 'Salvo')}</span>
               </>
             )}
           </span>

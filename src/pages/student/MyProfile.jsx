@@ -181,8 +181,8 @@ function StrengthsAndChallenges({ type }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* Strengths */}
-      <div className="bg-[#1A1D2E] rounded-xl p-4 border border-[#38A169]/20">
-        <h3 className="text-sm font-heading font-semibold text-[#38A169] mb-3 flex items-center gap-2">
+      <div className="bg-[#1A1D2E] rounded-xl p-4 border border-[#22C55E]/20">
+        <h3 className="text-sm font-heading font-semibold text-[#22C55E] mb-3 flex items-center gap-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <polyline points="20 6 9 17 4 12" />
           </svg>
@@ -191,7 +191,7 @@ function StrengthsAndChallenges({ type }) {
         <ul className="space-y-2">
           {displayStrengths.map((s, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-[#A0A3B1]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#38A169] flex-shrink-0 mt-1.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#22C55E] flex-shrink-0 mt-1.5" />
               {s}
             </li>
           ))}
@@ -199,8 +199,8 @@ function StrengthsAndChallenges({ type }) {
       </div>
 
       {/* Challenges */}
-      <div className="bg-[#1A1D2E] rounded-xl p-4 border border-[#D69E2E]/20">
-        <h3 className="text-sm font-heading font-semibold text-[#D69E2E] mb-3 flex items-center gap-2">
+      <div className="bg-[#1A1D2E] rounded-xl p-4 border border-[#F59E0B]/20">
+        <h3 className="text-sm font-heading font-semibold text-[#F59E0B] mb-3 flex items-center gap-2">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             <line x1="12" y1="9" x2="12" y2="13" />
@@ -211,7 +211,7 @@ function StrengthsAndChallenges({ type }) {
         <ul className="space-y-2">
           {displayChallenges.map((c, i) => (
             <li key={i} className="flex items-start gap-2 text-sm text-[#A0A3B1]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#D69E2E] flex-shrink-0 mt-1.5" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#F59E0B] flex-shrink-0 mt-1.5" />
               {c}
             </li>
           ))}

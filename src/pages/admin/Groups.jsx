@@ -161,9 +161,9 @@ function InviteStudentModal({ isOpen, onClose, groups, adminUid }) {
               placeholder="Nome completo do aluno"
               value={form.name}
               onChange={(e) => { setForm((f) => ({ ...f, name: e.target.value })); setErrors((er) => ({ ...er, name: '' })); }}
-              className={clsx('input-base', errors.name && 'border-[#E53E3E]!')}
+              className={clsx('input-base', errors.name && 'border-[#EF4444]!')}
             />
-            {errors.name && <p className="text-xs text-[#E53E3E]">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-[#EF4444]">{errors.name}</p>}
           </div>
 
           {/* Phone */}
@@ -181,9 +181,9 @@ function InviteStudentModal({ isOpen, onClose, groups, adminUid }) {
               placeholder="aluno@email.com"
               value={form.email}
               onChange={(e) => { setForm((f) => ({ ...f, email: e.target.value })); setErrors((er) => ({ ...er, email: '' })); }}
-              className={clsx('input-base', errors.email && 'border-[#E53E3E]!')}
+              className={clsx('input-base', errors.email && 'border-[#EF4444]!')}
             />
-            {errors.email && <p className="text-xs text-[#E53E3E]">{errors.email}</p>}
+            {errors.email && <p className="text-xs text-[#EF4444]">{errors.email}</p>}
           </div>
 
           {/* Group — FIX: opcional, auto-cria "Alunos Avulsos" se vazio */}
@@ -221,14 +221,14 @@ function InviteStudentModal({ isOpen, onClose, groups, adminUid }) {
       {step === STEPS.LINK && (
         <div className="space-y-5">
           {/* Success badge */}
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#38A169]/10 border border-[#38A169]/25">
-            <div className="w-8 h-8 rounded-full bg-[#38A169]/20 flex items-center justify-center flex-shrink-0">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2.5} className="w-4 h-4">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#22C55E]/10 border border-[#22C55E]/25">
+            <div className="w-8 h-8 rounded-full bg-[#22C55E]/20 flex items-center justify-center flex-shrink-0">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2.5} className="w-4 h-4">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
             <div>
-              <p className="text-sm font-semibold text-[#38A169]">Link de convite gerado!</p>
+              <p className="text-sm font-semibold text-[#22C55E]">Link de convite gerado!</p>
               <p className="text-xs text-[#A0A3B1]">Válido por 7 dias · uso único</p>
             </div>
           </div>
@@ -248,7 +248,7 @@ function InviteStudentModal({ isOpen, onClose, groups, adminUid }) {
                 className={clsx(
                   'flex-shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-all border',
                   copied
-                    ? 'bg-[#38A169]/20 border-[#38A169]/40 text-[#38A169]'
+                    ? 'bg-[#22C55E]/20 border-[#22C55E]/40 text-[#22C55E]'
                     : 'bg-[#2D3047] border-[#2D3047] text-[#F7F8FC] hover:bg-[#6366F1] hover:border-[#6366F1]'
                 )}
               >

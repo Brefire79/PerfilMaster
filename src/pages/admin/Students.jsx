@@ -10,7 +10,7 @@ import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
 
-const PROFILE_COLORS = { D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE' };
+const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 const PAGE_SIZE = 10;
 
 function getInitials(name = '') {
@@ -501,7 +501,7 @@ export default function Students() {
                     className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
                       student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
                         ? 'text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10'
-                        : 'text-[#A0A3B1] hover:text-[#38A169] hover:bg-[#38A169]/10'
+                        : 'text-[#A0A3B1] hover:text-[#22C55E] hover:bg-[#22C55E]/10'
                     }`}
                     aria-label={
                       student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
@@ -520,7 +520,7 @@ export default function Students() {
                     </svg>
                   </button>
                   <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#D69E2E] hover:bg-[#D69E2E]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={t('students.sendReminder', 'Enviar lembrete')}
                     title={t('students.sendReminder', 'Enviar lembrete')}
                     onClick={() => handleSendReminder(student)}
@@ -599,8 +599,8 @@ export default function Students() {
             <div className="px-5 py-4 space-y-4">
               {assignDone ? (
                 <div className="flex flex-col items-center gap-3 py-6 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2.5} className="w-6 h-6">
+                  <div className="w-12 h-12 rounded-2xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2.5} className="w-6 h-6">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </div>
@@ -655,7 +655,7 @@ export default function Students() {
             </div>
 
             {assignError && !assignDone && (
-              <div className="mx-5 mb-2 px-3 py-2 rounded-lg bg-[#E53E3E]/10 border border-[#E53E3E]/30 text-xs text-[#E53E3E]">
+              <div className="mx-5 mb-2 px-3 py-2 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30 text-xs text-[#EF4444]">
                 {assignError}
               </div>
             )}

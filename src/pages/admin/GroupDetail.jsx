@@ -135,7 +135,7 @@ function MemberProfileSlideOver({ member, isOpen, onClose }) {
 
 // ─── Enhanced Member Row ─────────────────────────────────────────────────────
 function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
-  const PROFILE_COLORS = { D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE' };
+  const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 
   function getInitials(name = '') {
     return name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') || '?';
@@ -144,9 +144,9 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
   const getStatusVariant = (status) => {
     switch (status) {
       case 'completed':
-      case 'analyzed':    return 'bg-[#38A169]/10 text-[#38A169] border-[#38A169]/20';
+      case 'analyzed':    return 'bg-[#22C55E]/10 text-[#22C55E] border-[#22C55E]/20';
       case 'submitted':
-      case 'in_progress': return 'bg-[#D69E2E]/10 text-[#D69E2E] border-[#D69E2E]/20';
+      case 'in_progress': return 'bg-[#F59E0B]/10 text-[#F59E0B] border-[#F59E0B]/20';
       case 'pending':     return 'bg-[#A0A3B1]/10 text-[#A0A3B1] border-[#A0A3B1]/20';
       default:            return 'bg-[#2D3047] text-[#A0A3B1] border-[#2D3047]';
     }
@@ -214,7 +214,7 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
         </button>
         <button
           onClick={() => onRemove(member.id)}
-          className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-all"
+          className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
           aria-label={t('admin.students.removeConfirm', 'Remover membro')}
           title={t('admin.students.removeConfirm', 'Remover membro')}
         >
@@ -268,7 +268,7 @@ function StatsRow({ members, group }) {
       </Card>
       <Card variant="default">
         <div className="flex flex-col items-center gap-1">
-          <ProgressRing value={completedPct} size={48} strokeWidth={5} color="#38A169" />
+          <ProgressRing value={completedPct} size={48} strokeWidth={5} color="#22C55E" />
           <p className="text-xs text-[#A0A3B1]">{t('assessment.completed', 'Concluídas')}</p>
         </div>
       </Card>
@@ -380,7 +380,7 @@ function SettingsTab({ group, onUpdated, onDeleted }) {
 
             <div className="flex items-center justify-end gap-3">
               {saved && (
-                <span className="text-sm text-[#38A169] flex items-center gap-1">
+                <span className="text-sm text-[#22C55E] flex items-center gap-1">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4" aria-hidden="true">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -395,10 +395,10 @@ function SettingsTab({ group, onUpdated, onDeleted }) {
         </Card>
 
         {/* Danger zone */}
-        <Card variant="default" className="border-[#E53E3E]/20">
+        <Card variant="default" className="border-[#EF4444]/20">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-sm font-semibold text-[#E53E3E]">
+              <h3 className="text-sm font-semibold text-[#EF4444]">
                 {t('group.dangerZone', 'Zona de Perigo')}
               </h3>
               <p className="text-xs text-[#A0A3B1] mt-0.5">

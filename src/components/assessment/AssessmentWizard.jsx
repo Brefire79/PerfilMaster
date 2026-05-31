@@ -120,7 +120,7 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
 
         {blocked ? (
           <div className="text-center space-y-1">
-            <p className="text-sm text-[#E53E3E] font-medium">
+            <p className="text-sm text-[#EF4444] font-medium">
               {t('wizard.intro.blocked', 'Avaliação bloqueada temporariamente')}
             </p>
             {blockedUntil && (
@@ -149,14 +149,14 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
 function TransitionScreen({ onContinue, t }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4 animate-fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-8 h-8">
+      <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2} className="w-8 h-8">
           <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
 
       <div className="text-center space-y-2 max-w-sm">
-        <p className="text-sm font-medium text-[#38A169] uppercase tracking-widest">
+        <p className="text-sm font-medium text-[#22C55E] uppercase tracking-widest">
           {t('wizard.transition.badge', 'Etapa 1 concluída!')}
         </p>
         <h2 className="text-xl font-heading font-bold text-[#F7F8FC]">
@@ -196,13 +196,13 @@ function SubmittingScreen({ t }) {
 function ErrorBanner({ message, onRetry, t }) {
   if (!message) return null;
   return (
-    <div className="flex items-center gap-3 bg-[#E53E3E]/10 border border-[#E53E3E]/30 rounded-xl px-4 py-3">
-      <span className="text-[#E53E3E] text-sm flex-1">{message}</span>
+    <div className="flex items-center gap-3 bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl px-4 py-3">
+      <span className="text-[#EF4444] text-sm flex-1">{message}</span>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="text-xs font-medium text-[#E53E3E] underline hover:no-underline"
+          className="text-xs font-medium text-[#EF4444] underline hover:no-underline"
         >
           {t('app.retry', 'Tentar novamente')}
         </button>
@@ -669,8 +669,8 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
   if (etapa === 'completed') {
     return (
       <div className="max-w-lg mx-auto py-4 flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-8 h-8">
+        <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2} className="w-8 h-8">
             <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>

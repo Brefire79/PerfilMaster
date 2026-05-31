@@ -56,8 +56,8 @@ export default function ForgotPassword() {
         {sent ? (
           /* Success state */
           <div className="text-center py-4 animate-fade-in">
-            <div className="w-14 h-14 rounded-full bg-[#38A169]/10 border border-[#38A169]/25 flex items-center justify-center mx-auto mb-4">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2.5} className="w-7 h-7">
+            <div className="w-14 h-14 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/25 flex items-center justify-center mx-auto mb-4">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2.5} className="w-7 h-7">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
@@ -77,13 +77,13 @@ export default function ForgotPassword() {
           /* Form */
           <form onSubmit={handleSubmit} noValidate className="space-y-4">
             {error && (
-              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/25 animate-fade-in">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/25 animate-fade-in">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
                   <circle cx="12" cy="12" r="10" />
                   <line x1="12" y1="8" x2="12" y2="12" />
                   <line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <p className="text-sm text-[#E53E3E]">{error}</p>
+                <p className="text-sm text-[#EF4444]">{error}</p>
               </div>
             )}
 
