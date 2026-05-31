@@ -56,12 +56,15 @@ export default function SessionCreator({ onFechar, onCriado }) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.7)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="session-creator-title"
     >
       <div className="w-full max-w-md bg-[#13151F] border border-[#2D3047] rounded-2xl p-6 shadow-2xl">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-heading font-bold text-[#F7F8FC]">
+            <h2 id="session-creator-title" className="text-lg font-heading font-bold text-[#F7F8FC]">
               Nova Sessão de Avaliação
             </h2>
             <p className="text-xs text-[#A0A3B1] mt-0.5">
@@ -80,10 +83,11 @@ export default function SessionCreator({ onFechar, onCriado }) {
         {/* Formulário */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-[#A0A3B1]">
-              Título da sessão <span className="text-[#EF4444]">*</span>
+            <label htmlFor="sessao-titulo" className="text-sm font-medium text-[#A0A3B1]">
+              Título da sessão <span className="text-[#EF4444]" aria-label="obrigatório">*</span>
             </label>
             <input
+              id="sessao-titulo"
               name="titulo"
               value={form.titulo}
               onChange={handleChange}

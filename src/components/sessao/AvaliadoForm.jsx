@@ -90,12 +90,15 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
       style={{ background: 'rgba(0,0,0,0.7)' }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="avaliado-form-title"
     >
       <div className="w-full max-w-md bg-[#13151F] border border-[#2D3047] rounded-2xl p-6 shadow-2xl">
         {/* Cabeçalho */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-lg font-heading font-bold text-[#F7F8FC]">
+            <h2 id="avaliado-form-title" className="text-lg font-heading font-bold text-[#F7F8FC]">
               {tokenGerado ? 'Avaliado Cadastrado!' : 'Cadastrar Avaliado'}
             </h2>
             <p className="text-xs text-[#A0A3B1] mt-0.5">
@@ -157,16 +160,18 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
           /* Estado: formulário */
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#A0A3B1]">
-                Nome completo <span className="text-[#EF4444]">*</span>
+              <label htmlFor="avaliado-nome" className="text-sm font-medium text-[#A0A3B1]">
+                Nome completo <span className="text-[#EF4444]" aria-label="obrigatório">*</span>
               </label>
               <input
+                id="avaliado-nome"
                 name="nome"
                 value={form.nome}
                 onChange={handleChange}
                 placeholder="Nome do avaliado"
                 className={INPUT_BASE}
                 maxLength={80}
+                autoComplete="name"
                 autoFocus
               />
             </div>
@@ -180,12 +185,14 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
             />
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-[#A0A3B1]">
+              <label htmlFor="avaliado-email" className="text-sm font-medium text-[#A0A3B1]">
                 E-mail <span className="text-[#A0A3B1] text-xs">(opcional)</span>
               </label>
               <input
+                id="avaliado-email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 value={form.email}
                 onChange={handleChange}
                 placeholder="email@empresa.com"

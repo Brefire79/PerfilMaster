@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { buscarPorToken } from '@/firebase/functions.js';
-import { insightPerfil } from '@/firebase/functions.js';
+import { buscarPorToken, insightPerfil } from '@/firebase/functions.js';
 
 // ─── Configuração DISC (fonte única de cores — alinhada aos tokens F1) ─────────
 const DISC = {
@@ -90,6 +89,16 @@ export default function ResultadoPublico() {
   const [loading, setLoading] = useState(true);
   const [loadingIA, setLoadingIA] = useState(false);
   const [erro, setErro] = useState('');
+
+  // Atualiza document.title com o nome do avaliado quando disponível
+  useEffect(() => {
+    if (dados?.nome) {
+      document.title = `Resultado de ${dados.nome.split(' ')[0]} — ProfileAI`;
+    } else {
+      document.title = 'Resultado DISC — ProfileAI';
+    }
+    return () => { document.title = 'ProfileAI'; };
+  }, [dados?.nome]);
 
   useEffect(() => {
     if (!token) { setErro('Token inválido.'); setLoading(false); return; }
@@ -230,19 +239,26 @@ export default function ResultadoPublico() {
         </header>
 
         {/* ── Sobre o perfil ── */}
+        {/* aria-live: anuncia ao SR quando o insight da IA carregar */}
         <Section icon="🧠" title="Sobre seu perfil">
-          <p className="text-sm text-[#E2E8F0] leading-relaxed">
-            {insight?.insight || DESC_DISC[perfil.perfilPrimario]}
-          </p>
-          {secCfg && !insight?.insight && (
-            <p className="text-xs text-[#A0A3B1] mt-2 leading-relaxed">
-              <span style={{ color: secCfg.cor }}>Tendência {secCfg.nome}:</span>{' '}
-              {DESC_DISC[perfil.perfilSecundario]}
+          <div aria-live="polite" aria-atomic="true">
+            <p className="text-sm text-[#E2E8F0] leading-relaxed">
+              {insight?.insight || DESC_DISC[perfil.perfilPrimario]}
             </p>
-          )}
+            {secCfg && !insight?.insight && (
+              <p className="text-xs text-[#A0A3B1] mt-2 leading-relaxed">
+                <span style={{ color: secCfg.cor }}>Tendência {secCfg.nome}:</span>{' '}
+                {DESC_DISC[perfil.perfilSecundario]}
+              </p>
+            )}
+          </div>
           {loadingIA && (
-            <div className="flex items-center gap-2 mt-3 text-xs text-[#A0A3B1]">
-              <div className="w-3 h-3 rounded-full border border-[#6366F1] border-t-transparent animate-spin" />
+            <div
+              role="status"
+              aria-label="Carregando análise personalizada"
+              className="flex items-center gap-2 mt-3 text-xs text-[#A0A3B1]"
+            >
+              <div className="w-3 h-3 rounded-full border border-[#6366F1] border-t-transparent animate-spin" aria-hidden="true" />
               Gerando análise personalizada...
             </div>
           )}
