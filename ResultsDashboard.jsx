@@ -417,7 +417,7 @@ function AbaInsights({ analysis }) {
 
       {/* Recomendações */}
       {analysis.recommendations?.length > 0 && (
-        <div style={{ ...C.card, marginBottom:0 }}>
+        <div style={C.card}>
           <div style={C.secTitle}>Recomendações Práticas</div>
           <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
             Ações concretas baseadas no seu perfil único.
@@ -441,6 +441,48 @@ function AbaInsights({ analysis }) {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Insights Aprofundados — gerados pelo motor local ou enriquecidos pela IA */}
+      {analysis.deepInsights?.length > 0 && (
+        <div style={C.card}>
+          <div style={C.secTitle}>Insights Aprofundados</div>
+          <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
+            Padrões comportamentais identificados com base na combinação do seu perfil DISC e sabotadores ativos.
+          </p>
+          {analysis.deepInsights.map((insight, i) => (
+            <div key={i} style={{ display:'flex', gap:'1rem', padding:'1rem', background:'#0f172a',
+              borderRadius:'10px', marginBottom:'.75rem', borderLeft:'3px solid #6366f1' }}>
+              <span style={{ color:'#6366f1', fontSize:'1rem', flexShrink:0, marginTop:'2px' }}>💡</span>
+              <p style={{ color:'#94a3b8', fontSize:'.85rem', lineHeight:1.6, margin:0 }}>{insight}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Perguntas de Coaching — reflexivas, em 2ª pessoa */}
+      {analysis.coachingQuestions?.length > 0 && (
+        <div style={{ ...C.card, marginBottom:0 }}>
+          <div style={C.secTitle}>Perguntas de Coaching</div>
+          <p style={{ color:'#64748b', fontSize:'.8rem', marginBottom:'1rem' }}>
+            Perguntas reflexivas para aprofundar o autoconhecimento e acelerar seu desenvolvimento.
+          </p>
+          {analysis.coachingQuestions.map((q, i) => (
+            <div key={i} style={{ display:'flex', gap:'1rem', padding:'1rem', background:'#0f172a',
+              borderRadius:'10px', marginBottom:'.75rem' }}>
+              <div style={{ minWidth:'28px', height:'28px', borderRadius:'50%',
+                background:'#6366f122', border:'1px solid #6366f144',
+                display:'flex', alignItems:'center', justifyContent:'center',
+                color:'#818cf8', fontWeight:800, fontSize:'.8rem', flexShrink:0 }}>
+                {i + 1}
+              </div>
+              <p style={{ color:'#c7d2fe', fontSize:'.875rem', lineHeight:1.7, margin:0,
+                fontStyle:'italic' }}>
+                {q}
+              </p>
+            </div>
+          ))}
         </div>
       )}
     </>
