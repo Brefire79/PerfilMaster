@@ -6,10 +6,10 @@ import Button from '@/components/ui/Button.jsx';
 // ─── Profile Colors ───────────────────────────────────────────────────────────
 
 const PROFILE_COLORS = {
-  D: { bg: 'bg-[#E53E3E]/10', border: 'border-[#E53E3E]/30', text: 'text-[#E53E3E]', hex: '#E53E3E', glow: 'shadow-[0_0_32px_rgba(229,62,62,0.3)]' },
-  I: { bg: 'bg-[#D69E2E]/10', border: 'border-[#D69E2E]/30', text: 'text-[#D69E2E]', hex: '#D69E2E', glow: 'shadow-[0_0_32px_rgba(214,158,46,0.3)]' },
-  S: { bg: 'bg-[#38A169]/10', border: 'border-[#38A169]/30', text: 'text-[#38A169]', hex: '#38A169', glow: 'shadow-[0_0_32px_rgba(56,161,105,0.3)]' },
-  C: { bg: 'bg-[#3182CE]/10', border: 'border-[#3182CE]/30', text: 'text-[#3182CE]', hex: '#3182CE', glow: 'shadow-[0_0_32px_rgba(49,130,206,0.3)]' },
+  D: { bg: 'bg-[#EF4444]/10', border: 'border-[#EF4444]/30', text: 'text-[#EF4444]', hex: '#EF4444', glow: 'shadow-[0_0_32px_rgba(229,62,62,0.3)]' },
+  I: { bg: 'bg-[#F59E0B]/10', border: 'border-[#F59E0B]/30', text: 'text-[#F59E0B]', hex: '#F59E0B', glow: 'shadow-[0_0_32px_rgba(214,158,46,0.3)]' },
+  S: { bg: 'bg-[#22C55E]/10', border: 'border-[#22C55E]/30', text: 'text-[#22C55E]', hex: '#22C55E', glow: 'shadow-[0_0_32px_rgba(56,161,105,0.3)]' },
+  C: { bg: 'bg-[#6366F1]/10', border: 'border-[#6366F1]/30', text: 'text-[#6366F1]', hex: '#6366F1', glow: 'shadow-[0_0_32px_rgba(49,130,206,0.3)]' },
 };
 
 // ─── Rotating insight messages ────────────────────────────────────────────────

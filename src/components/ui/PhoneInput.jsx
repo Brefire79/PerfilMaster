@@ -107,7 +107,7 @@ export default function PhoneInput({
         className={clsx(
           'flex items-stretch rounded-lg border bg-[#1A1D2E] transition-colors overflow-visible',
           error
-            ? 'border-[#E53E3E]'
+            ? 'border-[#EF4444]'
             : 'border-[#2D3047] focus-within:border-[#6366F1] focus-within:ring-2 focus-within:ring-[#6366F1]/20'
         )}
       >
@@ -167,7 +167,7 @@ export default function PhoneInput({
       </div>
 
       {/* Mensagens */}
-      {error && <p className="text-xs text-[#E53E3E]">{error}</p>}
+      {error && <p className="text-xs text-[#EF4444]">{error}</p>}
       {!error && fullNumber && (
         <p className="text-xs text-[#A0A3B1]">
           Número para WhatsApp: <span className="font-mono text-[#6366F1]">{fullNumber}</span>

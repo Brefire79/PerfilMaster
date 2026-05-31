@@ -109,7 +109,7 @@ export default function BottomNav({ role = 'student' }) {
           >
             {({ isActive }) => (
               <>
-                <span className="relative">
+                <span className="relative" aria-hidden="true">
                   {item.icon(isActive)}
                   {isActive && (
                     <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#6366F1]" />

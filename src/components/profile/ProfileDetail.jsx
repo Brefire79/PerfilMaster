@@ -7,10 +7,10 @@ import Card from '@/components/ui/Card.jsx';
 
 // ─── Profile color map ────────────────────────────────────────────────────────
 const PROFILE_HEX = {
-  D: '#E53E3E',
-  I: '#D69E2E',
-  S: '#38A169',
-  C: '#3182CE',
+  D: '#EF4444',
+  I: '#F59E0B',
+  S: '#22C55E',
+  C: '#6366F1',
 };
 
 const PROFILE_NAMES = {
@@ -240,7 +240,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#4A4D6A] mt-1 italic">
+            <p className="text-xs text-[#A0A3B1] mt-1 italic">
               Scores detalhados não disponíveis — perfil identificado via triagem inicial.
             </p>
           )}
@@ -282,7 +282,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
             <SectionTitle icon="✅">Pontos Fortes</SectionTitle>
             <ul className="space-y-1.5">
               {strengths.map((s, i) => (
-                <BulletItem key={i} color="#38A169">{s}</BulletItem>
+                <BulletItem key={i} color="#22C55E">{s}</BulletItem>
               ))}
             </ul>
           </Card>
@@ -292,7 +292,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
             <SectionTitle icon="⚠️">Desafios</SectionTitle>
             <ul className="space-y-1.5">
               {challenges.map((c, i) => (
-                <BulletItem key={i} color="#D69E2E">{c}</BulletItem>
+                <BulletItem key={i} color="#F59E0B">{c}</BulletItem>
               ))}
             </ul>
           </Card>
@@ -307,17 +307,17 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
           </InfoCard>
         )}
         {workStyleRecommendation && (
-          <InfoCard title="Estilo de Trabalho" icon="⚙️" accentColor="#3182CE">
+          <InfoCard title="Estilo de Trabalho" icon="⚙️" accentColor="#6366F1">
             {workStyleRecommendation}
           </InfoCard>
         )}
         {teamBehavior && (
-          <InfoCard title="Comportamento em Equipe" icon="🤝" accentColor="#38A169">
+          <InfoCard title="Comportamento em Equipe" icon="🤝" accentColor="#22C55E">
             {teamBehavior}
           </InfoCard>
         )}
         {communicationTips && (
-          <InfoCard title="Dicas de Comunicação" icon="💬" accentColor="#D69E2E">
+          <InfoCard title="Dicas de Comunicação" icon="💬" accentColor="#F59E0B">
             {communicationTips}
           </InfoCard>
         )}
@@ -328,7 +328,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
         <CollapsibleSection title="Padrões Sabotadores" icon="🔍">
           <ul className="space-y-1.5 pt-2">
             {saboteurPatterns.map((p, i) => (
-              <BulletItem key={i} color="#E53E3E">{p}</BulletItem>
+              <BulletItem key={i} color="#EF4444">{p}</BulletItem>
             ))}
           </ul>
         </CollapsibleSection>
@@ -339,7 +339,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
         <CollapsibleSection title="Riscos de Derailment" icon="🚨">
           <ul className="space-y-1.5 pt-2">
             {derailmentRisks.map((r, i) => (
-              <BulletItem key={i} color="#D69E2E">{r}</BulletItem>
+              <BulletItem key={i} color="#F59E0B">{r}</BulletItem>
             ))}
           </ul>
         </CollapsibleSection>
@@ -354,7 +354,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
             </InfoCard>
           )}
           {profile.conflictStyle && (
-            <InfoCard title="Gestão de Conflitos" icon="⚡" accentColor="#E53E3E">
+            <InfoCard title="Gestão de Conflitos" icon="⚡" accentColor="#EF4444">
               {profile.conflictStyle}
             </InfoCard>
           )}
@@ -375,7 +375,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               <SectionTitle icon="🔋">Motivadores</SectionTitle>
               <ul className="space-y-1.5">
                 {profile.motivators.map((m, i) => (
-                  <BulletItem key={i} color="#38A169">{m}</BulletItem>
+                  <BulletItem key={i} color="#22C55E">{m}</BulletItem>
                 ))}
               </ul>
             </Card>
@@ -385,7 +385,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               <SectionTitle icon="🌡️">Estressores</SectionTitle>
               <ul className="space-y-1.5">
                 {profile.stressors.map((s, i) => (
-                  <BulletItem key={i} color="#E53E3E">{s}</BulletItem>
+                  <BulletItem key={i} color="#EF4444">{s}</BulletItem>
                 ))}
               </ul>
             </Card>
@@ -442,7 +442,7 @@ function AdminStrategyPanel({ strategy }) {
           <InfoCard title="Como Abordar (1:1)" icon="🤝" accentColor="#6366F1">{approachStyle}</InfoCard>
         )}
         {feedbackApproach && (
-          <InfoCard title="Como Dar Feedback" icon="💬" accentColor="#3182CE">{feedbackApproach}</InfoCard>
+          <InfoCard title="Como Dar Feedback" icon="💬" accentColor="#6366F1">{feedbackApproach}</InfoCard>
         )}
       </div>
 
@@ -467,7 +467,7 @@ function AdminStrategyPanel({ strategy }) {
           <Card variant="default">
             <SectionTitle icon="🚀">Plano de Ação</SectionTitle>
             <ul className="space-y-1.5">
-              {actionPlan.map((a, i) => (<BulletItem key={i} color="#38A169">{a}</BulletItem>))}
+              {actionPlan.map((a, i) => (<BulletItem key={i} color="#22C55E">{a}</BulletItem>))}
             </ul>
           </Card>
         )}
@@ -475,17 +475,17 @@ function AdminStrategyPanel({ strategy }) {
           <Card variant="default">
             <SectionTitle icon="⚡">Alavancas Motivacionais</SectionTitle>
             <ul className="space-y-1.5">
-              {motivationLevers.map((m, i) => (<BulletItem key={i} color="#D69E2E">{m}</BulletItem>))}
+              {motivationLevers.map((m, i) => (<BulletItem key={i} color="#F59E0B">{m}</BulletItem>))}
             </ul>
           </Card>
         )}
       </div>
 
       {redFlags.length > 0 && (
-        <Card variant="default" className="border-[#E53E3E]/30 bg-[#E53E3E]/5">
+        <Card variant="default" className="border-[#EF4444]/30 bg-[#EF4444]/5">
           <SectionTitle icon="🚨">Sinais de Alerta para Monitorar</SectionTitle>
           <ul className="space-y-1.5">
-            {redFlags.map((f, i) => (<BulletItem key={i} color="#E53E3E">{f}</BulletItem>))}
+            {redFlags.map((f, i) => (<BulletItem key={i} color="#EF4444">{f}</BulletItem>))}
           </ul>
         </Card>
       )}
@@ -523,7 +523,7 @@ function AdminStrategyPanel({ strategy }) {
           </Card>
         )}
         {delegationGuide && (
-          <InfoCard title="Guia de Delegação" icon="🎯" accentColor="#3182CE">{delegationGuide}</InfoCard>
+          <InfoCard title="Guia de Delegação" icon="🎯" accentColor="#6366F1">{delegationGuide}</InfoCard>
         )}
       </div>
 

@@ -3,22 +3,22 @@ import clsx from 'clsx';
 
 // Profile type variants — use CSS custom properties
 const profileVariants = {
-  D: 'bg-[#E53E3E]/10 text-[#E53E3E] border border-[#E53E3E]/25',
-  I: 'bg-[#D69E2E]/10 text-[#D69E2E] border border-[#D69E2E]/25',
-  S: 'bg-[#38A169]/10 text-[#38A169] border border-[#38A169]/25',
-  C: 'bg-[#3182CE]/10 text-[#3182CE] border border-[#3182CE]/25',
+  D: 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/25',
+  I: 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/25',
+  S: 'bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/25',
+  C: 'bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/25',
 };
 
 // Status variants
 const statusVariants = {
-  success: 'bg-[#38A169]/10 text-[#38A169] border border-[#38A169]/25',
-  warning: 'bg-[#D69E2E]/10 text-[#D69E2E] border border-[#D69E2E]/25',
-  error: 'bg-[#E53E3E]/10 text-[#E53E3E] border border-[#E53E3E]/25',
-  info: 'bg-[#3182CE]/10 text-[#3182CE] border border-[#3182CE]/25',
+  success: 'bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/25',
+  warning: 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/25',
+  error: 'bg-[#EF4444]/10 text-[#EF4444] border border-[#EF4444]/25',
+  info: 'bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/25',
   accent: 'bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/25',
   neutral: 'bg-[#242736] text-[#A0A3B1] border border-[#2D3047]',
-  pending: 'bg-[#D69E2E]/10 text-[#D69E2E] border border-[#D69E2E]/25',
-  active: 'bg-[#38A169]/10 text-[#38A169] border border-[#38A169]/25',
+  pending: 'bg-[#F59E0B]/10 text-[#F59E0B] border border-[#F59E0B]/25',
+  active: 'bg-[#22C55E]/10 text-[#22C55E] border border-[#22C55E]/25',
   inactive: 'bg-[#242736] text-[#A0A3B1] border border-[#2D3047]',
 };
 

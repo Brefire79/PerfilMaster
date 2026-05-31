@@ -403,6 +403,11 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
   }
   .option-card[disabled] { opacity: 0.55; cursor: not-allowed; }
+  /* Focus visible explícito — belt-and-suspenders além do global :focus-visible */
+  .option-card:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
   .option-card__lead {
     flex: 0 0 auto;
     display: grid;
@@ -486,6 +491,15 @@
 @keyframes scoreGrow {
   from { transform: scaleX(0); }
   to   { transform: scaleX(1); }
+}
+
+/* Entrada com leve zoom (heros/banners) — complementa as animações do config */
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.animate-scale-in {
+  animation: scaleIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* Acessibilidade — respeita "reduzir movimento" */

@@ -192,7 +192,7 @@ export default function GroupCard({ group, onEdit, onDeleted }) {
                       setMenuOpen(false);
                       setConfirmDelete(true);
                     }}
-                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors text-left"
                   >
                     <svg
                       viewBox="0 0 24 24"

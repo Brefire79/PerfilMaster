@@ -128,13 +128,13 @@ function ResultadoModal({ avaliado, onClose }) {
   const flagLevelColor = { none: '#22C55E', watch: '#F59E0B', suggest: '#F59E0B', erro: '#A0A3B1' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-resultado">
       <div className="w-full max-w-lg bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-[#2D3047]">
           <div>
-            <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">Resultado — {nome}</h2>
+            <h2 id="dlg-resultado" className="text-base font-heading font-semibold text-[#F7F8FC]">Resultado — {nome}</h2>
             <p className="text-xs text-[#A0A3B1] mt-0.5">{telefone}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors ml-3">
@@ -242,7 +242,7 @@ function ResultadoModal({ avaliado, onClose }) {
                   )}
                 </div>
               )}
-              {erroIA && <p className="text-xs text-[#E53E3E] bg-[#E53E3E]/10 rounded-lg px-3 py-2">{erroIA}</p>}
+              {erroIA && <p className="text-xs text-[#EF4444] bg-[#EF4444]/10 rounded-lg px-3 py-2">{erroIA}</p>}
 
               {/* Flag clínica — SOMENTE ADMIN, nunca enviada ao aluno */}
               {flagClinica && (
@@ -369,7 +369,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
       {/* Dados */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-[#F7F8FC] truncate">{avaliado.nome}</p>
-        <p className="text-xs text-[#4A4D6A] truncate">{avaliado.telefone}</p>
+        <p className="text-xs text-[#A0A3B1] truncate">{avaliado.telefone}</p>
         {perfil && (
           <p className="text-xs mt-0.5" style={{ color: PERFIL_COR[perfil.perfilPrimario] }}>
             {PERFIL_NOME[perfil.perfilPrimario]}
@@ -391,7 +391,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
             {/* Modal rápido */}
             <button
               onClick={() => onVerResultado(avaliado)}
-              title="Visão rápida do resultado"
+              title="Visão rápida do resultado" aria-label="Visão rápida do resultado"
               className="p-1.5 rounded-lg text-[#818CF8] hover:text-white hover:bg-[#6366F1] transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -401,7 +401,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
             {/* Relatório completo */}
             <button
               onClick={() => onRelatorio(avaliado)}
-              title="Abrir relatório oficial completo"
+              title="Abrir relatório oficial completo" aria-label="Abrir relatório oficial completo"
               className="p-1.5 rounded-lg text-[#22C55E] hover:text-white hover:bg-[#22C55E] transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -415,7 +415,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         )}
         <button
           onClick={() => onCopiarLink(avaliado.token)}
-          title="Copiar link de avaliação"
+          title="Copiar link de avaliação" aria-label="Copiar link de avaliação"
           className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#2D3047] transition-colors"
         >
           <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
@@ -425,7 +425,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         </button>
         <button
           onClick={() => onWhatsApp(avaliado)}
-          title="Enviar via WhatsApp"
+          title="Enviar via WhatsApp" aria-label="Enviar resultado via WhatsApp"
           className="p-1.5 rounded-lg hover:bg-[#25D366]/20 transition-colors"
           style={{ color: '#25D366' }}
         >
@@ -435,8 +435,8 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         </button>
         <button
           onClick={() => onDeletar(avaliado)}
-          title="Remover avaliado"
-          className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-colors"
+          title="Remover avaliado" aria-label="Remover avaliado"
+          className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
             <polyline points="3 6 5 6 21 6" />
@@ -580,7 +580,7 @@ export default function Sessoes() {
         <div className="flex gap-6 flex-col lg:flex-row flex-1 min-h-0">
           {/* ── Coluna esquerda: lista de sessões ─────────────────────────── */}
           <div className="lg:w-72 shrink-0 flex flex-col gap-3">
-            <p className="text-xs font-semibold text-[#4A4D6A] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#A0A3B1] uppercase tracking-wider">
               Suas sessões ({sessoes.length})
             </p>
 
@@ -625,7 +625,7 @@ export default function Sessoes() {
                         <button
                           onClick={(e) => { e.stopPropagation(); setConfirmDeleteSessao(s); }}
                           title="Deletar sessão"
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#4A4D6A] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-lg text-[#4A4D6A] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
                         >
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                             <polyline points="3 6 5 6 21 6" />
@@ -637,7 +637,7 @@ export default function Sessoes() {
                       </div>
                     </div>
                     {s.descricao && (
-                      <p className="text-xs text-[#4A4D6A] mt-1 truncate">{s.descricao}</p>
+                      <p className="text-xs text-[#A0A3B1] mt-1 truncate">{s.descricao}</p>
                     )}
                   </div>
                 ))}
@@ -671,7 +671,7 @@ export default function Sessoes() {
                       {/* FIX: botão encerrar sessão */}
                       <button
                         onClick={() => setConfirmEncerrar(true)}
-                        className="px-3 py-2 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/30 hover:bg-[#E53E3E]/20 text-[#E53E3E] text-sm font-medium transition-colors flex items-center gap-2"
+                        className="px-3 py-2 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/30 hover:bg-[#EF4444]/20 text-[#EF4444] text-sm font-medium transition-colors flex items-center gap-2"
                       >
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
                           <circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/>
@@ -781,10 +781,10 @@ export default function Sessoes() {
 
       {/* FIX: Modal confirmação encerrar sessão */}
       {confirmEncerrar && sessaoAtiva && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-encerrar">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">Encerrar sessão</h2>
+              <h2 id="dlg-encerrar" className="text-base font-heading font-semibold text-[#F7F8FC]">Encerrar sessão</h2>
             </div>
             <div className="px-5 py-4">
               <p className="text-sm text-[#A0A3B1]">
@@ -806,7 +806,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarEncerrar}
                 disabled={encerrando}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {encerrando ? 'Encerrando...' : 'Encerrar sessão'}
               </button>
@@ -817,10 +817,10 @@ export default function Sessoes() {
 
       {/* Modal de confirmação: deletar sessão */}
       {confirmDeleteSessao && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-del-sessao">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+              <h2 id="dlg-del-sessao" className="text-base font-heading font-semibold text-[#F7F8FC]">
                 Deletar sessão
               </h2>
             </div>
@@ -844,7 +844,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarDeleteSessao}
                 disabled={deletingSessao}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {deletingSessao ? 'Deletando...' : 'Deletar sessão'}
               </button>
@@ -855,10 +855,10 @@ export default function Sessoes() {
 
       {/* Modal de confirmação de exclusão */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-remover">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+              <h2 id="dlg-remover" className="text-base font-heading font-semibold text-[#F7F8FC]">
                 Remover avaliado
               </h2>
             </div>
@@ -882,7 +882,7 @@ export default function Sessoes() {
               <button
                 onClick={confirmarDelete}
                 disabled={deleting}
-                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#E53E3E] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
               >
                 {deleting ? 'Removendo...' : 'Remover'}
               </button>

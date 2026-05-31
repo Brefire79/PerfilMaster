@@ -102,7 +102,7 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
                   className={clsx(
                     'flex-shrink-0 flex items-center gap-1.5 h-7 px-3 rounded-lg text-xs font-medium transition-all',
                     copied
-                      ? 'bg-[#38A169]/20 text-[#38A169] border border-[#38A169]/30'
+                      ? 'bg-[#22C55E]/20 text-[#22C55E] border border-[#22C55E]/30'
                       : 'bg-[#6366F1]/10 text-[#6366F1] border border-[#6366F1]/30 hover:bg-[#6366F1]/20'
                   )}
                   aria-label={t('app.copy', 'Copiar')}

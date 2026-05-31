@@ -76,11 +76,8 @@ function ProgressBar({ answered, total, etapaLabel }) {
         <span className="font-medium">{etapaLabel}</span>
         <span className="font-mono">{pct}%</span>
       </div>
-      <div className="h-2 bg-[#2D3047] rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full bg-[#6366F1] transition-all duration-500 ease-out"
-          style={{ width: `${pct}%` }}
-        />
+      <div className="progress-track">
+        <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
     </div>
   );
@@ -123,7 +120,7 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
 
         {blocked ? (
           <div className="text-center space-y-1">
-            <p className="text-sm text-[#E53E3E] font-medium">
+            <p className="text-sm text-[#EF4444] font-medium">
               {t('wizard.intro.blocked', 'Avaliação bloqueada temporariamente')}
             </p>
             {blockedUntil && (
@@ -152,14 +149,14 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
 function TransitionScreen({ onContinue, t }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4 animate-fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-8 h-8">
+      <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2} className="w-8 h-8">
           <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
 
       <div className="text-center space-y-2 max-w-sm">
-        <p className="text-sm font-medium text-[#38A169] uppercase tracking-widest">
+        <p className="text-sm font-medium text-[#22C55E] uppercase tracking-widest">
           {t('wizard.transition.badge', 'Etapa 1 concluída!')}
         </p>
         <h2 className="text-xl font-heading font-bold text-[#F7F8FC]">
@@ -199,13 +196,13 @@ function SubmittingScreen({ t }) {
 function ErrorBanner({ message, onRetry, t }) {
   if (!message) return null;
   return (
-    <div className="flex items-center gap-3 bg-[#E53E3E]/10 border border-[#E53E3E]/30 rounded-xl px-4 py-3">
-      <span className="text-[#E53E3E] text-sm flex-1">{message}</span>
+    <div className="flex items-center gap-3 bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl px-4 py-3">
+      <span className="text-[#EF4444] text-sm flex-1">{message}</span>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="text-xs font-medium text-[#E53E3E] underline hover:no-underline"
+          className="text-xs font-medium text-[#EF4444] underline hover:no-underline"
         >
           {t('app.retry', 'Tentar novamente')}
         </button>
@@ -267,7 +264,7 @@ function LikertQuestion({ question, selectedValue, onSelect, disabled }) {
         })}
       </div>
 
-      {/* Mobile vertical */}
+      {/* Mobile vertical — option-cards (F1) */}
       <div className="flex flex-col gap-2 sm:hidden">
         {LIKERT_OPTIONS.map((opt) => {
           const isSelected = selectedValue === opt.value;
@@ -276,36 +273,22 @@ function LikertQuestion({ question, selectedValue, onSelect, disabled }) {
               key={opt.value}
               type="button"
               disabled={disabled}
+              aria-pressed={isSelected}
               onClick={() => onSelect(opt.value)}
-              className={clsx(
-                'flex items-center gap-4 py-3 px-4 rounded-xl border transition-all duration-200',
-                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#6366F1] focus-visible:outline-offset-2',
-                isSelected
-                  ? 'bg-[#6366F1]/15 border-[#6366F1] shadow-[0_0_12px_rgba(99,102,241,0.2)]'
-                  : 'bg-[#1A1D2E] border-[#2D3047] hover:border-[#6366F1]/40',
-                disabled && 'opacity-60 cursor-not-allowed',
-              )}
+              className={clsx('option-card', isSelected && 'is-selected')}
             >
               <span
                 className={clsx(
-                  'w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold font-mono flex-shrink-0 border transition-colors',
-                  isSelected
-                    ? 'bg-[#6366F1] text-white border-[#6366F1]'
-                    : 'bg-[#242736] text-[#A0A3B1] border-[#2D3047]',
+                  'option-card__lead text-sm font-bold',
+                  isSelected ? 'text-white' : 'text-[#A0A3B1]',
                 )}
+                style={isSelected ? { background: '#6366F1' } : { background: '#1A1D2E' }}
               >
                 {opt.value}
               </span>
-              <span
-                className={clsx(
-                  'text-sm transition-colors',
-                  isSelected ? 'text-[#F7F8FC] font-medium' : 'text-[#A0A3B1]',
-                )}
-              >
-                {opt.label}
-              </span>
+              <span className="flex-1">{opt.label}</span>
               {isSelected && (
-                <span className="ml-auto text-[#6366F1]">
+                <span className="text-[#6366F1]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
@@ -686,8 +669,8 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
   if (etapa === 'completed') {
     return (
       <div className="max-w-lg mx-auto py-4 flex flex-col items-center justify-center min-h-[60vh] gap-4 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-[#38A169]/10 border border-[#38A169]/30 flex items-center justify-center">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#38A169" strokeWidth={2} className="w-8 h-8">
+        <div className="w-16 h-16 rounded-2xl bg-[#22C55E]/10 border border-[#22C55E]/30 flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#22C55E" strokeWidth={2} className="w-8 h-8">
             <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
@@ -724,7 +707,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           </span>{' '}
           <span>{t('assessment.of', 'de')} {TOTAL_QUESTIONS}</span>
         </p>
-        <p className="text-xs text-[#4A4D6A]">
+        <p className="text-xs text-[#A0A3B1]">
           {indice + 1} {t('assessment.of', 'de')} {perguntas.length}{' '}
           {etapa === 'disc' ? 'nesta etapa' : 'nesta etapa'}
         </p>
@@ -788,7 +771,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       </p>
 
       {/* Keyboard shortcuts hint (desktop only) */}
-      <p className="hidden sm:block text-[11px] text-[#4A4D6A] text-center">
+      <p className="hidden sm:block text-[11px] text-[#A0A3B1] text-center">
         {t('assessment.keyboardHint', 'Dica: pressione 1–5 para escolher e Enter para avançar')}
       </p>
     </div>

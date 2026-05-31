@@ -8,7 +8,7 @@ const PROFILE_CONFIG = {
     emoji:     '⚡',
     color:     'var(--color-D)',
     lightBg:   'var(--color-D-light)',
-    hex:       '#E53E3E',
+    hex:       '#EF4444',
     lightHex:  '#FED7D7',
   },
   I: {
@@ -16,7 +16,7 @@ const PROFILE_CONFIG = {
     emoji:     '🌟',
     color:     'var(--color-I)',
     lightBg:   'var(--color-I-light)',
-    hex:       '#D69E2E',
+    hex:       '#F59E0B',
     lightHex:  '#FEFCBF',
   },
   S: {
@@ -24,7 +24,7 @@ const PROFILE_CONFIG = {
     emoji:     '🌿',
     color:     'var(--color-S)',
     lightBg:   'var(--color-S-light)',
-    hex:       '#38A169',
+    hex:       '#22C55E',
     lightHex:  '#C6F6D5',
   },
   C: {
@@ -32,7 +32,7 @@ const PROFILE_CONFIG = {
     emoji:     '🔷',
     color:     'var(--color-C)',
     lightBg:   'var(--color-C-light)',
-    hex:       '#3182CE',
+    hex:       '#6366F1',
     lightHex:  '#BEE3F8',
   },
 };

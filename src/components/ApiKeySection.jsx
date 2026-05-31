@@ -62,7 +62,7 @@ const S = {
     fontWeight: '600',
     whiteSpace: 'nowrap',
   },
-  statusOk: { color: '#38A169', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' },
+  statusOk: { color: '#22C55E', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' },
   statusErr: { color: '#e53e3e', fontSize: '0.85rem' },
   statusTest: { color: '#A0A3B1', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' },
   btnSecondary: (disabled) => ({

@@ -14,10 +14,10 @@ import { getGroupColor } from '@/utils/groupColors.js';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
 const PROFILE_CONFIG = {
-  D: { name: 'Dominante', hex: '#E53E3E' },
-  I: { name: 'Influente', hex: '#D69E2E' },
-  S: { name: 'Estável',   hex: '#38A169' },
-  C: { name: 'Analítico', hex: '#3182CE' },
+  D: { name: 'Dominante', hex: '#EF4444' },
+  I: { name: 'Influente', hex: '#F59E0B' },
+  S: { name: 'Estável',   hex: '#22C55E' },
+  C: { name: 'Analítico', hex: '#6366F1' },
 };
 const PROFILE_ORDER = ['D', 'I', 'S', 'C'];
 

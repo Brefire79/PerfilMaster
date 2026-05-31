@@ -19,7 +19,7 @@ function getInitials(name = '') {
     .join('') || '?';
 }
 
-const PROFILE_COLORS = { D: '#E53E3E', I: '#D69E2E', S: '#38A169', C: '#3182CE' };
+const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 
 /**
  * MemberList — displays and manages group members
@@ -199,7 +199,7 @@ export default function MemberList({ members = [], groupId, onRemove }) {
               {/* Remove button */}
               <button
                 onClick={() => setConfirmUid(member.id)}
-                className="opacity-0 group-hover:opacity-100 focus:opacity-100 ml-auto sm:ml-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#E53E3E] hover:bg-[#E53E3E]/10 transition-all"
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 ml-auto sm:ml-0 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
                 aria-label={t('admin.students.removeConfirm', 'Remover membro')}
                 title={t('admin.students.removeConfirm', 'Remover membro')}
               >

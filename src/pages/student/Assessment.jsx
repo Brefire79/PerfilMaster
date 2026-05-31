@@ -103,8 +103,8 @@ function AssessmentError({ message, onBack }) {
   const { t } = useTranslation();
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-5 px-4">
-      <div className="w-16 h-16 rounded-2xl bg-[#E53E3E]/10 border border-[#E53E3E]/30 flex items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={1.8} className="w-8 h-8">
+      <div className="w-16 h-16 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/30 flex items-center justify-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8} className="w-8 h-8">
           <circle cx="12" cy="12" r="10" />
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />

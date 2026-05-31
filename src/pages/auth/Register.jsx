@@ -26,9 +26,9 @@ function PasswordStrengthBar({ password }) {
     strength <= 3 ? t('auth.passwordFair') :
     t('auth.passwordStrong');
   const color =
-    strength <= 1 ? '#E53E3E' :
-    strength <= 3 ? '#D69E2E' :
-    '#38A169';
+    strength <= 1 ? '#EF4444' :
+    strength <= 3 ? '#F59E0B' :
+    '#22C55E';
   const width = `${Math.min(100, (strength / 5) * 100)}%`;
 
   if (!password) return null;
@@ -47,6 +47,10 @@ function PasswordStrengthBar({ password }) {
 }
 
 export default function Register() {
+  useEffect(() => {
+    document.title = 'Criar conta — ProfileAI';
+    return () => { document.title = 'ProfileAI'; };
+  }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -172,8 +176,8 @@ export default function Register() {
     return (
       <div className="w-full max-w-md animate-slide-up">
         <div className="bg-[#1A1D2E] border border-[#2D3047] rounded-2xl p-8 text-center shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
-          <div className="w-14 h-14 rounded-2xl bg-[#E53E3E]/10 border border-[#E53E3E]/25 flex items-center justify-center mx-auto mb-4">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-7 h-7">
+          <div className="w-14 h-14 rounded-2xl bg-[#EF4444]/10 border border-[#EF4444]/25 flex items-center justify-center mx-auto mb-4">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-7 h-7">
               <circle cx="12" cy="12" r="10" />
               <line x1="12" y1="8" x2="12" y2="12" />
               <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -209,9 +213,9 @@ export default function Register() {
           {t('auth.registerTitle')}
         </h1>
         {invite && (
-          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#38A169]/10 border border-[#38A169]/25">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#38A169]" />
-            <p className="text-sm text-[#38A169]">
+          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/25">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
+            <p className="text-sm text-[#22C55E]">
               {t('auth.inviteValid')}
             </p>
           </div>
@@ -223,13 +227,13 @@ export default function Register() {
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Server error */}
           {serverError && (
-            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#E53E3E]/10 border border-[#E53E3E]/25 animate-fade-in">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#E53E3E" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
+            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/25 animate-fade-in">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <p className="text-sm text-[#E53E3E]">{serverError}</p>
+              <p className="text-sm text-[#EF4444]">{serverError}</p>
             </div>
           )}
 
@@ -243,9 +247,9 @@ export default function Register() {
               value={name}
               onChange={(e) => { setName(e.target.value); setErrors((p) => ({ ...p, name: '' })); }}
               placeholder={t('auth.namePlaceholder')}
-              className={clsx('input-base', errors.name && 'border-[#E53E3E]!')}
+              className={clsx('input-base', errors.name && 'border-[#EF4444]!')}
             />
-            {errors.name && <p className="text-xs text-[#E53E3E] mt-1">{errors.name}</p>}
+            {errors.name && <p className="text-xs text-[#EF4444] mt-1">{errors.name}</p>}
           </div>
 
           {/* Email */}
@@ -258,9 +262,9 @@ export default function Register() {
               value={email}
               onChange={(e) => { setEmail(e.target.value); setErrors((p) => ({ ...p, email: '' })); }}
               placeholder={t('auth.emailPlaceholder')}
-              className={clsx('input-base', errors.email && 'border-[#E53E3E]!')}
+              className={clsx('input-base', errors.email && 'border-[#EF4444]!')}
             />
-            {errors.email && <p className="text-xs text-[#E53E3E] mt-1">{errors.email}</p>}
+            {errors.email && <p className="text-xs text-[#EF4444] mt-1">{errors.email}</p>}
           </div>
 
           {/* Password */}
@@ -274,7 +278,7 @@ export default function Register() {
                 value={password}
                 onChange={(e) => { setPassword(e.target.value); setErrors((p) => ({ ...p, password: '' })); }}
                 placeholder={t('auth.passwordPlaceholder')}
-                className={clsx('input-base pr-10', errors.password && 'border-[#E53E3E]!')}
+                className={clsx('input-base pr-10', errors.password && 'border-[#EF4444]!')}
               />
               <button
                 type="button"
@@ -298,7 +302,7 @@ export default function Register() {
               </button>
             </div>
             <PasswordStrengthBar password={password} />
-            {errors.password && <p className="text-xs text-[#E53E3E] mt-1">{errors.password}</p>}
+            {errors.password && <p className="text-xs text-[#EF4444] mt-1">{errors.password}</p>}
           </div>
 
           {/* Confirm Password */}
@@ -311,10 +315,10 @@ export default function Register() {
               value={confirmPassword}
               onChange={(e) => { setConfirmPassword(e.target.value); setErrors((p) => ({ ...p, confirmPassword: '' })); }}
               placeholder={t('auth.confirmPasswordPlaceholder')}
-              className={clsx('input-base', errors.confirmPassword && 'border-[#E53E3E]!')}
+              className={clsx('input-base', errors.confirmPassword && 'border-[#EF4444]!')}
             />
             {errors.confirmPassword && (
-              <p className="text-xs text-[#E53E3E] mt-1">{errors.confirmPassword}</p>
+              <p className="text-xs text-[#EF4444] mt-1">{errors.confirmPassword}</p>
             )}
           </div>
 

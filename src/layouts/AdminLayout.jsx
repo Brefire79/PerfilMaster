@@ -9,6 +9,14 @@ export default function AdminLayout() {
 
   return (
     <div className="h-screen bg-[#0F1117] flex overflow-hidden min-h-0">
+      {/* Skip-to-main: acessibilidade teclado/SR */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:rounded-lg focus:bg-[#6366F1] focus:text-white focus:text-sm focus:font-semibold focus:shadow-lg"
+      >
+        Pular para conteúdo principal
+      </a>
+
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex lg:flex-shrink-0">
         <Sidebar role="admin" />
