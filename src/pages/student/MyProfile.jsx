@@ -59,7 +59,8 @@ function NoProfileState() {
 
 function ProfileHeader({ profile, userName }) {
   const { t } = useTranslation();
-  const type = profile?.dominantProfile ?? profile?.primaryType ?? 'D';
+  const rawType = profile?.dominantProfile ?? profile?.primaryType ?? null;
+  const type = (rawType && ['D','I','S','C'].includes(rawType)) ? rawType : 'D';
   const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
 
   return (
@@ -371,7 +372,8 @@ function CommunicationCard({ type }) {
 
 function ProfileTab({ profile }) {
   const { t } = useTranslation();
-  const type = profile?.dominantProfile ?? profile?.primaryType ?? 'D';
+  const rawType = profile?.dominantProfile ?? profile?.primaryType ?? null;
+  const type = (rawType && ['D','I','S','C'].includes(rawType)) ? rawType : 'D';
 
   const summary = profile?.aiSummary ?? t(
     `profiles.${type}.description`,

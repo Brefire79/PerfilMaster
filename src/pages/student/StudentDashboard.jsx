@@ -16,10 +16,18 @@ const PROFILE_COLORS = {
   C: { hex: '#6366F1', soft: '#6366F115', fill: 'score-fill--C' },
 };
 
+const VALID_DISC = new Set(['D', 'I', 'S', 'C']);
+
+/** Retorna a letra DISC válida ou null — protege contra string 'undefined' no banco */
+function resolveDiscType(profile) {
+  const raw = profile?.primaryType ?? profile?.dominantProfile ?? null;
+  return VALID_DISC.has(raw) ? raw : null;
+}
+
 function ProfileCard({ profile }) {
   const { t } = useTranslation();
   if (!profile) return null;
-  const type = profile.primaryType ?? profile.dominantProfile ?? 'D';
+  const type = resolveDiscType(profile) ?? 'D';
   const colors = PROFILE_COLORS[type] || PROFILE_COLORS.D;
 
   return (
@@ -151,7 +159,7 @@ export default function StudentDashboard() {
   }, [user?.uid, setProfile]);
 
   const displayName = user?.displayName?.split(' ')[0] || 'Estudante';
-  const primaryType = currentProfile?.primaryType ?? currentProfile?.dominantProfile ?? null;
+  const primaryType = resolveDiscType(currentProfile);
 
   return (
     <div className="space-y-6 animate-fade-in">
