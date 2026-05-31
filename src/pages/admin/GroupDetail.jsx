@@ -432,11 +432,12 @@ function SettingsTab({ group, onUpdated, onDeleted }) {
 }
 
 // ─── Add Member by Email ───────────────────────────────────────────────────────
-function AddMemberForm({ groupId, onAdded }) {
+function AddMemberForm({ groupId, onAdded, onSwitchToInvite }) {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [notFound, setNotFound] = useState(false);
   const [success, setSuccess] = useState('');
 
   const handleAdd = async (e) => {
@@ -444,11 +445,12 @@ function AddMemberForm({ groupId, onAdded }) {
     if (!email.trim()) return;
     setLoading(true);
     setError('');
+    setNotFound(false);
     setSuccess('');
     try {
       const found = await getUserByEmail(email.trim().toLowerCase());
       if (!found) {
-        setError(t('group.memberNotFound', 'Nenhum usuário encontrado com este e-mail.'));
+        setNotFound(true);
         return;
       }
       await addMemberToGroup(groupId, found.uid || found.id);
@@ -463,19 +465,60 @@ function AddMemberForm({ groupId, onAdded }) {
   };
 
   return (
-    <form onSubmit={handleAdd} className="flex gap-2 mb-4">
-      <Input
-        placeholder={t('auth.emailPlaceholder', 'email@exemplo.com')}
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        error={error}
-        className="flex-1"
-      />
-      <Button variant="primary" size="md" type="submit" loading={loading} className="flex-shrink-0">
-        {t('group.addMember', 'Adicionar')}
-      </Button>
-    </form>
+    <div className="mb-4">
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <Input
+          placeholder={t('auth.emailPlaceholder', 'email@exemplo.com')}
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setNotFound(false); setError(''); }}
+          error={error}
+          className="flex-1"
+        />
+        <Button variant="primary" size="md" type="submit" loading={loading} className="flex-shrink-0">
+          {t('group.addMember', 'Adicionar')}
+        </Button>
+      </form>
+
+      {/* Usuário não encontrado — orienta para o fluxo de convite */}
+      {notFound && (
+        <div className="mt-2 flex items-start gap-2.5 p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth={2} className="w-4 h-4 flex-shrink-0 mt-0.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-[#F7F8FC] font-medium">
+              Usuário não encontrado
+            </p>
+            <p className="text-xs text-[#A0A3B1] mt-0.5 leading-relaxed">
+              <strong className="text-[#F7F8FC]">{email}</strong> ainda não tem conta no ProfileAI.
+              Envie o link de convite para que ele se cadastre e já entre no grupo automaticamente.
+            </p>
+            {onSwitchToInvite && (
+              <button
+                type="button"
+                onClick={onSwitchToInvite}
+                className="mt-2 text-xs font-semibold text-[#F59E0B] hover:text-[#FCD34D] transition-colors underline underline-offset-2"
+              >
+                Ir para aba Convite →
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Sucesso */}
+      {success && (
+        <p className="mt-2 text-sm text-[#22C55E] flex items-center gap-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          {success}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -660,7 +703,7 @@ export default function GroupDetail() {
       <div className="animate-fade-in">
         {activeTab === 'members' && (
           <Card variant="default">
-            <AddMemberForm groupId={id} onAdded={loadGroup} />
+            <AddMemberForm groupId={id} onAdded={loadGroup} onSwitchToInvite={() => setActiveTab('invite')} />
 
             {/* Enhanced member list with ProfileBadge + "Ver perfil" button */}
             {members.length === 0 ? (
