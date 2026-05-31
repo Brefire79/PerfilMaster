@@ -569,11 +569,11 @@ export default function Students() {
 
       {/* ── Assign Assessment Modal ─────────────────────────────────── */}
       {assignStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-assign">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl animate-fade-in">
             <div className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047]">
               <div>
-                <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+                <h2 id="dlg-assign" className="text-base font-heading font-semibold text-[#F7F8FC]">
                   {assignStudent.assessmentStatus === 'completed' || assignStudent.assessmentStatus === 'analyzed'
                     ? 'Reavaliar aluno'
                     : t('students.assignAssessment', 'Atribuir avaliação')}

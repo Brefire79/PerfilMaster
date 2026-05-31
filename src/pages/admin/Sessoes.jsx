@@ -128,13 +128,13 @@ function ResultadoModal({ avaliado, onClose }) {
   const flagLevelColor = { none: '#22C55E', watch: '#F59E0B', suggest: '#F59E0B', erro: '#A0A3B1' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-resultado">
       <div className="w-full max-w-lg bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl flex flex-col max-h-[92vh]">
 
         {/* ── Header ── */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-[#2D3047]">
           <div>
-            <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">Resultado — {nome}</h2>
+            <h2 id="dlg-resultado" className="text-base font-heading font-semibold text-[#F7F8FC]">Resultado — {nome}</h2>
             <p className="text-xs text-[#A0A3B1] mt-0.5">{telefone}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors ml-3">
