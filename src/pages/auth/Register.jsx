@@ -47,6 +47,10 @@ function PasswordStrengthBar({ password }) {
 }
 
 export default function Register() {
+  useEffect(() => {
+    document.title = 'Criar conta — ProfileAI';
+    return () => { document.title = 'ProfileAI'; };
+  }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();

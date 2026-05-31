@@ -114,7 +114,14 @@ export default function RelatorioOficial() {
   const primCfg = perfil ? DISC[perfil.perfilPrimario] : null;
   const secCfg  = perfil?.perfilSecundario ? DISC[perfil.perfilSecundario] : null;
 
-  // ── IA: gerar insight ──────────────────────────────────────────────────────
+  // Título dinâmico com ID do documento oficial
+  useEffect(() => {
+    if (docId) document.title = `${docId} — ProfileAI`;
+    else document.title = 'Relatório Oficial — ProfileAI';
+    return () => { document.title = 'ProfileAI'; };
+  }, [docId]);
+
+    // ── IA: gerar insight ──────────────────────────────────────────────────────
   const handleRefinarIA = async () => {
     if (!perfil) return;
     setLoadingIA(true); setErroIA('');

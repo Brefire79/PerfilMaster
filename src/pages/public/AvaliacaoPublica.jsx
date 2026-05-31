@@ -360,6 +360,12 @@ export default function AvaliacaoPublica() {
   const [state, dispatch] = useReducer(reducer, estadoInicial);
   const submittingRef = useRef(false);
 
+  // document.title dinâmico para a tela de avaliação
+  useEffect(() => {
+    document.title = 'Avaliação DISC — ProfileAI';
+    return () => { document.title = 'ProfileAI'; };
+  }, []);
+
   // Busca dados do avaliado ao montar
   useEffect(() => {
     if (!token) {
@@ -368,7 +374,13 @@ export default function AvaliacaoPublica() {
     }
 
     buscarPorToken({ token })
-      .then((data) => dispatch({ type: 'CARREGADO_OK', avaliado: data }))
+      .then((data) => {
+        dispatch({ type: 'CARREGADO_OK', avaliado: data });
+        if (data?.nome) {
+          const primeiro = data.nome.split(' ')[0];
+          document.title = 'Avaliação de ' + primeiro + ' — ProfileAI';
+        }
+      })
       .catch((err) => dispatch({ type: 'ERRO_TOKEN', mensagem: err.message }));
   }, [token]);
 

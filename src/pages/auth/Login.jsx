@@ -8,6 +8,10 @@ import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
 
 export default function Login() {
+  useEffect(() => {
+    document.title = 'Entrar — ProfileAI';
+    return () => { document.title = 'ProfileAI'; };
+  }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
