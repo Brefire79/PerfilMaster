@@ -403,6 +403,11 @@
     box-shadow: 0 0 0 3px var(--accent-glow);
   }
   .option-card[disabled] { opacity: 0.55; cursor: not-allowed; }
+  /* Focus visible explícito — belt-and-suspenders além do global :focus-visible */
+  .option-card:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
   .option-card__lead {
     flex: 0 0 auto;
     display: grid;

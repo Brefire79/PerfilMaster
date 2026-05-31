@@ -80,7 +80,7 @@ function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', lo
           {loading ? (
             <div className="h-8 w-20 skeleton rounded-lg" />
           ) : (
-            <p className="text-3xl font-heading font-bold text-[#F7F8FC]">{value}</p>
+            <p className="text-3xl font-heading font-bold text-[#F7F8FC] text-balance">{value}</p>
           )}
           {trendLabel && !loading && (
             <p className="text-xs text-[#A0A3B1] mt-1.5 flex items-center gap-1">
@@ -381,7 +381,7 @@ export default function AdminDashboard() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
+          <h1 className="text-2xl font-heading font-bold text-[#F7F8FC] text-balance">
             {t('admin.welcomeBack')}, {displayName} 👋
           </h1>
           <p className="text-[#A0A3B1] text-sm mt-1">{t('admin.overview')}</p>
