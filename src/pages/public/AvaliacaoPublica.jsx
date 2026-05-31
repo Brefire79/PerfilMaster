@@ -181,7 +181,7 @@ function TelaBoasVindas({ avaliado }) {
           <span className="text-[#F7F8FC] font-medium">{avaliado.sessaoTitulo}</span>
         </p>
         {avaliado.sessaoDescricao && (
-          <p className="text-xs text-[#4A4D6A] mt-1">{avaliado.sessaoDescricao}</p>
+          <p className="text-xs text-[#A0A3B1] mt-1">{avaliado.sessaoDescricao}</p>
         )}
       </div>
 
@@ -458,9 +458,10 @@ export default function AvaliacaoPublica() {
       <div className="min-h-[100dvh] bg-[#0F1117] flex flex-col">
         {/* Topo */}
         <header className="py-4 px-5 border-b border-[#1E2030] flex items-center justify-center">
-          <span className="text-base font-heading font-bold text-[#F7F8FC]">
+          {/* h1 visualmente estilizado como marca; conteúdo semântico de nível de página */}
+          <h1 className="text-base font-heading font-bold text-[#F7F8FC]">
             Profile<span className="text-[#6366F1]">AI</span>
-          </span>
+          </h1>
         </header>
 
         {/* Conteúdo */}
@@ -515,7 +516,7 @@ export default function AvaliacaoPublica() {
 
         {/* Rodapé (apenas quando não há CTA fixo) */}
         {!cta && (
-          <footer className="py-3 px-5 text-center text-xs text-[#4A4D6A]">
+          <footer className="py-3 px-5 text-center text-xs text-[#A0A3B1]">
             ProfileAI · AmbFusi AI · Avaliação{' '}
             <SiglaComSignificado id="DISC" /> segura e confidencial
           </footer>

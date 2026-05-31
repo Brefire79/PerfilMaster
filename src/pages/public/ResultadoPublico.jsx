@@ -328,11 +328,11 @@ export default function ResultadoPublico() {
 
         {/* ── Footer ── */}
         <footer className="text-center py-4 space-y-1">
-          <p className="text-xs text-[#4A4D6A]">
+          <p className="text-xs text-[#A0A3B1]">
             Relatório gerado pela plataforma{' '}
             <span className="text-[#6366F1] font-medium">ProfileAI</span>
           </p>
-          <p className="text-xs text-[#4A4D6A]">
+          <p className="text-xs text-[#A0A3B1]">
             Converse com seu facilitador para aprofundar os resultados.
           </p>
         </footer>

@@ -120,7 +120,7 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
             <div className="bg-[#1A1C2A] rounded-xl p-4 border border-[#6366F1]/30">
               <p className="text-sm text-[#A0A3B1] mb-1">Avaliado</p>
               <p className="text-[#F7F8FC] font-semibold">{nomeAvaliado}</p>
-              <p className="text-xs text-[#4A4D6A] mt-0.5">{telefoneAvaliado}</p>
+              <p className="text-xs text-[#A0A3B1] mt-0.5">{telefoneAvaliado}</p>
             </div>
 
             {/* Botão WhatsApp nativo */}
@@ -181,7 +181,7 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
 
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-[#A0A3B1]">
-                E-mail <span className="text-[#4A4D6A] text-xs">(opcional)</span>
+                E-mail <span className="text-[#A0A3B1] text-xs">(opcional)</span>
               </label>
               <input
                 name="email"

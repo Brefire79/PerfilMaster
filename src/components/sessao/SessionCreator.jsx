@@ -96,7 +96,7 @@ export default function SessionCreator({ onFechar, onCriado }) {
 
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-[#A0A3B1]">
-              Descrição <span className="text-[#4A4D6A] text-xs">(opcional)</span>
+              Descrição <span className="text-[#A0A3B1] text-xs">(opcional)</span>
             </label>
             <textarea
               name="descricao"

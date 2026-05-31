@@ -240,7 +240,7 @@ export default function ProfileDetail({ profile, isAdmin = false, compact = fals
               ))}
             </div>
           ) : (
-            <p className="text-xs text-[#4A4D6A] mt-1 italic">
+            <p className="text-xs text-[#A0A3B1] mt-1 italic">
               Scores detalhados não disponíveis — perfil identificado via triagem inicial.
             </p>
           )}

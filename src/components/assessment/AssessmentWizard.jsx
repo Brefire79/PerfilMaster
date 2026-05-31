@@ -707,7 +707,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           </span>{' '}
           <span>{t('assessment.of', 'de')} {TOTAL_QUESTIONS}</span>
         </p>
-        <p className="text-xs text-[#4A4D6A]">
+        <p className="text-xs text-[#A0A3B1]">
           {indice + 1} {t('assessment.of', 'de')} {perguntas.length}{' '}
           {etapa === 'disc' ? 'nesta etapa' : 'nesta etapa'}
         </p>
@@ -771,7 +771,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       </p>
 
       {/* Keyboard shortcuts hint (desktop only) */}
-      <p className="hidden sm:block text-[11px] text-[#4A4D6A] text-center">
+      <p className="hidden sm:block text-[11px] text-[#A0A3B1] text-center">
         {t('assessment.keyboardHint', 'Dica: pressione 1–5 para escolher e Enter para avançar')}
       </p>
     </div>

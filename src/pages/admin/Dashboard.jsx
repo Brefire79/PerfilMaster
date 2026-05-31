@@ -59,9 +59,9 @@ function ActivityRow({ event, t }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-[#A0A3B1] truncate">{message}</p>
-        <p className="text-xs text-[#4A4D6A] mt-0.5">{formatRelativeTime(event.timestamp, t)}</p>
+        <p className="text-xs text-[#A0A3B1] mt-0.5">{formatRelativeTime(event.timestamp, t)}</p>
       </div>
-      <svg viewBox="0 0 24 24" fill="none" stroke="#4A4D6A" strokeWidth={2} className="w-4 h-4 flex-shrink-0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#4A4D6A" strokeWidth={2} className="w-4 h-4 flex-shrink-0" aria-hidden="true">
         <polyline points="9 18 15 12 9 6" />
       </svg>
     </Link>

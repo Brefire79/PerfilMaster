@@ -369,7 +369,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
       {/* Dados */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-[#F7F8FC] truncate">{avaliado.nome}</p>
-        <p className="text-xs text-[#4A4D6A] truncate">{avaliado.telefone}</p>
+        <p className="text-xs text-[#A0A3B1] truncate">{avaliado.telefone}</p>
         {perfil && (
           <p className="text-xs mt-0.5" style={{ color: PERFIL_COR[perfil.perfilPrimario] }}>
             {PERFIL_NOME[perfil.perfilPrimario]}
@@ -391,7 +391,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
             {/* Modal rápido */}
             <button
               onClick={() => onVerResultado(avaliado)}
-              title="Visão rápida do resultado"
+              title="Visão rápida do resultado" aria-label="Visão rápida do resultado"
               className="p-1.5 rounded-lg text-[#818CF8] hover:text-white hover:bg-[#6366F1] transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -401,7 +401,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
             {/* Relatório completo */}
             <button
               onClick={() => onRelatorio(avaliado)}
-              title="Abrir relatório oficial completo"
+              title="Abrir relatório oficial completo" aria-label="Abrir relatório oficial completo"
               className="p-1.5 rounded-lg text-[#22C55E] hover:text-white hover:bg-[#22C55E] transition-colors"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -415,7 +415,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         )}
         <button
           onClick={() => onCopiarLink(avaliado.token)}
-          title="Copiar link de avaliação"
+          title="Copiar link de avaliação" aria-label="Copiar link de avaliação"
           className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#2D3047] transition-colors"
         >
           <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
@@ -425,7 +425,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         </button>
         <button
           onClick={() => onWhatsApp(avaliado)}
-          title="Enviar via WhatsApp"
+          title="Enviar via WhatsApp" aria-label="Enviar resultado via WhatsApp"
           className="p-1.5 rounded-lg hover:bg-[#25D366]/20 transition-colors"
           style={{ color: '#25D366' }}
         >
@@ -435,7 +435,7 @@ function AvaliadoCard({ avaliado, onWhatsApp, onCopiarLink, onDeletar, onVerResu
         </button>
         <button
           onClick={() => onDeletar(avaliado)}
-          title="Remover avaliado"
+          title="Remover avaliado" aria-label="Remover avaliado"
           className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -580,7 +580,7 @@ export default function Sessoes() {
         <div className="flex gap-6 flex-col lg:flex-row flex-1 min-h-0">
           {/* ── Coluna esquerda: lista de sessões ─────────────────────────── */}
           <div className="lg:w-72 shrink-0 flex flex-col gap-3">
-            <p className="text-xs font-semibold text-[#4A4D6A] uppercase tracking-wider">
+            <p className="text-xs font-semibold text-[#A0A3B1] uppercase tracking-wider">
               Suas sessões ({sessoes.length})
             </p>
 
@@ -637,7 +637,7 @@ export default function Sessoes() {
                       </div>
                     </div>
                     {s.descricao && (
-                      <p className="text-xs text-[#4A4D6A] mt-1 truncate">{s.descricao}</p>
+                      <p className="text-xs text-[#A0A3B1] mt-1 truncate">{s.descricao}</p>
                     )}
                   </div>
                 ))}
