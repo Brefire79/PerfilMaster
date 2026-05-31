@@ -781,10 +781,10 @@ export default function Sessoes() {
 
       {/* FIX: Modal confirmação encerrar sessão */}
       {confirmEncerrar && sessaoAtiva && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-encerrar">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">Encerrar sessão</h2>
+              <h2 id="dlg-encerrar" className="text-base font-heading font-semibold text-[#F7F8FC]">Encerrar sessão</h2>
             </div>
             <div className="px-5 py-4">
               <p className="text-sm text-[#A0A3B1]">
@@ -817,10 +817,10 @@ export default function Sessoes() {
 
       {/* Modal de confirmação: deletar sessão */}
       {confirmDeleteSessao && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-del-sessao">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+              <h2 id="dlg-del-sessao" className="text-base font-heading font-semibold text-[#F7F8FC]">
                 Deletar sessão
               </h2>
             </div>
@@ -855,10 +855,10 @@ export default function Sessoes() {
 
       {/* Modal de confirmação de exclusão */}
       {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-remover">
           <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
             <div className="px-5 py-4 border-b border-[#2D3047]">
-              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+              <h2 id="dlg-remover" className="text-base font-heading font-semibold text-[#F7F8FC]">
                 Remover avaliado
               </h2>
             </div>

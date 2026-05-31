@@ -5,6 +5,10 @@ import { resetPassword } from '@/firebase/auth.js';
 import Button from '@/components/ui/Button.jsx';
 
 export default function ForgotPassword() {
+  React.useEffect(() => {
+    document.title = "Recuperar senha — ProfileAI";
+    return () => { document.title = "ProfileAI"; };
+  }, []);
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
