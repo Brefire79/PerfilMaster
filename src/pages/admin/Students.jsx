@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
@@ -9,6 +10,7 @@ import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
+import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
 
 const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 const PAGE_SIZE = 10;
@@ -64,6 +66,7 @@ export default function Students() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { groups, setGroups } = useGroupStore();
+  const location = useLocation();
 
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +78,13 @@ export default function Students() {
   const [page, setPage] = useState(1);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+
+  // Auto-open invite modal when navigated with ?invite=true
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('invite') === 'true') setInviteOpen(true);
+  }, [location.search]);
 
   // Assign assessment modal
   const [assignStudent, setAssignStudent] = useState(null);
@@ -164,6 +174,28 @@ export default function Students() {
 
   // Reset to page 1 on filter change
   useEffect(() => { setPage(1); }, [search, groupFilter, profileFilter]);
+
+  const handleExport = () => {
+    const STATUS_LABELS = { completed: 'Concluída', analyzed: 'Concluída', submitted: 'Enviada', in_progress: 'Em andamento', pending: 'Pendente' };
+    const rows = [
+      ['Nome', 'E-mail', 'Grupo', 'Perfil', 'Status'],
+      ...filtered.map((s) => [
+        s.displayName || s.name || '',
+        s.email || '',
+        s.groupName || '',
+        s.primaryType || s.dominantProfile || '',
+        STATUS_LABELS[s.assessmentStatus] || 'Pendente',
+      ]),
+    ];
+    const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `alunos-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const filtered = useMemo(() => {
     let list = allStudents;
@@ -321,7 +353,8 @@ export default function Students() {
           <Button
             variant="secondary"
             size="md"
-            disabled
+            onClick={handleExport}
+            disabled={allStudents.length === 0}
             leftIcon={
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -331,6 +364,21 @@ export default function Students() {
             }
           >
             {t('app.export', 'Exportar')}
+          </Button>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={() => setInviteOpen(true)}
+            leftIcon={
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="16" y1="11" x2="22" y2="11" />
+              </svg>
+            }
+          >
+            Convidar Aluno
           </Button>
         </div>
       </div>
@@ -685,6 +733,13 @@ export default function Students() {
         member={selectedStudent}
         isOpen={profilePanelOpen}
         onClose={() => setProfilePanelOpen(false)}
+      />
+
+      <InviteStudentModal
+        isOpen={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        groups={groups}
+        adminUid={user?.uid}
       />
     </div>
   );

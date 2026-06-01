@@ -337,7 +337,7 @@ export default function AdminDashboard() {
       ),
     },
     {
-      to: '/admin/students',
+      to: '/admin/students?invite=true',
       label: t('admin.inviteStudents'),
       description: t('admin.students.invite'),
       color: '#22C55E',
