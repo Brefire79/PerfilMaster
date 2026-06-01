@@ -70,13 +70,32 @@ function Section({ icon, title, children }) {
   );
 }
 
-function EstadoCentral({ emoji, titulo, texto }) {
+function EstadoCentral({ emoji, titulo, texto, showCta = false }) {
   return (
-    <div className="min-h-[100dvh] bg-[#0F1117] flex items-center justify-center px-5">
+    <div className="min-h-[100dvh] bg-[#0F1117] flex flex-col items-center justify-center px-5 gap-6">
+      {/* Logo */}
+      <div className="flex items-center gap-2 mb-2">
+        <div className="w-8 h-8 rounded-xl bg-[#6366F1] flex items-center justify-center">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-4 h-4">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+        <span className="text-sm font-heading font-semibold text-[#F7F8FC]">ProfileAI</span>
+      </div>
+
       <div className="app-shell text-center">
         <div className="text-5xl mb-4" aria-hidden="true">{emoji}</div>
         <h1 className="text-xl font-bold text-[#F7F8FC] mb-2">{titulo}</h1>
         <p className="text-sm text-[#A0A3B1] leading-relaxed">{texto}</p>
+
+        {showCta && (
+          <a
+            href="/login"
+            className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-[#6366F1] text-white text-sm font-semibold hover:bg-[#4F52D9] transition-colors"
+          >
+            Ir para o início
+          </a>
+        )}
       </div>
     </div>
   );
@@ -142,6 +161,7 @@ export default function ResultadoPublico() {
         emoji="😕"
         titulo="Resultado não encontrado"
         texto={erro || 'O link pode ter expirado ou ser inválido.'}
+        showCta
       />
     );
   }

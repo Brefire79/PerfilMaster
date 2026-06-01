@@ -9,6 +9,7 @@ import ProgressRing from '@/components/ui/ProgressRing.jsx';
 
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
+import { useGroup } from '@/hooks/useGroup.js';
 import { getGroupReportsByAdmin, getAssessmentsByGroup, getUsersByGroup } from '@/firebase/firestore.js';
 import { getGroupColor } from '@/utils/groupColors.js';
 
@@ -352,7 +353,7 @@ function LoadingSkeletons() {
 export default function Reports() {
   const { t }              = useTranslation();
   const navigate           = useNavigate();
-  const { groups, loading: groupsLoading } = useGroupStore();
+  const { groups, loading: groupsLoading } = useGroup();
   const { user }           = useAuthStore();
 
   const [reports,          setReports]         = useState([]);

@@ -649,8 +649,13 @@ export default function Sessoes() {
           <div className="flex-1 flex flex-col gap-4 min-w-0">
             {!sessaoAtiva ? (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-20">
-                <div className="w-14 h-14 rounded-2xl bg-[#1A1C2A] flex items-center justify-center text-3xl">
-                  👈
+                <div className="w-14 h-14 rounded-2xl bg-[#1A1C2A] border border-[#2D3047] flex items-center justify-center">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#A0A3B1" strokeWidth={1.5} className="w-6 h-6" aria-hidden="true">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
                 </div>
                 <p className="text-[#A0A3B1] text-sm">Selecione uma sessão para ver os avaliados</p>
               </div>

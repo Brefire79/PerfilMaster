@@ -26,9 +26,14 @@ export function useAuth() {
     const unsubscribe = onAuthStateChange(async (firebaseUser) => {
       if (firebaseUser) {
         try {
-          // Fetch user document from Firestore to get role
+          // Fetch user document from Firestore to get role + displayName fallback
           const userDoc = await getUser(firebaseUser.uid);
-          setUser(firebaseUser, userDoc?.role || 'student');
+          const resolvedDisplayName =
+            firebaseUser.displayName || userDoc?.displayName || userDoc?.name || null;
+          setUser(
+            { ...firebaseUser, displayName: resolvedDisplayName },
+            userDoc?.role || 'student'
+          );
         } catch (err) {
           console.error('[useAuth] Failed to fetch user document:', err);
           setUser(firebaseUser, 'student');

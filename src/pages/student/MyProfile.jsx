@@ -22,6 +22,14 @@ const PROFILE_COLORS = {
   C: { bg: 'bg-[#6366F1]/10', border: 'border-[#6366F1]/30', text: 'text-[#6366F1]', hex: '#6366F1', ring: 'ring-[#6366F1]/40', fill: 'score-fill--C' },
 };
 
+// Gradiente hero por perfil DISC (160deg, escuro → claro, mantém texto branco legível)
+const HERO_GRADIENTS = {
+  D: 'linear-gradient(160deg, #EF4444 0%, #F87171 55%, #FCA5A5 100%)',
+  I: 'linear-gradient(160deg, #D97706 0%, #F59E0B 55%, #FCD34D 100%)',
+  S: 'linear-gradient(160deg, #16A34A 0%, #22C55E 55%, #86EFAC 100%)',
+  C: 'linear-gradient(160deg, #6366F1 0%, #818CF8 55%, #A5B4FC 100%)',
+};
+
 // ─── No Profile CTA ───────────────────────────────────────────────────────────
 
 function NoProfileState() {
@@ -64,11 +72,14 @@ function ProfileHeader({ profile, userName }) {
   const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
 
   return (
-    <div className="relative overflow-hidden rounded-3xl surface-brand p-6 text-center animate-scale-in mb-2">
-      {/* brilho sutil na cor do perfil */}
+    <div
+      className="relative overflow-hidden rounded-3xl p-6 text-center animate-scale-in mb-2"
+      style={{ backgroundImage: HERO_GRADIENTS[type] ?? HERO_GRADIENTS.C }}
+    >
+      {/* brilho sutil no topo direito */}
       <div
-        className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full blur-3xl opacity-40"
-        style={{ background: colors.hex }}
+        className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full blur-3xl opacity-30"
+        style={{ background: '#fff' }}
         aria-hidden="true"
       />
       <div className="relative flex flex-col items-center gap-3">

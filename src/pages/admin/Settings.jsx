@@ -121,12 +121,16 @@ export default function Settings() {
   });
   const [companyStatus, setCompanyStatus] = useState('idle');
 
-  // FIX M1: carrega dados existentes do usuário (companyName, logoUrl)
+  // carrega dados existentes do usuário (displayName, companyName, logoUrl)
   useEffect(() => {
     if (!user?.uid) return;
     getUser(user.uid)
       .then((doc) => {
         if (doc) {
+          const firestoreName = doc.displayName || doc.name || '';
+          setProfileForm((f) => ({
+            displayName: f.displayName || firestoreName,
+          }));
           setCompanyForm({
             companyName: doc.companyName || doc.metadata?.companyName || '',
             logoUrl: doc.logoUrl || doc.metadata?.logoUrl || '',

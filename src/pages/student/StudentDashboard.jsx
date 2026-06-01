@@ -184,7 +184,7 @@ export default function StudentDashboard() {
           </div>
           <div className="stat-tile">
             <span className="stat-tile__label">{t('assessment.status', 'Status')}</span>
-            <span className="stat-tile__value text-[#22C55E]">✓</span>
+            <span className="stat-tile__value text-[#22C55E]">{t('assessment.statusDone', 'Concluída')}</span>
           </div>
         </div>
       )}
