@@ -6,7 +6,7 @@ import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge from '@/components/ui/Badge.jsx';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup, getAvaliadosByAdmin } from '@/firebase/firestore.js';
 
 const ACTIVITY_PROFILE_COLORS = {
   D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1',
@@ -246,14 +246,30 @@ export default function AdminDashboard() {
           .sort((a, b) => b.timestamp - a.timestamp)
           .slice(0, 8);
 
+        // Inclui avaliados de sessão no total (deduplicados por token/id)
+        let avaliadosCount = 0;
+        let avaliadosConcluidos = 0;
         if (!cancelled) {
-          const totalStudents = seenStudentUids.size;
+          try {
+            const avaliados = await getAvaliadosByAdmin(user.uid);
+            avaliados.forEach((a) => {
+              if (!seenStudentUids.has(a.id)) {
+                avaliadosCount++;
+                if (a.status === 'concluido') avaliadosConcluidos++;
+              }
+            });
+          } catch (_) {}
+        }
+
+        if (!cancelled) {
+          const totalStudents = seenStudentUids.size + avaliadosCount;
+          const totalCompleted = completedAssessments + avaliadosConcluidos;
           setStatsData({
             totalStudents,
             totalGroups: groups.length,
-            completedAssessments,
+            completedAssessments: totalCompleted,
             completionRate: totalStudents > 0
-              ? Math.round((completedAssessments / totalStudents) * 100)
+              ? Math.round((totalCompleted / totalStudents) * 100)
               : 0,
           });
           setRecentActivity(sortedEvents);

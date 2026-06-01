@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
@@ -152,14 +152,36 @@ export default function Students() {
           })
         );
         if (!cancelled) {
-          // Deduplicate by user id (student can only be in one group but just in case)
+          // Deduplicate registered users by id
           const seen = new Set();
           const flat = membersByGroup.flat().filter((m) => {
             if (seen.has(m.id)) return false;
             seen.add(m.id);
             return true;
           });
-          setAllStudents(flat);
+
+          // Merge avaliados de sessão (app_avaliados), deduplicando por token
+          const [avaliados, sessoes] = await Promise.all([
+            getAvaliadosByAdmin(user.uid),
+            getSessoesByAdmin(user.uid),
+          ]);
+          const sessaoMap = Object.fromEntries(sessoes.map((s) => [s.id, s]));
+          const avaliadosNorm = avaliados
+            .filter((a) => !seen.has(a.id)) // evita duplicar se mesmo uid
+            .map((a) => ({
+              id: a.id,
+              displayName: a.nome,
+              email: a.email || null,
+              groupName: sessaoMap[a.sessaoId]?.titulo || 'Sessão',
+              groupColor: '#818CF8',
+              profile: a.perfil?.perfilPrimario || null,
+              assessmentStatus: a.status === 'concluido' ? 'completed'
+                : a.status === 'em_andamento' ? 'in_progress'
+                : 'pending',
+              isAvaliado: true, // flag para exibição diferenciada
+            }));
+
+          setAllStudents([...flat, ...avaliadosNorm]);
         }
       } catch (err) {
         console.error('Error loading students:', err);

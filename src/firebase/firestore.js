@@ -764,5 +764,15 @@ export async function deleteAvaliado(avaliadoId) {
   await deleteRows(COLLECTIONS.AVALIADOS, [{ field: 'id', op: 'eq', value: avaliadoId }]);
 }
 
+// Retorna todos os avaliados de sessão deste admin (com dados da sessão para exibição)
+export async function getAvaliadosByAdmin(adminUid) {
+  const rows = await selectRows(COLLECTIONS.AVALIADOS, {
+    filters: [{ field: 'adminUid', op: 'eq', value: adminUid }],
+    orderBy: 'criadoEm',
+    ascending: false,
+  });
+  return rows.map((row) => withDateWrapper({ id: row.id || row.token, ...row }));
+}
+
 // Keep named export compatibility.
 export const db = { provider: 'supabase-rest' };
