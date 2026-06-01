@@ -3,6 +3,7 @@ import { devtools } from 'zustand/middleware';
 import {
   criarSessao,
   criarAvaliado,
+  getSessoesByAdmin,
   subscribeToSessoes,
   subscribeToAvaliados,
   encerrarSessao,
@@ -73,7 +74,9 @@ const useSessaoStore = create(
         set({ loading: true, erro: null }, false, 'sessao/criando');
         try {
           const id = await criarSessao(adminUid, dados);
-          set({ loading: false }, false, 'sessao/criado');
+          // Re-fetch so sessoes lista fica atualizada imediatamente
+          const sessoes = await getSessoesByAdmin(adminUid);
+          set({ loading: false, sessoes }, false, 'sessao/criado');
           return id;
         } catch (e) {
           set({ loading: false, erro: e.message }, false, 'sessao/erro');
