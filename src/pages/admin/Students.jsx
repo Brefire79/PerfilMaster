@@ -383,13 +383,13 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Filters row */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      {/* Filters row — busca em cima, selects sempre lado a lado */}
+      <div className="flex flex-col gap-2">
         <Input
           placeholder={`${t('app.search', 'Buscar')} por nome ou e-mail...`}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="flex-1"
+          className="w-full"
           icon={
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4" aria-hidden="true">
               <circle cx="11" cy="11" r="8" />
@@ -397,31 +397,32 @@ export default function Students() {
             </svg>
           }
         />
+        <div className="grid grid-cols-2 gap-2">
+          <select
+            value={groupFilter}
+            onChange={(e) => setGroupFilter(e.target.value)}
+            className="h-10 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors truncate"
+            aria-label={t('admin.students.group', 'Grupo')}
+          >
+            <option value="">{t('group.allGroups', 'Todos os grupos')}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
 
-        <select
-          value={groupFilter}
-          onChange={(e) => setGroupFilter(e.target.value)}
-          className="h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors min-w-[160px]"
-          aria-label={t('admin.students.group', 'Grupo')}
-        >
-          <option value="">{t('group.allGroups', 'Todos os grupos')}</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.id}>{g.name}</option>
-          ))}
-        </select>
-
-        <select
-          value={profileFilter}
-          onChange={(e) => setProfileFilter(e.target.value)}
-          className="h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors min-w-[160px]"
-          aria-label={t('admin.students.profileType', 'Perfil')}
-        >
-          <option value="">{t('profiles.allProfiles', 'Todos os perfis')}</option>
-          {['D', 'I', 'S', 'C'].map((p) => (
-            <option key={p} value={p}>{p} — {t(`profiles.${p}.name`, p)}</option>
-          ))}
-          <option value="none">{t('group.noProfile', 'Sem perfil')}</option>
-        </select>
+          <select
+            value={profileFilter}
+            onChange={(e) => setProfileFilter(e.target.value)}
+            className="h-10 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors truncate"
+            aria-label={t('admin.students.profileType', 'Perfil')}
+          >
+            <option value="">{t('profiles.allProfiles', 'Todos os perfis')}</option>
+            {['D', 'I', 'S', 'C'].map((p) => (
+              <option key={p} value={p}>{p} — {t(`profiles.${p}.name`, p)}</option>
+            ))}
+            <option value="none">{t('group.noProfile', 'Sem perfil')}</option>
+          </select>
+        </div>
       </div>
 
       {/* Table / list */}

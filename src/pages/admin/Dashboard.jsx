@@ -159,7 +159,7 @@ export default function AdminDashboard() {
       try {
         const groups = await getGroupsByAdmin(user.uid);
         if (cancelled) return;
-        let totalStudents = 0;
+        const seenStudentUids = new Set(); // deduplication across groups
         let completedAssessments = 0;
         const allEvents = [];
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
               getAssessmentsByGroup(g.id),
               getProfilesByGroup(g.id),
             ]);
-            totalStudents += members.length;
+            members.forEach((m) => seenStudentUids.add(m.uid || m.id));
             const completedUids = new Set(
               assessments
                 .filter((a) => ['completed', 'analyzed', 'submitted'].includes(a.status))
@@ -247,6 +247,7 @@ export default function AdminDashboard() {
           .slice(0, 8);
 
         if (!cancelled) {
+          const totalStudents = seenStudentUids.size;
           setStatsData({
             totalStudents,
             totalGroups: groups.length,
