@@ -62,17 +62,16 @@ export default function Modal({
     [isOpen, closeOnEsc, onClose]
   );
 
-  // ─── Focus management ───────────────────────────────────────────────────────
+  // ─── Foco inicial + overflow — só roda quando isOpen muda ─────────────────
+  // Separado do listener de teclado para não re-focar o primeiro campo
+  // toda vez que onClose muda de referência (inline arrow no pai)
   useEffect(() => {
     if (isOpen) {
       previousFocusRef.current = document.activeElement;
-      document.addEventListener('keydown', handleKeyDown);
       document.body.style.overflow = 'hidden';
-      // Só foca automaticamente em desktop — no mobile o teclado virtual
-      // abriria imediatamente e causaria salto de layout antes da animação
       const isMobile = window.innerWidth < 640 || ('ontouchstart' in window);
       if (!isMobile) {
-        setTimeout(() => {
+        const id = setTimeout(() => {
           const firstInput = dialogRef.current?.querySelector(
             'input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled])'
           );
@@ -81,16 +80,20 @@ export default function Modal({
           );
           (firstInput || firstButton)?.focus();
         }, 50);
+        return () => clearTimeout(id);
       }
     } else {
-      document.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
       previousFocusRef.current?.focus();
     }
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
-    };
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
+
+  // ─── Listener de teclado (ESC + trap) — atualiza quando handler muda ───────
+  useEffect(() => {
+    if (!isOpen) return;
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleKeyDown]);
 
   if (!isOpen) return null;
