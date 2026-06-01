@@ -88,7 +88,21 @@ const useSessaoStore = create(
         set({ loading: true, erro: null }, false, 'sessao/encerrando');
         try {
           await encerrarSessao(sessaoId);
-          set({ loading: false }, false, 'sessao/encerrado');
+          // Atualiza sessoes[] e sessaoAtiva no store para refletir status encerrada
+          set(
+            (state) => ({
+              loading: false,
+              sessoes: state.sessoes.map((s) =>
+                s.id === sessaoId ? { ...s, status: 'encerrada' } : s
+              ),
+              sessaoAtiva:
+                state.sessaoAtiva?.id === sessaoId
+                  ? { ...state.sessaoAtiva, status: 'encerrada' }
+                  : state.sessaoAtiva,
+            }),
+            false,
+            'sessao/encerrado'
+          );
         } catch (e) {
           set({ loading: false, erro: e.message }, false, 'sessao/erro');
           throw e;

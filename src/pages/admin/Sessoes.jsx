@@ -763,7 +763,8 @@ export default function Sessoes() {
         <SessionCreator
           onFechar={() => setModalSessao(false)}
           onCriado={(id) => {
-            const nova = sessoes.find((s) => s.id === id);
+            // Usa getState() para pegar sessoes atualizadas (evita closure stale)
+            const nova = useSessaoStore.getState().sessoes.find((s) => s.id === id);
             if (nova) selecionarSessao(nova);
           }}
         />
