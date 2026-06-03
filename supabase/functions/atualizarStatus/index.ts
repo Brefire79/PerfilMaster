@@ -48,11 +48,28 @@ const TRANSICOES_VALIDAS: Record<string, string[]> = {
   em_andamento: ['em_andamento', 'concluido'],
   concluido: [],
 };
+
+// DELTA 7: validação de CPF no servidor (mesma regra da lib do front)
+function cpfDigitsOnly(v: unknown): string {
+  return String(v ?? '').replace(/\D/g, '');
+}
+function isValidCpfServer(v: unknown): boolean {
+  const cpf = cpfDigitsOnly(v);
+  if (cpf.length !== 11) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false;
+  const calc = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(cpf[i]) * (len + 1 - i);
+    const rest = (sum * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  return calc(9) === Number(cpf[9]) && calc(10) === Number(cpf[10]);
+}
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
   try {
-    const { token, novoStatus, respostas } = await req.json();
+    const { token, novoStatus, respostas, cpf, cpfConsent } = await req.json();
     if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100)
       return jsonResponse({ error: 'token inválido' }, 400, req);
     if (!novoStatus) return jsonResponse({ error: 'novoStatus is required' }, 400, req);
@@ -66,6 +83,15 @@ Deno.serve(async (req) => {
     const agora = new Date().toISOString();
     const payload: Record<string, unknown> = { status: novoStatus, atualizadoem: agora };
     if (novoStatus === 'em_andamento') payload.iniciadoem = agora;
+
+    // DELTA 7: CPF opcional informado pelo avaliado na avaliação pública.
+    // Só grava se for válido E o avaliado ainda NÃO tiver CPF (não sobrescreve
+    // o que o admin já registrou). cpfConsent implícito: avaliado preencheu.
+    if (cpf && !avaliado.cpf && isValidCpfServer(cpf) && cpfConsent === true) {
+      payload.cpf = cpfDigitsOnly(cpf);
+      payload.cpf_consent = true;
+      payload.cpf_consent_at = agora;
+    }
     let perfil: Record<string, unknown> | null = null;
     if (novoStatus === 'concluido') {
       if (!respostas || typeof respostas !== 'object' || Object.keys(respostas).length === 0)

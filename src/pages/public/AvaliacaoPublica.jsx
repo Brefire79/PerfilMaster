@@ -1,8 +1,9 @@
-import React, { useEffect, useReducer, useCallback, useRef, Component } from 'react';
+import React, { useEffect, useReducer, useCallback, useRef, useState, Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
+import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -165,7 +166,9 @@ function TelaConcluido({ avaliado }) {
   );
 }
 
-function TelaBoasVindas({ avaliado }) {
+function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentChange, cpfErro }) {
+  // Só oferece o campo se o admin ainda não registrou CPF para este avaliado
+  const ofereceCpf = !avaliado?.cpf;
   return (
     <div className="flex flex-col gap-6 w-full animate-slide-up">
       {/* Saudação */}
@@ -223,6 +226,41 @@ function TelaBoasVindas({ avaliado }) {
           </div>
         ))}
       </div>
+
+      {/* CPF opcional — só se o admin não registrou; habilita histórico de evolução */}
+      {ofereceCpf && (
+        <div className="bg-[#1A1D2E] rounded-2xl p-4 border border-[#2D3047] flex flex-col gap-2">
+          <label htmlFor="cpf-publico" className="text-sm font-medium text-[#F7F8FC]">
+            CPF <span className="text-xs text-[#A0A3B1]">(opcional)</span>
+          </label>
+          <input
+            id="cpf-publico"
+            inputMode="numeric"
+            value={cpf}
+            onChange={(e) => onCpfChange(formatCpf(e.target.value))}
+            placeholder="000.000.000-00"
+            maxLength={14}
+            className="w-full bg-[#0F1117] border border-[#2D3047] rounded-xl px-4 py-3 text-[#F7F8FC] placeholder:text-[#4A4D6A] focus:outline-none focus:border-[#6366F1] transition-colors text-sm"
+          />
+          <p className="text-xs text-[#4A4D6A]">
+            Informe se quiser acompanhar a evolução do seu perfil em avaliações futuras.
+          </p>
+          {cleanCpf(cpf).length > 0 && (
+            <label className="flex items-start gap-2 mt-1 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={cpfConsent}
+                onChange={(e) => onCpfConsentChange(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-[#2D3047] bg-[#0F1117] accent-[#6366F1] shrink-0"
+              />
+              <span className="text-xs text-[#A0A3B1] leading-snug">
+                Autorizo o registro do meu CPF para identificação e histórico, conforme a LGPD.
+              </span>
+            </label>
+          )}
+          {cpfErro && <p className="text-xs text-[#EF4444]">{cpfErro}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -359,6 +397,10 @@ export default function AvaliacaoPublica() {
   const navigate = useNavigate();
   const [state, dispatch] = useReducer(reducer, estadoInicial);
   const submittingRef = useRef(false);
+  // DELTA 7: CPF opcional informado pelo avaliado (só quando admin não registrou)
+  const [cpf, setCpf] = useState('');
+  const [cpfConsent, setCpfConsent] = useState(false);
+  const [cpfErro, setCpfErro] = useState('');
 
   // document.title dinâmico para a tela de avaliação
   useEffect(() => {
@@ -405,14 +447,29 @@ export default function AvaliacaoPublica() {
       });
   }, [state.tela, state.erroSubmit]);
 
+  // CPF só é oferecido se o avaliado ainda não tiver um registrado pelo admin
+  const cpfJaRegistrado = Boolean(state.avaliado?.cpf);
+  const cpfDigits = cleanCpf(cpf);
+
   const handleIniciar = useCallback(async () => {
+    // Se preencheu CPF, valida antes de prosseguir (opcional, mas se digitou tem que ser válido)
+    if (!cpfJaRegistrado && cpfDigits) {
+      if (!isValidCpf(cpfDigits)) { setCpfErro('CPF inválido. Verifique os números ou deixe em branco.'); return; }
+      if (!cpfConsent) { setCpfErro('Marque o consentimento para registrar o CPF.'); return; }
+    }
+    setCpfErro('');
     try {
-      await atualizarStatus({ token, novoStatus: 'em_andamento' });
+      const payload = { token, novoStatus: 'em_andamento' };
+      if (!cpfJaRegistrado && cpfDigits && cpfConsent) {
+        payload.cpf = cpfDigits;
+        payload.cpfConsent = true;
+      }
+      await atualizarStatus(payload);
     } catch {
       // ignora falha de em_andamento; o concluido ainda vai funcionar com as transições liberadas
     }
     dispatch({ type: 'INICIAR' });
-  }, [token]);
+  }, [token, cpfJaRegistrado, cpfDigits, cpfConsent]);
 
   const handleTentarNovamente = useCallback(() => {
     dispatch({ type: 'TENTAR_NOVAMENTE' });
@@ -492,7 +549,14 @@ export default function AvaliacaoPublica() {
         {state.tela === TELAS.BOAS_VINDAS && state.avaliado && (
           <main className="flex-1 px-5 py-8">
             <div className="app-shell has-cta-bar">
-              <TelaBoasVindas avaliado={state.avaliado} />
+              <TelaBoasVindas
+                avaliado={state.avaliado}
+                cpf={cpf}
+                onCpfChange={(v) => { setCpf(v); setCpfErro(''); }}
+                cpfConsent={cpfConsent}
+                onCpfConsentChange={(v) => { setCpfConsent(v); setCpfErro(''); }}
+                cpfErro={cpfErro}
+              />
             </div>
           </main>
         )}
