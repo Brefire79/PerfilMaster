@@ -1,5 +1,5 @@
 {
-  "version": "1.0.19",
-  "buildDate": "2026-06-03T04:40:18.164Z",
-  "notes": "Fix filtro Sem grupo (i18n)"
+  "version": "1.0.20",
+  "buildDate": "2026-06-03T17:21:42.632Z",
+  "notes": "Fase 2: coleta de CPF opcional (convergência de identidade) + aluno avulso"
 }
