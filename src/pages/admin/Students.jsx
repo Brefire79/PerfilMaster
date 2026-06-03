@@ -452,7 +452,7 @@ export default function Students() {
             aria-label={t('admin.students.group', 'Grupo')}
           >
             <option value="">{t('group.allGroups', 'Todos os grupos')}</option>
-            <option value="__none__">{t('group.noGroup', 'Sem grupo (avulsos)')}</option>
+            <option value="__none__">{t('group.noGroupFilter', 'Sem grupo (avulsos)')}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
@@ -561,7 +561,7 @@ export default function Students() {
                   ) : (
                     <span className="inline-flex items-center gap-1.5 text-xs text-[#A0A3B1]/70 italic">
                       <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#4A4D6A]" aria-hidden="true" />
-                      {t('group.noGroupShort', 'Sem grupo')}
+                      {t('group.noGroupShort', 'Sem grupo')}{/* i18n: group.noGroupShort */}
                     </span>
                   )}
                 </div>

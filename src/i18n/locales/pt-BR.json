@@ -407,6 +407,8 @@
     "members": "Membros",
     "membersCount": "{{count}} membro(s)",
     "noGroup": "Você não está em nenhum grupo.",
+    "noGroupFilter": "Sem grupo (avulsos)",
+    "noGroupShort": "Sem grupo",
     "invite": "Convite",
     "inviteCode": "Código de Convite",
     "joinGroup": "Entrar no Grupo",
