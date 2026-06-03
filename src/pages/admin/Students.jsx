@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
@@ -160,6 +160,28 @@ export default function Students() {
             return true;
           });
 
+          // DELTA 6: alunos avulsos (cadastrados sem grupo, vinculados via adminuid).
+          // try/catch para degradar graciosamente caso a migração SQL (coluna adminuid)
+          // ainda não tenha sido aplicada no Supabase.
+          let avulsosNorm = [];
+          try {
+            const avulsos = await getAvulsosByAdmin(user.uid);
+            avulsosNorm = avulsos
+              .filter((u) => !seen.has(u.id) && !seen.has(u.uid))
+              .map((u) => {
+                seen.add(u.id);
+                return {
+                  ...u,
+                  groupId: null,
+                  groupName: null,
+                  groupColor: '#A0A3B1',
+                  assessmentStatus: u.assessmentStatus ?? null,
+                };
+              });
+          } catch (e) {
+            console.warn('[Students] getAvulsosByAdmin falhou (migração DELTA-6 pendente?):', e.message);
+          }
+
           // Merge avaliados de sessão (app_avaliados), deduplicando por token
           const [avaliados, sessoes] = await Promise.all([
             getAvaliadosByAdmin(user.uid),
@@ -181,7 +203,7 @@ export default function Students() {
               isAvaliado: true, // flag para exibição diferenciada
             }));
 
-          setAllStudents([...flat, ...avaliadosNorm]);
+          setAllStudents([...flat, ...avulsosNorm, ...avaliadosNorm]);
         }
       } catch (err) {
         console.error('Error loading students:', err);
@@ -229,7 +251,10 @@ export default function Students() {
           (s.email || '').toLowerCase().includes(q)
       );
     }
-    if (groupFilter) {
+    if (groupFilter === '__none__') {
+      // Avulsos: sem grupo e que não são avaliados de sessão
+      list = list.filter((s) => !s.groupId && !s.isAvaliado);
+    } else if (groupFilter) {
       list = list.filter((s) => s.groupId === groupFilter);
     }
     if (profileFilter === 'none') {
@@ -427,6 +452,7 @@ export default function Students() {
             aria-label={t('admin.students.group', 'Grupo')}
           >
             <option value="">{t('group.allGroups', 'Todos os grupos')}</option>
+            <option value="__none__">{t('group.noGroup', 'Sem grupo (avulsos)')}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
@@ -533,7 +559,10 @@ export default function Students() {
                       <span className="truncate max-w-[100px]">{student.groupName}</span>
                     </span>
                   ) : (
-                    <span className="text-xs text-[#A0A3B1]">—</span>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-[#A0A3B1]/70 italic">
+                      <span className="w-2 h-2 rounded-full flex-shrink-0 bg-[#4A4D6A]" aria-hidden="true" />
+                      {t('group.noGroupShort', 'Sem grupo')}
+                    </span>
                   )}
                 </div>
 

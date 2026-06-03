@@ -126,7 +126,9 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const groupId = invite?.groupId || groupIdParam;
+      const groupId = invite?.groupId || groupIdParam || null;
+      // DELTA 6: adminUid vem do convite — vincula o aluno ao admin mesmo sem grupo
+      const adminUid = invite?.adminUid || null;
 
       // 1. FIX B1: cria usuário no Supabase Auth (não Firebase)
       const firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
@@ -140,7 +142,8 @@ export default function Register() {
           photoURL: firebaseUser.photoURL || null,
         },
         groupId,
-        token
+        token,
+        adminUid
       );
 
       // 3. Update auth store

@@ -90,7 +90,7 @@ function EstadoCentral({ emoji, titulo, texto, showCta = false }) {
 
         {showCta && (
           <a
-            href="/login"
+            href="/"
             className="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-xl bg-[#6366F1] text-white text-sm font-semibold hover:bg-[#4F52D9] transition-colors"
           >
             Ir para o início

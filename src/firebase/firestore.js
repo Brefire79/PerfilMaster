@@ -325,6 +325,21 @@ export async function getUsersByGroup(groupId) {
   return rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row }));
 }
 
+// DELTA 6: alunos avulsos (sem grupo) deste admin — vinculados via adminuid.
+// Retorna apenas students com groupid NULL para não duplicar os que já vêm por grupo.
+export async function getAvulsosByAdmin(adminUid) {
+  const rows = await selectRows(COLLECTIONS.USERS, {
+    filters: [
+      { field: 'adminUid', op: 'eq', value: adminUid },
+      { field: 'role', op: 'eq', value: 'student' },
+      { field: 'groupId', op: 'is', value: null },
+    ],
+    orderBy: 'createdAt',
+    ascending: false,
+  });
+  return rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row }));
+}
+
 export function subscribeToUser(uid, callback) {
   getUser(uid).then(callback).catch(() => callback(null));
   return () => {};
@@ -601,11 +616,14 @@ export async function markInviteUsed(token) {
 // BATCH-LIKE OPERATIONS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export async function registerStudentWithGroup(uid, userData, groupId, inviteToken) {
+export async function registerStudentWithGroup(uid, userData, groupId, inviteToken, adminUid = null) {
   await createUser(uid, {
     ...userData,
     role: 'student',
     groupId,
+    // DELTA 6: vincula o aluno ao admin responsável (essencial p/ alunos avulsos
+    // sem grupo, que de outra forma ficariam órfãos e invisíveis na tela de Alunos)
+    adminUid,
   });
 
   if (groupId) {

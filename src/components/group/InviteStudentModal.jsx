@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import clsx from 'clsx';
-import { createGroup, createInvite } from '@/firebase/firestore.js';
+import { createInvite } from '@/firebase/firestore.js';
 import Button from '@/components/ui/Button.jsx';
 import Modal from '@/components/ui/Modal.jsx';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
@@ -32,27 +32,17 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
     return errs;
   };
 
-  const findOrCreateAvulsosGroup = async () => {
-    const existing = groups.find((g) => g.name?.toLowerCase() === 'alunos avulsos');
-    if (existing) return existing.id;
-    return createGroup({
-      name: 'Alunos Avulsos',
-      description: 'Grupo automático para alunos convidados sem grupo definido.',
-      moduleId: null,
-      color: '#A0A3B1',
-      adminUid,
-    });
-  };
-
   const handleGenerate = async (e) => {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
     setLoading(true);
     try {
-      const targetGroupId = form.groupId || await findOrCreateAvulsosGroup();
+      // groupId null → aluno avulso (sem grupo). registerStudentWithGroup já trata null.
+      const targetGroupId = form.groupId || null;
       const token = await createInvite(targetGroupId, adminUid);
-      setInviteUrl(`${window.location.origin}/register?token=${token}&group=${targetGroupId}`);
+      const groupParam = targetGroupId ? `&group=${targetGroupId}` : '';
+      setInviteUrl(`${window.location.origin}/register?token=${token}${groupParam}`);
       setStep(STEPS.LINK);
     } catch (err) {
       console.error('Erro ao gerar convite:', err);
@@ -140,7 +130,7 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
               onChange={(e) => setForm((f) => ({ ...f, groupId: e.target.value }))}
               className="h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] focus:ring-2 focus:ring-[#6366F1]/20 outline-none transition-colors"
             >
-              <option value="">— Sem grupo (vai para Alunos Avulsos) —</option>
+              <option value="">— Sem grupo (aluno avulso) —</option>
               {groups.map((g) => (
                 <option key={g.id} value={g.id}>{g.name}</option>
               ))}
@@ -150,7 +140,7 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3 h-3 flex-shrink-0" aria-hidden="true">
                   <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
                 </svg>
-                O grupo "Alunos Avulsos" será criado automaticamente se não existir.
+                O aluno ficará sem grupo. Você pode atribuí-lo a um grupo depois, na tela de Alunos.
               </p>
             )}
           </div>
