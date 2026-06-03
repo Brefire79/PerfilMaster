@@ -71,6 +71,14 @@ const CAMEL_TO_DB = {
   conflictStyle: 'conflictstyle',
   therapyIndicator: 'therapyindicator',
   adminStrategy: 'adminstrategy',
+  // DELTA 7: CPF / convergência de identidade (cpf é tudo-minúsculo, mapeia 1:1;
+  // consentimento precisa de snake_case explícito)
+  cpfConsent: 'cpf_consent',
+  cpfConsentAt: 'cpf_consent_at',
+  avaliadoId: 'avaliado_id',
+  userUid: 'user_uid',
+  linkedBy: 'linked_by',
+  linkedAt: 'linked_at',
 };
 
 const DB_TO_CAMEL = Object.fromEntries(
