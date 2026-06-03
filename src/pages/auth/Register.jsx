@@ -6,6 +6,7 @@ import { getInvite, registerStudentWithGroup } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
+import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
 function PasswordStrengthBar({ password }) {
   const { t } = useTranslation();
@@ -66,6 +67,8 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [cpf, setCpf] = useState('');
+  const [cpfConsent, setCpfConsent] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -114,6 +117,12 @@ export default function Register() {
     else if (password.length < 8) newErrors.password = t('errors.passwordTooShort');
     if (!confirmPassword) newErrors.confirmPassword = t('errors.requiredField');
     else if (password !== confirmPassword) newErrors.confirmPassword = t('errors.passwordsDoNotMatch');
+    // CPF opcional — mas se preenchido, precisa ser válido e ter consentimento
+    const cpfDigits = cleanCpf(cpf);
+    if (cpfDigits) {
+      if (!isValidCpf(cpfDigits)) newErrors.cpf = 'CPF inválido. Verifique os números.';
+      else if (!cpfConsent) newErrors.cpf = 'Marque o consentimento para registrar o CPF.';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -134,12 +143,17 @@ export default function Register() {
       const firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
 
       // 2. Create Firestore user doc + add to group (batch)
+      const cpfDigits = cleanCpf(cpf);
       await registerStudentWithGroup(
         firebaseUser.uid,
         {
           displayName: name.trim(),
           email: email.trim(),
           photoURL: firebaseUser.photoURL || null,
+          // DELTA 7: CPF opcional + consentimento LGPD
+          cpf: cpfDigits || null,
+          cpfConsent: cpfDigits ? true : false,
+          cpfConsentAt: cpfDigits ? new Date().toISOString() : null,
         },
         groupId,
         token,
@@ -322,6 +336,41 @@ export default function Register() {
             />
             {errors.confirmPassword && (
               <p className="text-xs text-[#EF4444] mt-1">{errors.confirmPassword}</p>
+            )}
+          </div>
+
+          {/* CPF opcional — habilita histórico de evolução */}
+          <div>
+            <label htmlFor="cpf" className="label-base">
+              CPF <span className="text-xs text-[#A0A3B1]">(opcional)</span>
+            </label>
+            <input
+              id="cpf"
+              inputMode="numeric"
+              value={cpf}
+              onChange={(e) => { setCpf(formatCpf(e.target.value)); setErrors((p) => ({ ...p, cpf: '' })); }}
+              placeholder="000.000.000-00"
+              maxLength={14}
+              className={clsx('input-base', errors.cpf && 'border-[#EF4444]!')}
+            />
+            <p className="text-xs text-[#4A4D6A] mt-1">
+              Permite acompanhar a evolução do seu perfil ao longo do tempo.
+            </p>
+            {cleanCpf(cpf).length > 0 && (
+              <label className="flex items-start gap-2 mt-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={cpfConsent}
+                  onChange={(e) => { setCpfConsent(e.target.checked); setErrors((p) => ({ ...p, cpf: '' })); }}
+                  className="mt-0.5 w-4 h-4 rounded border-[#2D3047] bg-[#1A1C2A] accent-[#6366F1] shrink-0"
+                />
+                <span className="text-xs text-[#A0A3B1] leading-snug">
+                  Autorizo o registro do meu CPF para identificação e histórico, conforme a LGPD.
+                </span>
+              </label>
+            )}
+            {errors.cpf && (
+              <p className="text-xs text-[#EF4444] mt-1">{errors.cpf}</p>
             )}
           </div>
 

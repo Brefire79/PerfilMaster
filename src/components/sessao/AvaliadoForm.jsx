@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import useAuthStore from '@/store/authStore.js';
 import useSessaoStore from '@/store/sessaoStore.js';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
+import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
 const INPUT_BASE =
   'w-full bg-[#1A1C2A] border border-[#2D3047] rounded-xl px-4 py-3 text-[#F7F8FC] ' +
   'placeholder:text-[#4A4D6A] focus:outline-none focus:border-[#6366F1] transition-colors text-sm';
 
-const ESTADO_INICIAL = { nome: '', telefone: '', email: '' };
+const ESTADO_INICIAL = { nome: '', telefone: '', email: '', cpf: '', cpfConsent: false };
 
 const WHATSAPP_ICON = (
   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 shrink-0" aria-hidden="true">
@@ -37,16 +38,34 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
     if (erro) limparErro();
   }
 
+  function handleCpfChange(e) {
+    const masked = formatCpf(e.target.value);
+    // Ao limpar o CPF, zera também o consentimento
+    setForm((prev) => ({ ...prev, cpf: masked, cpfConsent: cleanCpf(masked) ? prev.cpfConsent : false }));
+    if (erroLocal) setErroLocal('');
+    if (erro) limparErro();
+  }
+
   async function handleAdicionar(e) {
     e.preventDefault();
     if (!form.nome.trim()) { setErroLocal('O nome do avaliado é obrigatório.'); return; }
     if (form.telefone.replace(/\D/g, '').length < 10) { setErroLocal('Informe um número de telefone válido (com DDD).'); return; }
+
+    // CPF é opcional — mas se preenchido, precisa ser válido e ter consentimento
+    const cpfDigits = cleanCpf(form.cpf);
+    if (cpfDigits) {
+      if (!isValidCpf(cpfDigits)) { setErroLocal('CPF inválido. Verifique os números.'); return; }
+      if (!form.cpfConsent) { setErroLocal('Marque o consentimento para registrar o CPF.'); return; }
+    }
 
     try {
       const token = await cadastrarAvaliado(user.uid, sessaoId, {
         nome: form.nome.trim(),
         telefone: form.telefone,
         email: form.email.trim() || null,
+        cpf: cpfDigits || null,
+        cpfConsent: cpfDigits ? true : false,
+        cpfConsentAt: cpfDigits ? new Date().toISOString() : null,
       });
       setLista((prev) => [...prev, { nome: form.nome.trim(), telefone: form.telefone, token }]);
       setForm(ESTADO_INICIAL);
@@ -138,6 +157,40 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
                 placeholder="email@empresa.com"
                 className={INPUT_BASE}
               />
+            </div>
+
+            {/* CPF opcional — habilita acompanhar evolução da pessoa ao longo do tempo */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="avaliado-cpf" className="text-sm font-medium text-[#A0A3B1]">
+                CPF <span className="text-xs text-[#A0A3B1]">(opcional)</span>
+              </label>
+              <input
+                id="avaliado-cpf"
+                name="cpf"
+                inputMode="numeric"
+                value={form.cpf}
+                onChange={handleCpfChange}
+                placeholder="000.000.000-00"
+                className={INPUT_BASE}
+                maxLength={14}
+              />
+              <p className="text-xs text-[#4A4D6A]">
+                Permite acompanhar a evolução da pessoa em avaliações futuras.
+              </p>
+              {/* Consentimento só aparece quando há CPF digitado */}
+              {cleanCpf(form.cpf).length > 0 && (
+                <label className="flex items-start gap-2 mt-1 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.cpfConsent}
+                    onChange={(e) => setForm((prev) => ({ ...prev, cpfConsent: e.target.checked }))}
+                    className="mt-0.5 w-4 h-4 rounded border-[#2D3047] bg-[#1A1C2A] accent-[#6366F1] shrink-0"
+                  />
+                  <span className="text-xs text-[#A0A3B1] leading-snug">
+                    Confirmo que tenho autorização do avaliado para registrar o CPF, conforme a LGPD.
+                  </span>
+                </label>
+              )}
             </div>
 
             {mensagemErro && (

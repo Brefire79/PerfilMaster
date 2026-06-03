@@ -739,6 +739,10 @@ export async function criarAvaliado(adminUid, sessaoId, dados) {
     nome: dados.nome,
     telefone: dados.telefone,
     email: dados.email || null,
+    // DELTA 7: CPF opcional + consentimento LGPD (só dígitos)
+    cpf: dados.cpf || null,
+    cpfConsent: dados.cpfConsent ?? false,
+    cpfConsentAt: dados.cpfConsentAt || null,
     token,
     status: 'pendente',
     respostas: null,
