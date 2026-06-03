@@ -11,6 +11,7 @@ import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
+import IdentityLinkPanel from '@/components/admin/IdentityLinkPanel.jsx';
 
 const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 const PAGE_SIZE = 10;
@@ -472,6 +473,9 @@ export default function Students() {
           </select>
         </div>
       </div>
+
+      {/* Painel de vínculos sugeridos por CPF (F2.3) — some se não houver sugestões */}
+      <IdentityLinkPanel adminUid={user?.uid} onLinked={handleRefresh} />
 
       {/* Table / list */}
       <Card variant="default" bodyClassName="p-0">

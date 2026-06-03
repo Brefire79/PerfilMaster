@@ -18,6 +18,7 @@ export const COLLECTIONS = {
   SESSOES: import.meta.env.VITE_SB_TABLE_SESSOES || 'app_sessoes',
   AVALIADOS: import.meta.env.VITE_SB_TABLE_AVALIADOS || 'app_avaliados',
   SESSAO_RESPOSTAS: import.meta.env.VITE_SB_TABLE_SESSAO_RESPOSTAS || 'app_sessao_respostas',
+  IDENTITY_LINKS: import.meta.env.VITE_SB_TABLE_IDENTITY_LINKS || 'app_identity_links',
 };
 
 const GROUP_REPORTS = import.meta.env.VITE_SB_TABLE_GROUP_REPORTS || 'app_group_reports';
@@ -802,6 +803,90 @@ export async function getAvaliadosByAdmin(adminUid) {
     ascending: false,
   });
   return rows.map((row) => withDateWrapper({ id: row.id || row.token, ...row }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// IDENTITY LINKS (DELTA 7 / Fase 2.3 — convergência por CPF)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Alunos (contas) deste admin que possuem CPF — via adminuid (DELTA 6).
+export async function getStudentsByAdmin(adminUid) {
+  const rows = await selectRows(COLLECTIONS.USERS, {
+    filters: [
+      { field: 'adminUid', op: 'eq', value: adminUid },
+      { field: 'role', op: 'eq', value: 'student' },
+    ],
+    orderBy: 'createdAt',
+    ascending: false,
+  });
+  return rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row }));
+}
+
+// Vínculos de identidade já confirmados por este admin.
+export async function getIdentityLinksByAdmin(adminUid) {
+  const rows = await selectRows(COLLECTIONS.IDENTITY_LINKS, {
+    filters: [{ field: 'linkedBy', op: 'eq', value: adminUid }],
+    orderBy: 'linkedAt',
+    ascending: false,
+  });
+  return rows.map((row) => withDateWrapper({ id: row.id, ...row }));
+}
+
+// Confirma um vínculo avaliado↔conta sob o mesmo CPF (admin é o autor).
+export async function createIdentityLink({ cpf, avaliadoId, userUid, adminUid, metadata }) {
+  const row = await insertRow(COLLECTIONS.IDENTITY_LINKS, {
+    cpf,
+    avaliadoId: avaliadoId || null,
+    userUid: userUid || null,
+    linkedBy: adminUid,
+    linkedAt: nowIso(),
+    metadata: metadata || {},
+  });
+  return row?.id;
+}
+
+/**
+ * getSugestoesVinculo — Fase 2.3
+ * Detecta automaticamente "a mesma pessoa" por CPF: agrupa avaliados de sessão
+ * e contas de aluno que compartilham o mesmo CPF, excluindo grupos onde o vínculo
+ * já foi confirmado. Retorna apenas grupos com 2+ registros (algo a vincular).
+ *
+ * Puro de I/O: faz 3 fetches e cruza em memória. Não grava nada.
+ */
+export async function getSugestoesVinculo(adminUid) {
+  const [avaliados, students, links] = await Promise.all([
+    getAvaliadosByAdmin(adminUid),
+    getStudentsByAdmin(adminUid),
+    getIdentityLinksByAdmin(adminUid),
+  ]);
+
+  // CPFs que já têm vínculo confirmado → não sugerir de novo
+  const cpfsVinculados = new Set(links.map((l) => l.cpf).filter(Boolean));
+
+  // Agrupa por CPF (só registros COM cpf)
+  const porCpf = new Map();
+  const add = (cpf, item) => {
+    if (!cpf) return;
+    if (!porCpf.has(cpf)) porCpf.set(cpf, { cpf, avaliados: [], contas: [] });
+    porCpf.get(cpf)[item.tipo === 'conta' ? 'contas' : 'avaliados'].push(item);
+  };
+
+  for (const a of avaliados) {
+    if (a.cpf) add(a.cpf, { tipo: 'avaliacao', id: a.id, nome: a.nome, perfil: a.perfil?.perfilPrimario || null, criadoEm: a.criadoEm });
+  }
+  for (const s of students) {
+    if (s.cpf) add(s.cpf, { tipo: 'conta', id: s.uid || s.id, nome: s.displayName || s.name || s.email, email: s.email });
+  }
+
+  // Sugestões = CPFs com 2+ registros no total, ainda não confirmados
+  const sugestoes = [];
+  for (const grupo of porCpf.values()) {
+    const total = grupo.avaliados.length + grupo.contas.length;
+    if (total >= 2 && !cpfsVinculados.has(grupo.cpf)) {
+      sugestoes.push(grupo);
+    }
+  }
+  return sugestoes;
 }
 
 // Keep named export compatibility.
