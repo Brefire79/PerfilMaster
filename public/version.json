@@ -1,5 +1,5 @@
 {
-  "version": "1.0.18",
-  "buildDate": "2026-06-03T04:33:29.078Z",
-  "notes": "Aluno avulso sem grupo, CTA resultado, deepInsights/coaching offline"
+  "version": "1.0.19",
+  "buildDate": "2026-06-03T04:40:18.164Z",
+  "notes": "Fix filtro Sem grupo (i18n)"
 }
