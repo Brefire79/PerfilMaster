@@ -1,5 +1,5 @@
 {
-  "version": "1.0.17",
-  "buildDate": "2026-05-14T18:56:53.992Z",
-  "notes": "Fix: primaryType→dominantProfile, histórico inclui completed, cores DISC unificadas"
+  "version": "1.0.18",
+  "buildDate": "2026-06-03T04:33:29.078Z",
+  "notes": "Aluno avulso sem grupo, CTA resultado, deepInsights/coaching offline"
 }
