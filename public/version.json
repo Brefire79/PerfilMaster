@@ -1,5 +1,5 @@
 {
-  "version": "1.0.20",
-  "buildDate": "2026-06-03T17:21:42.632Z",
-  "notes": "Fase 2: coleta de CPF opcional (convergência de identidade) + aluno avulso"
+  "version": "1.0.21",
+  "buildDate": "2026-06-04T00:30:08.239Z",
+  "notes": "Fase 2.3-2.4: painel de vínculos por CPF + privacidade (CPF só no relatório)"
 }
