@@ -19,7 +19,8 @@ Deno.serve(async (req) => {
     const { data: avaliado, error: avaliadoError } = await supabase
       .from('app_avaliados')
       // D3: adicionado telefone — necessário para RelatorioOficial via URL direta e WhatsApp
-      .select('nome, status, sessaoid, perfil, telefone')
+      // DELTA 7: lê cpf só para derivar o booleano temCpf (NUNCA expõe o valor)
+      .select('nome, status, sessaoid, perfil, telefone, cpf')
       .eq('token', token)
       .single();
 
@@ -41,6 +42,8 @@ Deno.serve(async (req) => {
       sessaoTitulo: sessao?.titulo || 'Avaliação DISC',
       sessaoDescricao: sessao?.descricao || null,
       perfil: avaliado.perfil || null,
+      // DELTA 7: só informa SE há CPF (boolean), nunca o valor — privacidade LGPD
+      temCpf: Boolean(avaliado.cpf),
     }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'buscarPorToken failed' }, 500, req);

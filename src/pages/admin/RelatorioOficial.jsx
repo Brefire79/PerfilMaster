@@ -7,6 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { insightPerfil, therapyFlag, buscarPorToken } from '@/firebase/functions.js';
 import useAuthStore from '@/store/authStore.js';
+import { formatCpf } from '@/lib/cpf.js';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -100,6 +101,8 @@ export default function RelatorioOficial() {
   const perfil   = avaliado?.perfil;
   const nome     = avaliado?.nome || '';
   const telefone = avaliado?.telefone || '';
+  // CPF completo só no documento oficial (rastreabilidade legal — PRD §6.8)
+  const cpfFmt   = avaliado?.cpf ? formatCpf(avaliado.cpf) : null;
   const docId    = gerarDocId(token, avaliado?.criadoEm);
   const dataDoc  = hoje();
   const horaDoc  = agora();
@@ -312,6 +315,9 @@ export default function RelatorioOficial() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontFamily: 'Arial, sans-serif' }}>
               <div><span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Nome completo</span><span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{nome}</span></div>
               <div><span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Contato (WhatsApp)</span><span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{telefone}</span></div>
+              {cpfFmt && (
+                <div><span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>CPF</span><span style={{ fontSize: '14px', fontWeight: '600', color: '#111827', fontFamily: 'Courier New, monospace' }}>{cpfFmt}</span></div>
+              )}
               <div><span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Sessão de avaliação</span><span style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{avaliado?.sessaoTitulo || '—'}</span></div>
               <div><span style={{ fontSize: '11px', color: '#6B7280', display: 'block' }}>Número do documento</span><span style={{ fontSize: '14px', fontWeight: '700', color: '#4F46E5', fontFamily: 'Courier New, monospace' }}>{docId}</span></div>
             </div>

@@ -167,8 +167,9 @@ function TelaConcluido({ avaliado }) {
 }
 
 function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentChange, cpfErro }) {
-  // Só oferece o campo se o admin ainda não registrou CPF para este avaliado
-  const ofereceCpf = !avaliado?.cpf;
+  // Só oferece o campo se o admin ainda não registrou CPF (temCpf vem do backend
+  // como booleano — o valor do CPF nunca é exposto na resposta pública)
+  const ofereceCpf = !avaliado?.temCpf;
   return (
     <div className="flex flex-col gap-6 w-full animate-slide-up">
       {/* Saudação */}
@@ -448,7 +449,7 @@ export default function AvaliacaoPublica() {
   }, [state.tela, state.erroSubmit]);
 
   // CPF só é oferecido se o avaliado ainda não tiver um registrado pelo admin
-  const cpfJaRegistrado = Boolean(state.avaliado?.cpf);
+  const cpfJaRegistrado = Boolean(state.avaliado?.temCpf);
   const cpfDigits = cleanCpf(cpf);
 
   const handleIniciar = useCallback(async () => {
