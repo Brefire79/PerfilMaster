@@ -889,5 +889,77 @@ export async function getSugestoesVinculo(adminUid) {
   return sugestoes;
 }
 
+/**
+ * getHistoricoEvolucao — Fase 3
+ * Reúne todas as avaliações concluídas de UMA pessoa (mesmo CPF, via vínculos
+ * confirmados em app_identity_links) para montar a linha do tempo de evolução.
+ *
+ * Estratégia (PRD F3 §4): vínculos confirmados como fonte da verdade.
+ *  - Pega o avaliado atual (token) → seu CPF
+ *  - Se não tem CPF: retorna só o ponto atual, sem histórico
+ *  - Busca vínculos confirmados desse CPF; reúne os avaliado_id ligados
+ *  - Monta os pontos a partir dos avaliados concluídos COM perfil/scores
+ *  - Sinaliza se há outras avaliações com o mesmo CPF ainda não vinculadas
+ *
+ * @returns {{ pontos: Array, temOutrasNaoVinculadas: boolean, cpf: string|null }}
+ */
+export async function getHistoricoEvolucao(token, adminUid) {
+  const atual = await getAvaliadoByToken(token);
+  if (!atual) return { pontos: [], temOutrasNaoVinculadas: false, cpf: null };
+
+  const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+  const toPonto = (a) => {
+    const p = a.perfil || {};
+    return {
+      avaliadoId: a.id,
+      moduleTitle: a.sessaoTitulo || 'Avaliação',
+      completedAt: a.concluidoEm || a.criadoEm,
+      dominantProfile: p.perfilPrimario || null,
+      dominantProfileName: PROFILE_NAMES[p.perfilPrimario] || null,
+      scores: {
+        D: p.dominante ?? p.scores?.D ?? 0,
+        I: p.influente ?? p.scores?.I ?? 0,
+        S: p.estavel ?? p.scores?.S ?? 0,
+        C: p.analitico ?? p.scores?.C ?? 0,
+      },
+    };
+  };
+
+  // Sem CPF → não há como agrupar; retorna só o atual (se concluído com perfil)
+  if (!atual.cpf) {
+    const pontos = (atual.status === 'concluido' && atual.perfil) ? [toPonto(atual)] : [];
+    return { pontos, temOutrasNaoVinculadas: false, cpf: null };
+  }
+
+  // Todos os avaliados deste admin com o mesmo CPF (para detectar não-vinculados)
+  const todos = await getAvaliadosByAdmin(adminUid);
+  const mesmosCpf = todos.filter((a) => a.cpf === atual.cpf && a.status === 'concluido' && a.perfil);
+
+  // Vínculos confirmados deste CPF
+  const links = await getIdentityLinksByAdmin(adminUid);
+  const idsVinculados = new Set(
+    links.filter((l) => l.cpf === atual.cpf && l.avaliadoId).map((l) => l.avaliadoId)
+  );
+
+  // Pontos = avaliações vinculadas + a atual (sempre incluída), deduplicado
+  const incluir = new Map();
+  for (const a of mesmosCpf) {
+    if (idsVinculados.has(a.id) || a.id === atual.id) incluir.set(a.id, a);
+  }
+  // Garante a atual mesmo que não esteja em mesmosCpf (ex.: recém-concluída)
+  if (atual.status === 'concluido' && atual.perfil && !incluir.has(atual.id)) {
+    incluir.set(atual.id, atual);
+  }
+
+  const pontos = [...incluir.values()]
+    .map(toPonto)
+    .sort((x, y) => new Date(x.completedAt) - new Date(y.completedAt));
+
+  // Há outras avaliações com o mesmo CPF que NÃO entraram (não vinculadas)?
+  const temOutrasNaoVinculadas = mesmosCpf.some((a) => !incluir.has(a.id));
+
+  return { pontos, temOutrasNaoVinculadas, cpf: atual.cpf };
+}
+
 // Keep named export compatibility.
 export const db = { provider: 'supabase-rest' };

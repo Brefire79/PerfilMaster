@@ -6,8 +6,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { insightPerfil, therapyFlag, buscarPorToken } from '@/firebase/functions.js';
+import { getAvaliadoByToken, getHistoricoEvolucao } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import { formatCpf } from '@/lib/cpf.js';
+import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -90,6 +92,9 @@ export default function RelatorioOficial() {
   const [printMode,   setPrintMode]   = useState(false);
   const [liberado,    setLiberado]    = useState(false);
 
+  // Histórico de evolução (Fase 3)
+  const [historico, setHistorico] = useState({ pontos: [], temOutrasNaoVinculadas: false, cpf: null });
+
   // Busca dados se vieram via URL direta (sem state)
   useEffect(() => {
     if (avaliado || !token) { setLoading(false); return; }
@@ -97,6 +102,25 @@ export default function RelatorioOficial() {
       .then((res) => { setAvaliado(res); setLoading(false); })
       .catch(() => setLoading(false));
   }, [token]);
+
+  // Enriquece com CPF via busca autenticada (buscarPorToken não expõe CPF — F2.4)
+  // e carrega o histórico de evolução por vínculos confirmados (F3)
+  useEffect(() => {
+    if (!token || !user?.uid) return;
+    let cancel = false;
+    (async () => {
+      try {
+        // CPF só vem pela leitura autenticada (admin), nunca pela Edge pública
+        const full = await getAvaliadoByToken(token);
+        if (!cancel && full?.cpf) {
+          setAvaliado((prev) => (prev ? { ...prev, cpf: prev.cpf ?? full.cpf } : prev));
+        }
+        const hist = await getHistoricoEvolucao(token, user.uid);
+        if (!cancel) setHistorico(hist);
+      } catch { /* histórico é complementar — falha silenciosa */ }
+    })();
+    return () => { cancel = true; };
+  }, [token, user?.uid]);
 
   const perfil   = avaliado?.perfil;
   const nome     = avaliado?.nome || '';
@@ -484,6 +508,61 @@ export default function RelatorioOficial() {
               </div>
             )}
           </div>
+
+          {/* ══ SEÇÃO 6: EVOLUÇÃO (Fase 3) — só se o avaliado tem CPF ══ */}
+          {cpfFmt && (
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
+                § 6. Evolução do Perfil
+              </h2>
+
+              {historico.pontos.length >= 2 ? (
+                <>
+                  {/* Narrativa de mudança de perfil dominante */}
+                  {(() => {
+                    const primeiro = historico.pontos[0];
+                    const ultimo = historico.pontos[historico.pontos.length - 1];
+                    const fmtData = (d) => { try { return new Date(d).toLocaleDateString('pt-BR'); } catch { return '—'; } };
+                    const mudou = primeiro.dominantProfile !== ultimo.dominantProfile;
+                    const n = historico.pontos.length;
+                    return (
+                      <p style={{ fontSize: '13px', color: '#1F2937', fontFamily: 'Arial, sans-serif', lineHeight: '1.7', margin: '0 0 14px' }}>
+                        {mudou ? (
+                          <>Ao longo de <strong>{n} avaliações</strong>, o perfil dominante evoluiu de{' '}
+                          <strong style={{ color: DISC[primeiro.dominantProfile]?.cor }}>{primeiro.dominantProfileName}</strong>{' '}
+                          ({fmtData(primeiro.completedAt)}) para{' '}
+                          <strong style={{ color: DISC[ultimo.dominantProfile]?.cor }}>{ultimo.dominantProfileName}</strong>{' '}
+                          ({fmtData(ultimo.completedAt)}).</>
+                        ) : (
+                          <>O perfil dominante manteve-se{' '}
+                          <strong style={{ color: DISC[ultimo.dominantProfile]?.cor }}>{ultimo.dominantProfileName}</strong>{' '}
+                          ao longo de <strong>{n} avaliações</strong> ({fmtData(primeiro.completedAt)} a {fmtData(ultimo.completedAt)}).</>
+                        )}
+                      </p>
+                    );
+                  })()}
+
+                  {/* Gráfico de evolução (reusa componente existente) */}
+                  <div style={{ background: '#FAFAFA', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '12px' }}>
+                    <EvolutionChart
+                      history={historico.pontos.map((p) => ({
+                        moduleTitle: p.moduleTitle,
+                        completedAt: p.completedAt,
+                        scores: p.scores,
+                        dominantProfile: p.dominantProfile,
+                      }))}
+                    />
+                  </div>
+                </>
+              ) : (
+                <p style={{ fontSize: '12px', color: '#6B7280', fontFamily: 'Arial, sans-serif', lineHeight: '1.6', margin: 0, fontStyle: 'italic' }}>
+                  {historico.temOutrasNaoVinculadas
+                    ? 'Há outras avaliações com este CPF. Confirme o vínculo na tela de Alunos para visualizar a evolução completa.'
+                    : 'Esta é a primeira avaliação registrada para este CPF. A evolução aparecerá após novas avaliações.'}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ══ RODAPÉ LEGAL ══ */}
           <div style={{ borderTop: '2px solid #4F46E5', paddingTop: '16px', marginTop: '8px' }}>
