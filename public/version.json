@@ -1,5 +1,5 @@
 {
-  "version": "1.0.21",
-  "buildDate": "2026-06-04T00:30:08.239Z",
-  "notes": "Fase 2.3-2.4: painel de vínculos por CPF + privacidade (CPF só no relatório)"
+  "version": "1.0.22",
+  "buildDate": "2026-06-04T23:37:09.012Z",
+  "notes": "Fase 3: histórico de evolução do perfil no Relatório Oficial"
 }
