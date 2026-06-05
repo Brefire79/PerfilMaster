@@ -1,5 +1,5 @@
 {
-  "version": "1.0.22",
-  "buildDate": "2026-06-04T23:37:09.012Z",
-  "notes": "Fase 3: histórico de evolução do perfil no Relatório Oficial"
+  "version": "1.0.25",
+  "buildDate": "2026-06-05T00:50:27.044Z",
+  "notes": "fix docId NaN no relatorio"
 }

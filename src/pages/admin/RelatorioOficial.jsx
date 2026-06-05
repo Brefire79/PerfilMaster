@@ -28,7 +28,10 @@ const DESC_DISC = {
 
 /** Gera ID de documento único baseado no token */
 function gerarDocId(token, data) {
-  const ano = new Date(data || Date.now()).getFullYear();
+  // data pode ser string ISO ou wrapper { raw, toDate() } (withDateWrapper)
+  const rawData = data?.raw ?? (typeof data?.toDate === 'function' ? data.toDate() : data);
+  const parsed = rawData ? new Date(rawData) : null;
+  const ano = (parsed && !isNaN(parsed)) ? parsed.getFullYear() : new Date().getFullYear();
   const hex = token ? token.replace(/-/g, '').slice(0, 8).toUpperCase() : '00000000';
   return `DISC-${ano}-${hex}`;
 }
@@ -95,31 +98,48 @@ export default function RelatorioOficial() {
   // Histórico de evolução (Fase 3)
   const [historico, setHistorico] = useState({ pontos: [], temOutrasNaoVinculadas: false, cpf: null });
 
-  // Busca dados se vieram via URL direta (sem state)
+  // Carregamento unificado (evita race condition entre as duas fontes):
+  // 1) getAvaliadoByToken (autenticado, admin) traz o registro COMPLETO com CPF
+  // 2) buscarPorToken (Edge) complementa sessaoTitulo/descricao
+  // 3) histórico de evolução por vínculos confirmados (F3)
   useEffect(() => {
-    if (avaliado || !token) { setLoading(false); return; }
-    buscarPorToken({ token })
-      .then((res) => { setAvaliado(res); setLoading(false); })
-      .catch(() => setLoading(false));
-  }, [token]);
-
-  // Enriquece com CPF via busca autenticada (buscarPorToken não expõe CPF — F2.4)
-  // e carrega o histórico de evolução por vínculos confirmados (F3)
-  useEffect(() => {
-    if (!token || !user?.uid) return;
+    if (!token) return;
     let cancel = false;
     (async () => {
       try {
-        // CPF só vem pela leitura autenticada (admin), nunca pela Edge pública
-        const full = await getAvaliadoByToken(token);
-        if (!cancel && full?.cpf) {
-          setAvaliado((prev) => (prev ? { ...prev, cpf: prev.cpf ?? full.cpf } : prev));
+        // Fonte primária autenticada — inclui cpf, perfil, status, etc.
+        let base = null;
+        try { base = await getAvaliadoByToken(token); } catch { /* tenta Edge abaixo */ }
+
+        // Complementa com dados da sessão (título/descrição) via Edge pública
+        let edge = null;
+        try { edge = await buscarPorToken({ token }); } catch { /* opcional */ }
+
+        if (!cancel) {
+          // Mescla: prioriza dados autenticados; usa state inicial se vier do painel
+          const merged = {
+            ...(avaliado || {}),
+            ...(edge || {}),
+            ...(base || {}),
+            // garante título de sessão (só a Edge tem) e cpf (só o autenticado tem)
+            sessaoTitulo: edge?.sessaoTitulo ?? avaliado?.sessaoTitulo ?? base?.sessaoTitulo,
+            sessaoDescricao: edge?.sessaoDescricao ?? avaliado?.sessaoDescricao ?? null,
+            cpf: base?.cpf ?? avaliado?.cpf ?? null,
+          };
+          setAvaliado(merged);
+          setLoading(false);
         }
-        const hist = await getHistoricoEvolucao(token, user.uid);
-        if (!cancel) setHistorico(hist);
-      } catch { /* histórico é complementar — falha silenciosa */ }
+
+        if (user?.uid) {
+          const hist = await getHistoricoEvolucao(token, user.uid);
+          if (!cancel) setHistorico(hist);
+        }
+      } catch {
+        if (!cancel) setLoading(false);
+      }
     })();
     return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user?.uid]);
 
   const perfil   = avaliado?.perfil;

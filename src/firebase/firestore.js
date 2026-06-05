@@ -908,12 +908,25 @@ export async function getHistoricoEvolucao(token, adminUid) {
   if (!atual) return { pontos: [], temOutrasNaoVinculadas: false, cpf: null };
 
   const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+  // concluidoEm/criadoEm vêm embrulhados por withDateWrapper ({ raw, toDate() }).
+  // Normaliza para ISO string para ordenação e exibição corretas.
+  const unwrapDate = (d) => {
+    if (!d) return null;
+    if (typeof d === 'string') return d;
+    if (d.raw) return d.raw;
+    if (typeof d.toDate === 'function') { try { return d.toDate()?.toISOString?.() ?? null; } catch { return null; } }
+    return null;
+  };
   const toPonto = (a) => {
     const p = a.perfil || {};
+    const quando = unwrapDate(a.concluidoEm) || unwrapDate(a.criadoEm);
+    // Rótulo = data curta (dd/mm/aa) — útil para eixo temporal de evolução
+    let rotulo = a.sessaoTitulo || 'Avaliação';
+    try { if (quando) rotulo = new Date(quando).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' }); } catch { /* mantém */ }
     return {
       avaliadoId: a.id,
-      moduleTitle: a.sessaoTitulo || 'Avaliação',
-      completedAt: a.concluidoEm || a.criadoEm,
+      moduleTitle: rotulo,
+      completedAt: quando,
       dominantProfile: p.perfilPrimario || null,
       dominantProfileName: PROFILE_NAMES[p.perfilPrimario] || null,
       scores: {
