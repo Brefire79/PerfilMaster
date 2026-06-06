@@ -45,3 +45,11 @@ verify_jwt = false
 
 [functions.atualizarStatus]
 verify_jwt = false
+
+# Convite: o colega deslogado valida o token ao abrir /register — precisa ser público
+[functions.validateInviteToken]
+verify_jwt = false
+
+# insightPerfil é chamado pelo ResultadoPublico (avaliado sem login)
+[functions.insightPerfil]
+verify_jwt = false

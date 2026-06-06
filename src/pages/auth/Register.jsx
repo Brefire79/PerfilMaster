@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUpWithEmail } from '@/firebase/auth.js';
-import { getInvite, registerStudentWithGroup } from '@/firebase/firestore.js';
+import { registerStudentWithGroup } from '@/firebase/firestore.js';
+import { validateInviteToken } from '@/firebase/functions.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
@@ -83,22 +84,16 @@ export default function Register() {
 
     const validateToken = async () => {
       try {
-        const inviteDoc = await getInvite(token);
-        if (!inviteDoc) {
-          setInviteStatus('invalid');
+        // Usa Edge Function (service-role) em vez de leitura REST anônima:
+        // a chave publishable não resolve o role anon no PostgREST, então o
+        // colega deslogado não conseguia ler o convite via getInvite (REST).
+        const res = await validateInviteToken({ token });
+        if (!res?.valid) {
+          setInviteStatus(res?.reason === 'used' || res?.reason === 'expired' ? 'expired' : 'invalid');
           return;
         }
-        if (inviteDoc.used) {
-          setInviteStatus('expired');
-          return;
-        }
-        const now = new Date();
-        const expiresAt = inviteDoc.expiresAt?.toDate?.() || new Date(inviteDoc.expiresAt);
-        if (expiresAt < now) {
-          setInviteStatus('expired');
-          return;
-        }
-        setInvite(inviteDoc);
+        // Normaliza para o shape que o handleSubmit espera (groupId/adminUid)
+        setInvite({ groupId: res.groupId || null, adminUid: res.adminUid || null });
         setInviteStatus('valid');
       } catch {
         setInviteStatus('invalid');

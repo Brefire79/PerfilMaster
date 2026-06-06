@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
 
   try {
     const { token } = await req.json();
-    if (!token) return jsonResponse({ valid: false, reason: 'missing_token' }, 400);
+    if (!token) return jsonResponse({ valid: false, reason: 'missing_token' }, 400, req);
 
     const { data: invite, error } = await supabase
       .from('app_invites')
@@ -20,26 +20,30 @@ Deno.serve(async (req) => {
       .eq('token', token)
       .single();
 
-    if (error || !invite) return jsonResponse({ valid: false, reason: 'not_found' }, 404);
-    if (invite.used) return jsonResponse({ valid: false, reason: 'used' }, 200);
-    if (invite.expiresAt && new Date(invite.expiresAt).getTime() < Date.now()) {
-      return jsonResponse({ valid: false, reason: 'expired' }, 200);
+    if (error || !invite) return jsonResponse({ valid: false, reason: 'not_found' }, 404, req);
+    if (invite.used) return jsonResponse({ valid: false, reason: 'used' }, 200, req);
+    // FIX: colunas do banco são lowercase (expiresat/groupid/adminuid), não camelCase
+    if (invite.expiresat && new Date(invite.expiresat).getTime() < Date.now()) {
+      return jsonResponse({ valid: false, reason: 'expired' }, 200, req);
     }
 
-    const { data: group } = await supabase
-      .from('app_groups')
-      .select('id,name,adminName')
-      .eq('id', invite.groupId)
-      .single();
+    const { data: group } = invite.groupid
+      ? await supabase
+          .from('app_groups')
+          .select('id,name,adminname')
+          .eq('id', invite.groupid)
+          .single()
+      : { data: null };
 
     return jsonResponse({
       valid: true,
-      groupId: invite.groupId,
+      groupId: invite.groupid || null,
+      adminUid: invite.adminuid || null,   // Register precisa para vincular o aluno (DELTA 6)
       groupName: group?.name || null,
-      adminName: group?.adminName || null,
-      expiresAt: invite.expiresAt || null,
-    });
+      adminName: group?.adminname || null,
+      expiresAt: invite.expiresat || null,
+    }, 200, req);
   } catch (err) {
-    return jsonResponse({ valid: false, reason: (err as Error).message || 'validateInviteToken failed' }, 500);
+    return jsonResponse({ valid: false, reason: (err as Error).message || 'validateInviteToken failed' }, 500, req);
   }
 });
