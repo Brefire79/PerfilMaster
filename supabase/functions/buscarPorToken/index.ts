@@ -18,9 +18,10 @@ Deno.serve(async (req) => {
 
     const { data: avaliado, error: avaliadoError } = await supabase
       .from('app_avaliados')
-      // D3: adicionado telefone — necessário para RelatorioOficial via URL direta e WhatsApp
+      // DELTA 8: telefone removido da resposta pública (PII) — RelatorioOficial
+      // (admin autenticado) obtém telefone via getAvaliadoByToken/REST com RLS.
       // DELTA 7: lê cpf só para derivar o booleano temCpf (NUNCA expõe o valor)
-      .select('nome, status, sessaoid, perfil, telefone, cpf')
+      .select('nome, status, sessaoid, perfil, cpf')
       .eq('token', token)
       .single();
 
@@ -37,8 +38,6 @@ Deno.serve(async (req) => {
     return jsonResponse({
       nome: avaliado.nome,
       status: avaliado.status,
-      // D3: telefone incluído para RelatorioOficial e botão WhatsApp
-      telefone: avaliado.telefone || null,
       sessaoTitulo: sessao?.titulo || 'Avaliação DISC',
       sessaoDescricao: sessao?.descricao || null,
       perfil: avaliado.perfil || null,

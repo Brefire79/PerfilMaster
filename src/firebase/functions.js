@@ -75,6 +75,12 @@ export async function validateInviteToken(payload) {
   return callFunction('validateInviteToken', payload);
 }
 
+/** DELTA 8: consome o convite no backend (service-role) — cria app_users,
+ *  entra no grupo e marca o convite como usado, sem policies públicas. */
+export async function consumeInvite(payload) {
+  return callFunction('consumeInvite', payload);
+}
+
 export async function generateReport(payload) {
   return callFunction('generateReport', payload);
 }

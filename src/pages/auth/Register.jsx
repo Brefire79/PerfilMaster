@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { signUpWithEmail } from '@/firebase/auth.js';
-import { registerStudentWithGroup } from '@/firebase/firestore.js';
-import { validateInviteToken } from '@/firebase/functions.js';
+import { createUser } from '@/firebase/firestore.js';
+import { validateInviteToken, consumeInvite } from '@/firebase/functions.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
@@ -59,7 +59,8 @@ export default function Register() {
   const { setUser } = useAuthStore();
 
   const token = searchParams.get('token');
-  const groupIdParam = searchParams.get('group');
+  // DELTA 8: ?group= removido — entrar num grupo sem convite válido permitia
+  // qualquer pessoa se associar a qualquer grupo conhecendo apenas o id.
 
   const [invite, setInvite] = useState(null);
   const [inviteStatus, setInviteStatus] = useState('loading'); // 'loading' | 'valid' | 'invalid' | 'expired'
@@ -130,30 +131,32 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const groupId = invite?.groupId || groupIdParam || null;
-      // DELTA 6: adminUid vem do convite — vincula o aluno ao admin mesmo sem grupo
-      const adminUid = invite?.adminUid || null;
-
       // 1. FIX B1: cria usuário no Supabase Auth (não Firebase)
       const firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
 
-      // 2. Create Firestore user doc + add to group (batch)
+      // 2. DELTA 8: com convite, todo o consumo (app_users + grupo + invite)
+      //    acontece no backend via Edge Function — groupId/adminUid saem do
+      //    convite no servidor, nunca do cliente. Sem convite, cria apenas o
+      //    próprio registro (entrada em grupo exige convite válido).
       const cpfDigits = cleanCpf(cpf);
-      await registerStudentWithGroup(
-        firebaseUser.uid,
-        {
-          displayName: name.trim(),
-          email: email.trim(),
+      const userData = {
+        displayName: name.trim(),
+        email: email.trim(),
+        cpf: cpfDigits || null,
+        cpfConsent: cpfDigits ? cpfConsent : false,
+      };
+      if (token && invite) {
+        await consumeInvite({ token, userData });
+      } else {
+        await createUser(firebaseUser.uid, {
+          ...userData,
           photoURL: firebaseUser.photoURL || null,
-          // DELTA 7: CPF opcional + consentimento LGPD
-          cpf: cpfDigits || null,
-          cpfConsent: cpfDigits ? true : false,
+          role: 'student',
+          groupId: null,
+          adminUid: null,
           cpfConsentAt: cpfDigits ? new Date().toISOString() : null,
-        },
-        groupId,
-        token,
-        adminUid
-      );
+        });
+      }
 
       // 3. Update auth store
       setUser(firebaseUser, 'student');

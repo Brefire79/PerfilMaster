@@ -19,6 +19,10 @@ const QUESTIONS = [
   { id: 'q_c_01', dimension: 'C', type: 'likert5', weight: 1.0 }, { id: 'q_c_02', dimension: 'C', type: 'likert5', weight: 1.0 },
   { id: 'q_c_03', dimension: 'C', type: 'forced_choice', weight: 1.2 }, { id: 'q_c_04', dimension: 'C', type: 'likert5', weight: 1.1 },
   { id: 'q_c_05', dimension: 'C', type: 'scenario', weight: 1.5 }, { id: 'q_c_06', dimension: 'C', type: 'likert5', weight: 1.5 },
+  // DELTA 8: questões *_07 existem em sampleQuestions.js e eram respondidas
+  // mas IGNORADAS no cálculo — agora pontuam com o mesmo peso do front (1.1)
+  { id: 'q_d_07', dimension: 'D', type: 'likert5', weight: 1.1 }, { id: 'q_i_07', dimension: 'I', type: 'likert5', weight: 1.1 },
+  { id: 'q_s_07', dimension: 'S', type: 'likert5', weight: 1.1 }, { id: 'q_c_07', dimension: 'C', type: 'likert5', weight: 1.1 },
 ];
 const QUESTION_MAP = new Map(QUESTIONS.map((q) => [q.id, q]));
 function calcularPerfil(respostas: Record<string, number>) {

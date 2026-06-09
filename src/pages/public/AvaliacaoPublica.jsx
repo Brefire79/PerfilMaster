@@ -2,6 +2,14 @@ import React, { useEffect, useReducer, useCallback, useRef, useState, Component 
 import { useParams, useNavigate } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
+
+// DELTA 8: a avaliação pública é DISC-only (28 questões). SAMPLE_QUESTIONS
+// inclui também as 50 de sabotadores (etapa 2 do fluxo logado), que aqui eram
+// exibidas mas IGNORADAS pelo cálculo no servidor — e estouravam os
+// "10–15 minutos" prometidos. O Edge atualizarStatus pontua exatamente estes ids.
+const QUESTOES_PUBLICAS = SAMPLE_QUESTIONS.filter((q) =>
+  ['D', 'I', 'S', 'C'].includes(q.dimension)
+);
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
@@ -90,7 +98,7 @@ function reducer(state, action) {
     // F2: avançar via CTA fixo; ao passar da última, vai para ANALISANDO
     case 'AVANCAR': {
       const proximaQuestao = state.questaoAtual + 1;
-      const fim = proximaQuestao >= SAMPLE_QUESTIONS.length;
+      const fim = proximaQuestao >= QUESTOES_PUBLICAS.length;
       return {
         ...state,
         questaoAtual: fim ? state.questaoAtual : proximaQuestao,
@@ -483,9 +491,9 @@ export default function AvaliacaoPublica() {
   const handleAvancar = useCallback(() => dispatch({ type: 'AVANCAR' }), []);
   const handleVoltar  = useCallback(() => dispatch({ type: 'VOLTAR' }), []);
 
-  const questaoAtual = SAMPLE_QUESTIONS[state.questaoAtual];
+  const questaoAtual = QUESTOES_PUBLICAS[state.questaoAtual];
   const respostaAtual = questaoAtual ? state.respostas[questaoAtual.id] : undefined;
-  const total = SAMPLE_QUESTIONS.length;
+  const total = QUESTOES_PUBLICAS.length;
   const isUltima = state.questaoAtual >= total - 1;
   const podeAvancar = respostaAtual !== undefined && respostaAtual !== null;
 
