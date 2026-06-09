@@ -1,5 +1,5 @@
 {
-  "version": "1.0.27",
-  "buildDate": "2026-06-09T22:54:24.437Z",
+  "version": "1.0.28",
+  "buildDate": "2026-06-09T23:36:26.354Z",
   "notes": "Fix critico: convite e avaliacao publica deslogados (verify_jwt + validateInviteToken)"
 }
