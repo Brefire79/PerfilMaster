@@ -46,6 +46,7 @@ const CAMEL_TO_DB = {
   iniciadoEm: 'iniciadoem',
   concluidoEm: 'concluidoem',
   atualizadoEm: 'atualizadoem',
+  conviteEnviadoEm: 'conviteenviadoem',
   primaryType: 'primarytype',
   assessmentId: 'assessmentid',
   assessmentStatus: 'assessmentstatus',
@@ -793,6 +794,30 @@ export async function getAvaliadoByEmail(email) {
 
 export async function deleteAvaliado(avaliadoId) {
   await deleteRows(COLLECTIONS.AVALIADOS, [{ field: 'id', op: 'eq', value: avaliadoId }]);
+}
+
+// Disparo em massa: registra quando o convite WhatsApp foi enviado ao avaliado
+// (coluna conviteenviadoem, DELTA 8.1) — permite "disparar só para quem falta".
+export async function marcarConviteEnviado(avaliadoId) {
+  await updateRows(
+    COLLECTIONS.AVALIADOS,
+    [{ field: 'id', op: 'eq', value: avaliadoId }],
+    { conviteEnviadoEm: nowIso(), atualizadoEm: nowIso() }
+  );
+}
+
+// Exclusão completa de um aluno (limpeza de testes/erros pelo admin):
+// remove do grupo, apaga avaliações, perfil e o registro em app_users.
+// Requer policies do DELTA 8.1 (users_delete / profiles_delete por admin).
+// Obs.: a conta no Supabase Auth não é apagada — sem registro em app_users,
+// um novo login recomeça como aluno sem vínculos.
+export async function deleteStudent(uid, groupId = null) {
+  if (groupId) {
+    try { await removeMemberFromGroup(groupId, uid); } catch { /* grupo pode já não existir */ }
+  }
+  await deleteRows(COLLECTIONS.ASSESSMENTS, [{ field: 'uid', op: 'eq', value: uid }]);
+  await deleteRows(COLLECTIONS.PROFILES, [{ field: 'uid', op: 'eq', value: uid }]);
+  await deleteRows(COLLECTIONS.USERS, [{ field: 'uid', op: 'eq', value: uid }]);
 }
 
 // Retorna todos os avaliados de sessão deste admin (com dados da sessão para exibição)

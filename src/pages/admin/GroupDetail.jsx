@@ -13,6 +13,7 @@ import {
   addMemberToGroup,
   removeMemberFromGroup,
   updateGroup,
+  updateUser,
   deleteGroup,
 } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
@@ -453,7 +454,11 @@ function AddMemberForm({ groupId, onAdded, onSwitchToInvite }) {
         setNotFound(true);
         return;
       }
-      await addMemberToGroup(groupId, found.uid || found.id);
+      const uid = found.uid || found.id;
+      await addMemberToGroup(groupId, uid);
+      // A lista de membros é lida por app_users.groupid — sem este update o
+      // aluno entrava em memberids mas não aparecia como membro do grupo.
+      await updateUser(uid, { groupId });
       setSuccess(t('group.memberAdded', 'Membro adicionado:') + ' ' + (found.displayName || email));
       setEmail('');
       onAdded?.();
@@ -607,6 +612,29 @@ export default function GroupDetail() {
     setMembers((prev) => prev.filter((m) => m.id !== uid));
   };
 
+  // Disparo para o grupo: cobra por e-mail (BCC) só os membros que ainda não
+  // concluíram a avaliação. Quem entrar no grupo depois cai aqui no próximo disparo.
+  const CONCLUIDOS = ['completed', 'analyzed', 'submitted'];
+  const membrosPendentes = members.filter(
+    (m) => !CONCLUIDOS.includes(m.assessmentStatus) && m.email
+  );
+
+  const handleCobrarPendentes = () => {
+    if (membrosPendentes.length === 0) return;
+    const bcc = membrosPendentes.map((m) => m.email).join(',');
+    const appUrl = `${window.location.origin}/student/dashboard`;
+    const subject = encodeURIComponent(`Lembrete: complete sua avaliação DISC — ${group?.name || 'seu grupo'}`);
+    const body = encodeURIComponent(
+      `Olá!\n\n` +
+      `Sua avaliação comportamental DISC${group?.name ? ` do grupo ${group.name}` : ''} ainda está pendente.\n\n` +
+      `Acesse o link abaixo para entrar no app e responder:\n${appUrl}\n\n` +
+      `⏱️ Tempo estimado: 10–15 minutos.\n` +
+      `📊 Seus resultados são confidenciais.\n\n` +
+      `Qualquer dúvida, é só responder este e-mail.`
+    );
+    window.open(`mailto:?bcc=${bcc}&subject=${subject}&body=${body}`);
+  };
+
   const handleGroupUpdated = (updated) => {
     setGroup(updated);
     updateGroupStore(updated.id, updated);
@@ -704,6 +732,20 @@ export default function GroupDetail() {
         {activeTab === 'members' && (
           <Card variant="default">
             <AddMemberForm groupId={id} onAdded={loadGroup} onSwitchToInvite={() => setActiveTab('invite')} />
+
+            {/* Disparo para o grupo: cobra os pendentes por e-mail (BCC) */}
+            {membrosPendentes.length > 0 && (
+              <div className="mb-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30">
+                <p className="text-xs text-[#A0A3B1]">
+                  <strong className="text-[#F59E0B]">{membrosPendentes.length}</strong>{' '}
+                  membro{membrosPendentes.length > 1 ? 's' : ''} ainda não concluí
+                  {membrosPendentes.length > 1 ? 'ram' : 'u'} a avaliação.
+                </p>
+                <Button variant="secondary" size="sm" onClick={handleCobrarPendentes} className="flex-shrink-0">
+                  📤 Cobrar pendentes ({membrosPendentes.length})
+                </Button>
+              </div>
+            )}
 
             {/* Enhanced member list with ProfileBadge + "Ver perfil" button */}
             {members.length === 0 ? (

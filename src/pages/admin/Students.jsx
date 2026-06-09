@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin, deleteStudent, deleteAvaliado } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
@@ -340,6 +340,31 @@ export default function Students() {
     }
   };
 
+  // Exclusão de aluno/avaliado (limpeza de testes e registros com erro)
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      if (deleteTarget.isAvaliado) {
+        await deleteAvaliado(deleteTarget.id);
+      } else {
+        await deleteStudent(deleteTarget.uid || deleteTarget.id, deleteTarget.groupId || null);
+      }
+      setAllStudents((prev) => prev.filter((s) => s.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch (err) {
+      console.error('Erro ao excluir:', err);
+      setDeleteError(err?.message || 'Erro ao excluir. Verifique se o DELTA 8.1 foi aplicado no Supabase.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleSendReminder = (student) => {
     if (!student?.email) return;
     const nome = student.displayName || student.name || 'aluno(a)';
@@ -635,6 +660,19 @@ export default function Students() {
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                   </button>
+                  <button
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+                    aria-label={t('app.delete', 'Excluir')}
+                    title={t('students.deleteStudent', 'Excluir aluno e seus dados')}
+                    onClick={() => { setDeleteError(''); setDeleteTarget(student); }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                      <path d="M10 11v6M14 11v6" />
+                      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                    </svg>
+                  </button>
                 </div>
               </div>
             ))}
@@ -781,6 +819,51 @@ export default function Students() {
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal confirmação de exclusão ───────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-del-aluno">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
+            <div className="px-5 py-4 border-b border-[#2D3047]">
+              <h2 id="dlg-del-aluno" className="text-base font-heading font-semibold text-[#F7F8FC]">
+                Excluir {deleteTarget.isAvaliado ? 'avaliado' : 'aluno'}
+              </h2>
+            </div>
+            <div className="px-5 py-4">
+              <p className="text-sm text-[#A0A3B1]">
+                Tem certeza que deseja excluir{' '}
+                <strong className="text-[#F7F8FC]">{deleteTarget.displayName || deleteTarget.name || deleteTarget.email}</strong>?
+              </p>
+              <p className="text-xs text-[#A0A3B1] mt-2">
+                {deleteTarget.isAvaliado
+                  ? 'As respostas, o perfil e o token de avaliação serão apagados permanentemente.'
+                  : 'As avaliações, o perfil DISC e o registro do aluno serão apagados permanentemente. Esta ação não pode ser desfeita.'}
+              </p>
+              {deleteError && (
+                <p className="text-xs text-[#EF4444] mt-3 px-3 py-2 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30">
+                  {deleteError}
+                </p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-medium text-[#A0A3B1] hover:text-[#F7F8FC] rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleting}
+                className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#EF4444] hover:bg-[#C53030] text-white transition-colors disabled:opacity-60"
+              >
+                {deleting ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -7,6 +7,7 @@ import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
 import SessionCreator from '@/components/sessao/SessionCreator.jsx';
 import AvaliadoForm from '@/components/sessao/AvaliadoForm.jsx';
 import { insightPerfil, therapyFlag } from '@/firebase/functions.js';
+import { marcarConviteEnviado } from '@/firebase/firestore.js';
 
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
 const STATUS_AVALIADO = {
@@ -481,7 +482,12 @@ export default function Sessoes() {
   const [avaliadoResultado, setAvaliadoResultado] = useState(null); // modal resultado rápido
 
   function handleRelatorio(avaliado) {
-    navigate(`/admin/relatorio/${avaliado.token}`, { state: { avaliado } });
+    // history.pushState só aceita dados clonáveis — o avaliado vem do store com
+    // datas embrulhadas por withDateWrapper ({ raw, toDate() }), e funções
+    // disparam DataCloneError. Serializa antes (funções são descartadas e as
+    // datas viram { raw }); o RelatorioOficial refaz o fetch pelo token mesmo.
+    const limpo = JSON.parse(JSON.stringify(avaliado));
+    navigate(`/admin/relatorio/${avaliado.token}`, { state: { avaliado: limpo } });
   }
 
   useEffect(() => {
@@ -499,6 +505,26 @@ export default function Sessoes() {
     andamento: avaliadosDaSessao.filter((a) => a.status === 'em_andamento').length,
     concluidos: avaliadosDaSessao.filter((a) => a.status === 'concluido').length,
   };
+
+  // Disparo em massa: pendentes que ainda NÃO receberam o convite WhatsApp.
+  // Quem entra na sessão depois aparece aqui automaticamente no próximo disparo.
+  const naoDisparados = avaliadosDaSessao.filter(
+    (a) => a.status === 'pendente' && !a.conviteEnviadoEm
+  );
+
+  async function handleDispararProximo() {
+    const proximo = naoDisparados[0];
+    if (!proximo) return;
+    // window.open precisa acontecer no clique (senão o popup é bloqueado)
+    window.open(getLinkWhatsApp(proximo), '_blank', 'noopener,noreferrer');
+    try {
+      await marcarConviteEnviado(proximo.id);
+    } catch (err) {
+      console.error('Erro ao marcar convite enviado:', err);
+    }
+    // Re-busca os avaliados para atualizar o contador do botão
+    selecionarSessao(sessaoAtiva);
+  }
 
   function handleWhatsApp(avaliado) {
     const link = getLinkWhatsApp(avaliado);
@@ -689,6 +715,18 @@ export default function Sessoes() {
                       >
                         <span>+</span> Adicionar avaliado
                       </button>
+                      {/* Disparo em massa via WhatsApp — um pendente por clique */}
+                      {naoDisparados.length > 0 && (
+                        <button
+                          onClick={handleDispararProximo}
+                          title={`Próximo: ${naoDisparados[0].nome}. Cada clique abre o WhatsApp de um pendente que ainda não recebeu o link.`}
+                          className="px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2"
+                          style={{ background: '#25D36620', border: '1px solid #25D36660', color: '#25D366' }}
+                        >
+                          {WHATSAPP_SVG}
+                          Disparar pendentes ({naoDisparados.length})
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
