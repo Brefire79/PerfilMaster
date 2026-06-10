@@ -347,6 +347,11 @@ export default function Students() {
 
   const handleConfirmDelete = async () => {
     if (!deleteTarget) return;
+    // Guarda dupla: nunca excluir a si mesmo nem outro admin
+    if ((deleteTarget.uid || deleteTarget.id) === user?.uid || deleteTarget.role === 'admin') {
+      setDeleteError('Não é possível excluir a própria conta nem outro administrador.');
+      return;
+    }
     setDeleting(true);
     setDeleteError('');
     try {
@@ -660,19 +665,24 @@ export default function Students() {
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                   </button>
-                  <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
-                    aria-label={t('app.delete', 'Excluir')}
-                    title={t('students.deleteStudent', 'Excluir aluno e seus dados')}
-                    onClick={() => { setDeleteError(''); setDeleteTarget(student); }}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
-                      <path d="M10 11v6M14 11v6" />
-                      <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
-                    </svg>
-                  </button>
+                  {/* Lixeira: nunca para a própria conta nem para outros admins
+                      (evita auto-exclusão e perda de acesso). Avaliados de sessão
+                      e alunos comuns podem ser excluídos. */}
+                  {!((student.uid || student.id) === user?.uid) && student.role !== 'admin' && (
+                    <button
+                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+                      aria-label={t('app.delete', 'Excluir')}
+                      title={t('students.deleteStudent', 'Excluir aluno e seus dados')}
+                      onClick={() => { setDeleteError(''); setDeleteTarget(student); }}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                        <polyline points="3 6 5 6 21 6" />
+                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                        <path d="M10 11v6M14 11v6" />
+                        <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

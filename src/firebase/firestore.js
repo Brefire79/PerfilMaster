@@ -840,6 +840,12 @@ export async function marcarConviteEnviadoPorToken(token) {
 // Obs.: a conta no Supabase Auth não é apagada — sem registro em app_users,
 // um novo login recomeça como aluno sem vínculos.
 export async function deleteStudent(uid, groupId = null) {
+  // Proteção: nunca apagar uma conta admin pelo app (evita perda de acesso).
+  // O banco também recusa via trigger (DELTA 8.3), esta é a primeira barreira.
+  const alvo = await getUser(uid).catch(() => null);
+  if (alvo?.role === 'admin') {
+    throw new Error('Não é possível excluir uma conta de administrador.');
+  }
   if (groupId) {
     try { await removeMemberFromGroup(groupId, uid); } catch { /* grupo pode já não existir */ }
   }
