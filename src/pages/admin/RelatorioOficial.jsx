@@ -70,6 +70,23 @@ const PRINT_STYLE = `
     .no-print { display: none !important; }
     .page-break { page-break-before: always; }
     @page { size: A4; margin: 20mm 18mm; }
+
+    /* O AdminLayout usa h-screen + overflow-hidden/auto — sem isto a impressão
+       captura só a área visível na tela e corta o resto do documento. */
+    * { overflow: visible !important; }
+    html, body { height: auto !important; }
+    .h-screen { height: auto !important; }
+
+    /* Imprime SOMENTE o documento: esconde a casca do app (sidebar/topbar/nav)
+       e reposiciona o relatório no topo da página. */
+    body * { visibility: hidden; }
+    .print-page, .print-page * { visibility: visible; }
+    .print-page .no-print, .print-page .no-print * { visibility: hidden !important; }
+    .print-page { position: absolute; left: 0; top: 0; width: 100% !important; max-width: 100% !important; }
+
+    /* Evita cortar blocos no meio entre páginas e gráficos estourando a largura */
+    .print-page svg { max-width: 100% !important; height: auto !important; }
+    .avoid-break { break-inside: avoid; page-break-inside: avoid; }
   }
   @media screen {
     .print-page { max-width: 820px; margin: 0 auto; background: white; }

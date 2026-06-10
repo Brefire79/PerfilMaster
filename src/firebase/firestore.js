@@ -614,6 +614,24 @@ export async function getInvite(token) {
   return row ? withDateWrapper({ id: row.id || row.token, ...row }) : null;
 }
 
+// Convite ativo (não usado e não expirado) mais recente de um grupo — usado
+// pela aba Convite do grupo para reexibir o link após recarregar a página
+// (o token não fica em app_groups, fica em app_invites).
+export async function getActiveInviteForGroup(groupId) {
+  const rows = await selectRows(COLLECTIONS.INVITES, {
+    filters: [
+      { field: 'groupId', op: 'eq', value: groupId },
+      { field: 'used', op: 'eq', value: false },
+    ],
+    orderBy: 'createdAt',
+    ascending: false,
+    limit: 5,
+  });
+  const agora = Date.now();
+  const ativo = rows.find((r) => !r.expiresAt || new Date(r.expiresAt).getTime() > agora);
+  return ativo ? withDateWrapper({ id: ativo.id || ativo.token, ...ativo }) : null;
+}
+
 export async function markInviteUsed(token) {
   await updateRows(
     COLLECTIONS.INVITES,
@@ -802,6 +820,16 @@ export async function marcarConviteEnviado(avaliadoId) {
   await updateRows(
     COLLECTIONS.AVALIADOS,
     [{ field: 'id', op: 'eq', value: avaliadoId }],
+    { conviteEnviadoEm: nowIso(), atualizadoEm: nowIso() }
+  );
+}
+
+// Variante por token — usada no modal de cadastro em lote (AvaliadoForm),
+// que só conhece o token retornado por criarAvaliado.
+export async function marcarConviteEnviadoPorToken(token) {
+  await updateRows(
+    COLLECTIONS.AVALIADOS,
+    [{ field: 'token', op: 'eq', value: token }],
     { conviteEnviadoEm: nowIso(), atualizadoEm: nowIso() }
   );
 }

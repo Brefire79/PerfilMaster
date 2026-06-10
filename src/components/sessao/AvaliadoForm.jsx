@@ -3,6 +3,7 @@ import useAuthStore from '@/store/authStore.js';
 import useSessaoStore from '@/store/sessaoStore.js';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
+import { marcarConviteEnviadoPorToken } from '@/firebase/firestore.js';
 
 const INPUT_BASE =
   'w-full bg-[#1A1C2A] border border-[#2D3047] rounded-xl px-4 py-3 text-[#F7F8FC] ' +
@@ -75,9 +76,23 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
     }
   }
 
+  // Tokens já enviados nesta abertura do modal (também gravado no banco
+  // em conviteenviadoem, para o "Disparar pendentes" da tela não repetir)
+  const [enviados, setEnviados] = useState(() => new Set());
+
   function abrirWhatsApp(pessoa) {
     const link = getLinkWhatsApp({ nome: pessoa.nome, telefone: pessoa.telefone, token: pessoa.token });
     window.open(link, '_blank', 'noopener,noreferrer');
+    setEnviados((prev) => new Set(prev).add(pessoa.token));
+    marcarConviteEnviadoPorToken(pessoa.token).catch(() => {});
+  }
+
+  // O navegador só permite abrir UMA janela por clique (popup blocker) —
+  // por isso o "enviar todos" é sequencial: cada clique abre o próximo.
+  const filaEnvio = lista.filter((p) => !enviados.has(p.token));
+
+  function enviarProximo() {
+    if (filaEnvio.length > 0) abrirWhatsApp(filaEnvio[0]);
   }
 
   function removerDaLista(idx) {
@@ -248,11 +263,19 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => abrirWhatsApp(pessoa)}
-                        title="Enviar convite via WhatsApp"
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-xs font-medium"
+                        title={enviados.has(pessoa.token) ? 'Convite enviado — clique para reenviar' : 'Enviar convite via WhatsApp'}
+                        className={
+                          enviados.has(pessoa.token)
+                            ? 'flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#22C55E]/20 text-[#22C55E] transition-colors text-xs font-medium'
+                            : 'flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-xs font-medium'
+                        }
                       >
-                        {WHATSAPP_ICON}
-                        <span className="hidden sm:inline">Enviar</span>
+                        {enviados.has(pessoa.token) ? (
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4 shrink-0" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        ) : WHATSAPP_ICON}
+                        <span className="hidden sm:inline">{enviados.has(pessoa.token) ? 'Enviado' : 'Enviar'}</span>
                       </button>
                       <button
                         onClick={() => removerDaLista(idx)}
@@ -274,14 +297,24 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
         {/* Rodapé */}
         <div className="px-6 py-4 border-t border-[#2D3047] shrink-0 flex flex-col gap-2">
           {lista.length > 1 && (
-            <button
-              onClick={() => lista.forEach((p) => abrirWhatsApp(p))}
-              className="w-full py-2.5 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-              style={{ background: '#25D366' }}
-            >
-              {WHATSAPP_ICON}
-              Enviar todos via WhatsApp ({lista.length})
-            </button>
+            <>
+              <button
+                onClick={enviarProximo}
+                disabled={filaEnvio.length === 0}
+                className="w-full py-2.5 rounded-xl font-semibold text-white flex items-center justify-center gap-2 transition-all active:scale-[0.98] disabled:opacity-60"
+                style={{ background: filaEnvio.length === 0 ? '#16A34A' : '#25D366' }}
+              >
+                {WHATSAPP_ICON}
+                {filaEnvio.length === 0
+                  ? `✓ Todos enviados (${lista.length})`
+                  : `Enviar próximo: ${filaEnvio[0].nome.split(' ')[0]} (${enviados.size + 1} de ${lista.length})`}
+              </button>
+              {filaEnvio.length > 0 && (
+                <p className="text-xs text-[#A0A3B1] text-center">
+                  O navegador abre um WhatsApp por clique — clique novamente para o próximo da fila.
+                </p>
+              )}
+            </>
           )}
           <button
             onClick={onFechar}

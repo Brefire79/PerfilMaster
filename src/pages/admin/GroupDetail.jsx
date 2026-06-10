@@ -612,26 +612,43 @@ export default function GroupDetail() {
     setMembers((prev) => prev.filter((m) => m.id !== uid));
   };
 
-  // Disparo para o grupo: cobra por e-mail (BCC) só os membros que ainda não
-  // concluíram a avaliação. Quem entrar no grupo depois cai aqui no próximo disparo.
+  // Disparo para o grupo: cobra só os membros que ainda não concluíram a
+  // avaliação, via modal com WhatsApp/e-mail por pessoa (estilo Convidar Aluno).
+  // Quem entrar no grupo depois cai aqui no próximo disparo.
   const CONCLUIDOS = ['completed', 'analyzed', 'submitted'];
-  const membrosPendentes = members.filter(
-    (m) => !CONCLUIDOS.includes(m.assessmentStatus) && m.email
-  );
+  const membrosPendentes = members.filter((m) => !CONCLUIDOS.includes(m.assessmentStatus));
+  const [cobrarOpen, setCobrarOpen] = useState(false);
 
-  const handleCobrarPendentes = () => {
-    if (membrosPendentes.length === 0) return;
-    const bcc = membrosPendentes.map((m) => m.email).join(',');
+  const montarMensagemCobranca = (nome) => {
     const appUrl = `${window.location.origin}/student/dashboard`;
-    const subject = encodeURIComponent(`Lembrete: complete sua avaliação DISC — ${group?.name || 'seu grupo'}`);
-    const body = encodeURIComponent(
-      `Olá!\n\n` +
+    return (
+      `Olá${nome ? `, ${nome.split(' ')[0]}` : ''}! 👋\n\n` +
       `Sua avaliação comportamental DISC${group?.name ? ` do grupo ${group.name}` : ''} ainda está pendente.\n\n` +
       `Acesse o link abaixo para entrar no app e responder:\n${appUrl}\n\n` +
       `⏱️ Tempo estimado: 10–15 minutos.\n` +
-      `📊 Seus resultados são confidenciais.\n\n` +
-      `Qualquer dúvida, é só responder este e-mail.`
+      `📊 Seus resultados são confidenciais.`
     );
+  };
+
+  const handleCobrarWhatsApp = (membro) => {
+    const msg = encodeURIComponent(montarMensagemCobranca(membro.displayName || membro.name));
+    // Sem telefone cadastrado: o WhatsApp abre e o admin escolhe o contato
+    window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCobrarEmail = (membro) => {
+    if (!membro.email) return;
+    const subject = encodeURIComponent(`Lembrete: complete sua avaliação DISC — ${group?.name || 'Perfil Master'}`);
+    const body = encodeURIComponent(montarMensagemCobranca(membro.displayName || membro.name));
+    window.open(`mailto:${membro.email}?subject=${subject}&body=${body}`);
+  };
+
+  const handleCobrarTodosEmail = () => {
+    const comEmail = membrosPendentes.filter((m) => m.email);
+    if (comEmail.length === 0) return;
+    const bcc = comEmail.map((m) => m.email).join(',');
+    const subject = encodeURIComponent(`Lembrete: complete sua avaliação DISC — ${group?.name || 'Perfil Master'}`);
+    const body = encodeURIComponent(montarMensagemCobranca(''));
     window.open(`mailto:?bcc=${bcc}&subject=${subject}&body=${body}`);
   };
 
@@ -733,7 +750,7 @@ export default function GroupDetail() {
           <Card variant="default">
             <AddMemberForm groupId={id} onAdded={loadGroup} onSwitchToInvite={() => setActiveTab('invite')} />
 
-            {/* Disparo para o grupo: cobra os pendentes por e-mail (BCC) */}
+            {/* Disparo para o grupo: cobra os pendentes (modal WhatsApp/e-mail) */}
             {membrosPendentes.length > 0 && (
               <div className="mb-4 flex items-center justify-between gap-3 p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30">
                 <p className="text-xs text-[#A0A3B1]">
@@ -741,7 +758,7 @@ export default function GroupDetail() {
                   membro{membrosPendentes.length > 1 ? 's' : ''} ainda não concluí
                   {membrosPendentes.length > 1 ? 'ram' : 'u'} a avaliação.
                 </p>
-                <Button variant="secondary" size="sm" onClick={handleCobrarPendentes} className="flex-shrink-0">
+                <Button variant="secondary" size="sm" onClick={() => setCobrarOpen(true)} className="flex-shrink-0">
                   📤 Cobrar pendentes ({membrosPendentes.length})
                 </Button>
               </div>
@@ -813,6 +830,89 @@ export default function GroupDetail() {
           />
         )}
       </div>
+
+      {/* ── Modal Cobrar Pendentes — estilo "Convidar Aluno" ───────────── */}
+      {cobrarOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-cobrar">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl flex flex-col max-h-[90dvh]">
+            <div className="flex items-start justify-between px-5 py-4 border-b border-[#2D3047] shrink-0">
+              <div>
+                <h2 id="dlg-cobrar" className="text-base font-heading font-semibold text-[#F7F8FC]">
+                  Cobrar pendentes
+                </h2>
+                <p className="text-xs text-[#A0A3B1] mt-0.5">
+                  {membrosPendentes.length} membro{membrosPendentes.length > 1 ? 's' : ''} de{' '}
+                  <strong className="text-[#F7F8FC]">{group.name}</strong> sem avaliação concluída
+                </p>
+              </div>
+              <button
+                onClick={() => setCobrarOpen(false)}
+                className="p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors ml-3"
+                aria-label={t('app.back', 'Fechar')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-5 py-4 flex flex-col gap-2">
+              {membrosPendentes.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 bg-[#13151F] border border-[#2D3047] rounded-xl px-4 py-3">
+                  <div className="w-8 h-8 rounded-full bg-[#F59E0B]/20 text-[#F59E0B] flex items-center justify-center text-xs font-bold shrink-0">
+                    {(m.displayName || m.name || '?').charAt(0).toUpperCase()}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#F7F8FC] truncate">{m.displayName || m.name || '—'}</p>
+                    <p className="text-xs text-[#A0A3B1] truncate">{m.email || 'sem e-mail'}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => handleCobrarWhatsApp(m)}
+                      title="Cobrar via WhatsApp (você escolhe o contato)"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] hover:bg-[#25D366]/20 transition-colors text-xs font-medium"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                      </svg>
+                      WhatsApp
+                    </button>
+                    <button
+                      onClick={() => handleCobrarEmail(m)}
+                      disabled={!m.email}
+                      title={m.email ? 'Cobrar por e-mail' : 'Membro sem e-mail cadastrado'}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#6366F1]/10 text-[#818CF8] hover:bg-[#6366F1]/20 transition-colors text-xs font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                      E-mail
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 py-4 border-t border-[#2D3047] shrink-0 flex flex-col gap-2">
+              {membrosPendentes.some((m) => m.email) && (
+                <button
+                  onClick={handleCobrarTodosEmail}
+                  className="w-full py-2.5 rounded-xl bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                >
+                  📧 E-mail para todos com e-mail (cópia oculta)
+                </button>
+              )}
+              <button
+                onClick={() => setCobrarOpen(false)}
+                className="w-full py-2.5 rounded-xl border border-[#2D3047] text-[#A0A3B1] hover:text-[#F7F8FC] hover:border-[#4A4D6A] transition-colors text-sm font-medium"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Member profile slide-over panel */}
       <MemberProfileSlideOver

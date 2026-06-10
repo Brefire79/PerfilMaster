@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';
+import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import Card from '@/components/ui/Card.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
-import { createInvite } from '@/firebase/firestore.js';
+import { createInvite, getActiveInviteForGroup } from '@/firebase/firestore.js';
 
 const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
 
@@ -24,14 +25,58 @@ const EXPIRY_OPTIONS = [
  */
 export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [copied, setCopied] = useState(false);
   const [expiry, setExpiry] = useState(7);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  // O token NÃO fica salvo em app_groups — fica em app_invites. Mantém estado
+  // local e recarrega o convite ativo do banco ao abrir a aba.
+  const [token, setToken] = useState(inviteToken || null);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState('');
 
-  const inviteUrl = inviteToken
-    ? `${APP_URL}/join/${inviteToken}`
+  useEffect(() => {
+    if (token || !groupId) return;
+    let cancel = false;
+    getActiveInviteForGroup(groupId)
+      .then((inv) => { if (!cancel && inv?.token) setToken(inv.token); })
+      .catch(() => {});
+    return () => { cancel = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupId]);
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    setGenError('');
+    try {
+      // adminuid do convite = admin logado — sem isso o aluno cadastrado fica
+      // órfão (sem vínculo) e o convite some da listagem do admin (RLS)
+      const newToken = await createInvite(groupId, user?.uid || null, expiry);
+      setToken(newToken);
+      onRegenerateToken?.(newToken);
+    } catch (err) {
+      setGenError(err?.message || 'Erro ao gerar o convite. Tente novamente.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const inviteUrl = token
+    ? `${APP_URL}/join/${token}`
     : null;
+
+  const handleWhatsApp = () => {
+    if (!inviteUrl) return;
+    const msg = encodeURIComponent(
+      `Olá! 👋\n\n` +
+      `Você foi convidado(a) para entrar no meu grupo de avaliação comportamental DISC no Perfil Master.\n\n` +
+      `Cadastre-se pelo link abaixo (uso único, expira em ${expiry} dias):\n${inviteUrl}\n\n` +
+      `Depois do cadastro, sua avaliação é liberada no próprio app. 😊`
+    );
+    // Sem número: o WhatsApp abre e o admin escolhe o contato
+    window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
+  };
 
   const handleCopy = async () => {
     if (!inviteUrl) return;
@@ -55,7 +100,8 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
-      const newToken = await createInvite(groupId, null, expiry);
+      const newToken = await createInvite(groupId, user?.uid || null, expiry);
+      setToken(newToken);
       onRegenerateToken?.(newToken);
     } catch (err) {
       console.error('Error regenerating invite token:', err);
@@ -140,11 +186,29 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
                 </button>
               </div>
             ) : (
-              <div className="p-4 bg-[#1A1D2E] rounded-xl border border-dashed border-[#2D3047] text-center">
+              <div className="p-4 bg-[#1A1D2E] rounded-xl border border-dashed border-[#2D3047] flex flex-col items-center gap-3 text-center">
                 <p className="text-sm text-[#A0A3B1]">
-                  {t('admin.groups.generateInvite', 'Gerar link de convite')}
+                  Nenhum convite ativo para este grupo.
                 </p>
+                <Button variant="primary" size="sm" onClick={handleGenerate} loading={generating}>
+                  {t('admin.groups.generateInvite', 'Gerar link de convite')}
+                </Button>
+                {genError && <p className="text-xs text-[#EF4444]">{genError}</p>}
               </div>
+            )}
+
+            {/* Enviar via WhatsApp — abre o WhatsApp e o admin escolhe o contato */}
+            {inviteUrl && (
+              <button
+                onClick={handleWhatsApp}
+                className="w-full py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-colors"
+                style={{ background: '#25D36620', border: '1px solid #25D36660', color: '#25D366' }}
+              >
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                </svg>
+                Enviar via WhatsApp
+              </button>
             )}
           </div>
         </Card>
