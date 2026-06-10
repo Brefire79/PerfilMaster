@@ -1,12 +1,19 @@
 /**
- * Netlify Function — Proxy seguro para a API xAI/Grok
- * A XAI_API_KEY nunca sai do servidor.
+ * Netlify Function — Proxy seguro para a API de IA (DeepSeek)
+ * A chave (DEEPSEEK_API_KEY) NUNCA sai do servidor — fica só em process.env.
  *
  * POST /.netlify/functions/generate-profile-analysis
  * (ou /api/generate-profile-analysis via redirect no netlify.toml)
+ *
+ * DeepSeek é OpenAI-compatible (/chat/completions + messages), então o mesmo
+ * código serve. Provider configurável por env para trocar sem mexer no código:
+ *   AI_API_URL   (default: DeepSeek)
+ *   AI_API_KEY   (chave secreta — preferida; cai p/ DEEPSEEK_API_KEY / XAI_API_KEY)
+ *   AI_MODEL     (default: deepseek-chat)
  */
 
-const XAI_API_URL = 'https://api.x.ai/v1/chat/completions';
+const DEFAULT_AI_URL = 'https://api.deepseek.com/v1/chat/completions';
+const DEFAULT_AI_MODEL = 'deepseek-chat';
 
 const SYSTEM_PROMPT =
   'Você é um especialista em análise comportamental baseada no modelo DISC e Positive Intelligence (PQ). ' +
@@ -75,7 +82,8 @@ export const handler = async (event) => {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) };
   }
 
-  const apiKey = process.env.XAI_API_KEY;
+  // Chave secreta no servidor (Netlify env). Aceita nomes alternativos p/ migração.
+  const apiKey = process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.XAI_API_KEY;
   if (!apiKey) {
     return {
       statusCode: 503,
@@ -84,7 +92,8 @@ export const handler = async (event) => {
     };
   }
 
-  const model = process.env.XAI_MODEL || 'grok-3';
+  const apiUrl = process.env.AI_API_URL || DEFAULT_AI_URL;
+  const model = process.env.AI_MODEL || process.env.DEEPSEEK_MODEL || DEFAULT_AI_MODEL;
 
   let body;
   try {
@@ -105,7 +114,7 @@ export const handler = async (event) => {
   const userPrompt = buildUserPrompt(discScores, sabScores, localAnalysis);
 
   try {
-    const res = await fetch(XAI_API_URL, {
+    const res = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -119,13 +128,15 @@ export const handler = async (event) => {
         ],
         temperature: 0.7,
         max_tokens: 1800,
+        // DeepSeek suporta modo JSON nativo — reduz respostas fora do formato
+        response_format: { type: 'json_object' },
       }),
     });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      console.error('[xAI Function] HTTP error:', res.status, errText.slice(0, 300));
-      throw new Error(`xAI retornou ${res.status}: ${res.statusText}`);
+      console.error('[AI Function] HTTP error:', res.status, errText.slice(0, 300));
+      throw new Error(`Provedor de IA retornou ${res.status}: ${res.statusText}`);
     }
 
     const data = await res.json();

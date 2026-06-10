@@ -122,8 +122,8 @@ export async function saveApiKey(apiKey) {
   }
 }
 
-// ─── Backend xAI proxy (chave fica no servidor, nunca no bundle) ──────────────
-async function callXaiBackend(discScores, sabotadorScores, localAnalysis) {
+// ─── Backend de IA proxy (DeepSeek; chave fica no servidor, nunca no bundle) ──
+async function callAiBackend(discScores, sabotadorScores, localAnalysis) {
   const res = await fetch('/api/generate-profile-analysis', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -182,12 +182,13 @@ export async function generateAnalysis(discScores, sabotadorScores, apiKey = nul
     }
   }
 
-  // 2. Sem chave do usuário (ou falhou) → backend seguro xAI/Grok via Netlify Function
+  // 2. Sem chave do usuário (ou falhou) → backend seguro via Netlify Function
+  //    (proxy DeepSeek — a chave fica só no servidor, nunca no bundle)
   try {
-    const aiData = await callXaiBackend(discScores, sabotadorScores, localAnalysis);
-    return mergeAiData(localAnalysis, aiData, 'xai');
+    const aiData = await callAiBackend(discScores, sabotadorScores, localAnalysis);
+    return mergeAiData(localAnalysis, aiData, 'ai');
   } catch (err) {
-    console.warn('[generateAnalysis] Backend xAI indisponível, usando análise local:', err.message);
+    console.warn('[generateAnalysis] Backend de IA indisponível, usando análise local:', err.message);
     // 3. Fallback final: motor local sem IA
     return { ...localAnalysis, source: 'local', apiError: err.message };
   }
