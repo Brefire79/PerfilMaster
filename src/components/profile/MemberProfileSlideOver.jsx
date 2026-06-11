@@ -108,15 +108,35 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
     if (!isOpen || !memberUid) return;
     setProfileData(null);
     setLoadingProfile(true);
-    getProfile(memberUid)
-      .then((p) => setProfileData(p || null))
-      .catch((err) => {
+
+    const scoresValidos = (s) => s && ['D', 'I', 'S', 'C'].some((k) => Number(s[k]) > 0);
+
+    (async () => {
+      try {
+        const p = await getProfile(memberUid);
+        // Fallback: se o profile não tem scores válidos (ex.: buildProfile IA
+        // sobrescreveu com vazio), recalcula a partir das respostas do assessment.
+        if (p && !scoresValidos(p.scores)) {
+          try {
+            const assessments = await getAssessmentsByUser(memberUid);
+            const concluido = assessments.find((a) => a.respostas || a.answers);
+            const respostas = concluido?.respostas || concluido?.answers;
+            if (respostas) {
+              const recalc = calcularScoresFromAnswers(respostas);
+              if (scoresValidos(recalc)) p.scores = recalc;
+            }
+          } catch { /* mantém profile como está */ }
+        }
+        setProfileData(p || null);
+      } catch (err) {
         if (import.meta.env.DEV) {
           console.error('[MemberProfileSlideOver] getProfile falhou:', err);
         }
         setProfileData(null);
-      })
-      .finally(() => setLoadingProfile(false));
+      } finally {
+        setLoadingProfile(false);
+      }
+    })();
   }, [isOpen, memberUid]);
 
   // Fecha com Escape

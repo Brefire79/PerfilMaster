@@ -1,5 +1,5 @@
 {
-  "version": "1.0.32",
-  "buildDate": "2026-06-11T03:08:26.208Z",
-  "notes": "IA DeepSeek no backend (chave segura)"
+  "version": "1.0.33",
+  "buildDate": "2026-06-11T03:40:07.481Z",
+  "notes": "Fix: scores DISC no perfil do aluno (GroupDetail busca app_profiles real)"
 }

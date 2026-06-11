@@ -10,12 +10,30 @@ import {
   getUserByEmail,
   getUsersByGroup,
   getAssessmentsByGroup,
+  getProfile,
+  getAssessmentsByUser,
   addMemberToGroup,
   removeMemberFromGroup,
   updateGroup,
   updateUser,
   deleteGroup,
 } from '@/firebase/firestore.js';
+import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
+
+// Recalcula scores DISC a partir das respostas brutas (fallback quando o perfil
+// salvo não tem scores). Usa as 28 questões DISC do início de SAMPLE_QUESTIONS.
+function recalcDiscFromAnswers(answers) {
+  const acc = { D: [], I: [], S: [], C: [] };
+  for (const q of (Array.isArray(SAMPLE_QUESTIONS) ? SAMPLE_QUESTIONS.slice(0, 28) : [])) {
+    const v = answers?.[q.id];
+    if (q.dimension && acc[q.dimension] && v != null) acc[q.dimension].push(Number(v));
+  }
+  const s = {};
+  for (const d of ['D', 'I', 'S', 'C']) {
+    s[d] = acc[d].length ? Math.round((acc[d].reduce((a, b) => a + b, 0) / acc[d].length / 5) * 100) : 0;
+  }
+  return s;
+}
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge from '@/components/ui/Badge.jsx';
@@ -34,6 +52,8 @@ const COLOR_PRESETS = [
 // ─── Member Profile Slide-Over ──────────────────────────────────────────────
 function MemberProfileSlideOver({ member, isOpen, onClose }) {
   const { t } = useTranslation();
+  const [fetchedProfile, setFetchedProfile] = useState(null);
+  const memberUid = member?.uid || member?.id;
 
   // Close on Escape
   useEffect(() => {
@@ -47,10 +67,33 @@ function MemberProfileSlideOver({ member, isOpen, onClose }) {
     };
   }, [isOpen, onClose]);
 
+  // Busca o perfil REAL de app_profiles (member de getUsersByGroup só tem dados
+  // de app_users, que NÃO contém scores). Fallback: recalcula das respostas.
+  useEffect(() => {
+    if (!isOpen || !memberUid) { setFetchedProfile(null); return; }
+    let cancel = false;
+    const scoresOk = (s) => s && ['D', 'I', 'S', 'C'].some((k) => Number(s[k]) > 0);
+    (async () => {
+      try {
+        const p = await getProfile(memberUid);
+        if (p && !scoresOk(p.scores)) {
+          try {
+            const assessments = await getAssessmentsByUser(memberUid);
+            const concl = assessments.find((a) => a.answers || a.respostas);
+            const ans = concl?.answers || concl?.respostas;
+            if (ans) { const r = recalcDiscFromAnswers(ans); if (scoresOk(r)) p.scores = r; }
+          } catch { /* mantém */ }
+        }
+        if (!cancel) setFetchedProfile(p || null);
+      } catch { if (!cancel) setFetchedProfile(null); }
+    })();
+    return () => { cancel = true; };
+  }, [isOpen, memberUid]);
+
   if (!isOpen || !member) return null;
 
-  // Build a profile object from the member data so ProfileDetail can render it
-  const profileObj = member.profileData || {
+  // Prioriza o perfil buscado em app_profiles; cai para os dados do member.
+  const profileObj = fetchedProfile || member.profileData || {
     dominantProfile:     member.profile || member.dominantProfile,
     dominantProfileName: member.profileName || member.dominantProfileName,
     secondaryProfile:    member.secondaryProfile,

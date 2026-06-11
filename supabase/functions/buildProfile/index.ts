@@ -124,6 +124,16 @@ Deno.serve(async (req) => {
       .eq('uid', uid)
       .single();
 
+    // Scores DISC determinísticos já calculados pelo wizard são a FONTE DA VERDADE.
+    // A IA enriquece texto, NÃO recalcula scores. Lê o profile existente p/ preservar.
+    const { data: existingProfile } = await supabase
+      .from('app_profiles')
+      .select('scores, dominantprofile, secondaryprofile')
+      .eq('uid', uid)
+      .single();
+    const scoresValidos = (s) => s && ['D','I','S','C'].some((k) => Number(s[k]) > 0);
+    const existingScores = existingProfile?.scores;
+
     const profileData = await callAnthropic(
       buildSystemPrompt(language),
       buildUserMessage(assessment, user || {}),
@@ -137,14 +147,22 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Preserva os scores reais do wizard se a IA não trouxer scores válidos.
+    const finalScores = scoresValidos(profileData?.scores)
+      ? profileData.scores
+      : (scoresValidos(existingScores) ? existingScores : (profileData?.scores || {}));
+    // Idem para o perfil dominante/secundário — não sobrescrever com vazio
+    const finalDominant = profileData?.dominantProfile || existingProfile?.dominantprofile || null;
+    const finalSecondary = profileData?.secondaryProfile || existingProfile?.secondaryprofile || null;
+
     const now = new Date().toISOString();
 
     const dbPayload = {
       uid,
       assessmentid: assessmentId,
-      scores: profileData.scores,
-      dominantprofile: profileData.dominantProfile,
-      secondaryprofile: profileData.secondaryProfile,
+      scores: finalScores,
+      dominantprofile: finalDominant,
+      secondaryprofile: finalSecondary,
       aisummary: {
         summary: profileData.summary,
         strengths: profileData.strengths,
