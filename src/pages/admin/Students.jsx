@@ -618,69 +618,71 @@ export default function Students() {
                   />
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 pl-12 md:pl-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                {/* Actions — sempre visíveis (no celular não há hover) com label de texto */}
+                <div className="flex flex-wrap items-center gap-1.5 pl-12 md:pl-0">
                   <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
                     aria-label={t('app.view', 'Ver perfil')}
                     title={t('app.view', 'Ver perfil')}
                     onClick={() => { setSelectedStudent(student); setProfilePanelOpen(true); }}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                       <circle cx="12" cy="12" r="3" />
                     </svg>
+                    <span className="hidden sm:inline">Ver perfil</span>
                   </button>
+                  {(() => {
+                    const concluido = student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed';
+                    const label = concluido ? 'Reavaliar' : t('students.assignAssessment', 'Atribuir avaliação');
+                    return (
+                      <button
+                        className={`inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                          concluido
+                            ? 'text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10'
+                            : 'text-[#A0A3B1] hover:text-[#22C55E] hover:bg-[#22C55E]/10'
+                        }`}
+                        aria-label={label}
+                        title={label}
+                        onClick={() => handleOpenAssign(student)}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
+                          <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg>
+                        <span className="hidden sm:inline">{label}</span>
+                      </button>
+                    );
+                  })()}
                   <button
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
-                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
-                        ? 'text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10'
-                        : 'text-[#A0A3B1] hover:text-[#22C55E] hover:bg-[#22C55E]/10'
-                    }`}
-                    aria-label={
-                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
-                        ? 'Reavaliar aluno'
-                        : t('students.assignAssessment', 'Atribuir avaliação')
-                    }
-                    title={
-                      student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed'
-                        ? 'Reavaliar aluno'
-                        : t('students.assignAssessment', 'Atribuir avaliação')
-                    }
-                    onClick={() => handleOpenAssign(student)}
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
-                      <polygon points="5 3 19 12 5 21 5 3" />
-                    </svg>
-                  </button>
-                  <button
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={t('students.sendReminder', 'Enviar lembrete')}
                     title={t('students.sendReminder', 'Enviar lembrete')}
                     onClick={() => handleSendReminder(student)}
                     disabled={!student.email}
                   >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
+                    <span className="hidden sm:inline">Lembrete</span>
                   </button>
                   {/* Lixeira: nunca para a própria conta nem para outros admins
                       (evita auto-exclusão e perda de acesso). Avaliados de sessão
                       e alunos comuns podem ser excluídos. */}
                   {!((student.uid || student.id) === user?.uid) && student.role !== 'admin' && (
                     <button
-                      className="w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
+                      className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-colors"
                       aria-label={t('app.delete', 'Excluir')}
                       title={t('students.deleteStudent', 'Excluir aluno e seus dados')}
                       onClick={() => { setDeleteError(''); setDeleteTarget(student); }}
                     >
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
                         <polyline points="3 6 5 6 21 6" />
                         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                         <path d="M10 11v6M14 11v6" />
                         <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
                       </svg>
+                      <span className="hidden sm:inline">Excluir</span>
                     </button>
                   )}
                 </div>
