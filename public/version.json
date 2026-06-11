@@ -1,5 +1,5 @@
 {
-  "version": "1.0.30",
-  "buildDate": "2026-06-10T03:14:29.214Z",
-  "notes": "Fix critico: convite e avaliacao publica deslogados (verify_jwt + validateInviteToken)"
+  "version": "1.0.32",
+  "buildDate": "2026-06-11T03:08:26.208Z",
+  "notes": "IA DeepSeek no backend (chave segura)"
 }
