@@ -18,6 +18,7 @@ import {
   updateUser,
   deleteGroup,
 } from '@/firebase/firestore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 
 // Recalcula scores DISC a partir das respostas brutas (fallback quando o perfil
@@ -178,7 +179,7 @@ function MemberProfileSlideOver({ member, isOpen, onClose }) {
 }
 
 // ─── Enhanced Member Row ─────────────────────────────────────────────────────
-function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
+function MemberRowWithProfile({ member, onViewProfile, onRemove, onReport, t }) {
   const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 
   function getInitials(name = '') {
@@ -256,6 +257,15 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, t }) {
         >
           Ver perfil
         </button>
+        {(member.assessmentStatus === 'completed' || member.assessmentStatus === 'analyzed') && (
+          <button
+            onClick={() => onReport(member)}
+            className="h-7 px-2 text-xs font-medium rounded-lg bg-[#1A1C2A] hover:bg-[#242736] text-[#A0A3B1] hover:text-[#6366F1] border border-[#2D3047] transition-colors"
+            title="Relatório oficial DISC"
+          >
+            Relatório
+          </button>
+        )}
         <button
           onClick={() => onRemove(member.id)}
           className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
@@ -541,7 +551,7 @@ function AddMemberForm({ groupId, onAdded, onSwitchToInvite }) {
               Usuário não encontrado
             </p>
             <p className="text-xs text-[#A0A3B1] mt-0.5 leading-relaxed">
-              <strong className="text-[#F7F8FC]">{email}</strong> ainda não tem conta no ProfileAI.
+              <strong className="text-[#F7F8FC]">{email}</strong> ainda não tem conta no Perfil Master.
               Envie o link de convite para que ele se cadastre e já entre no grupo automaticamente.
             </p>
             {onSwitchToInvite && (
@@ -663,7 +673,7 @@ export default function GroupDetail() {
   const [cobrarOpen, setCobrarOpen] = useState(false);
 
   const montarMensagemCobranca = (nome) => {
-    const appUrl = `${window.location.origin}/student/dashboard`;
+    const appUrl = `${getPublicBaseUrl()}/student/dashboard`;
     return (
       `Olá${nome ? `, ${nome.split(' ')[0]}` : ''}! 👋\n\n` +
       `Sua avaliação comportamental DISC${group?.name ? ` do grupo ${group.name}` : ''} ainda está pendente.\n\n` +
@@ -840,6 +850,7 @@ export default function GroupDetail() {
                     member={member}
                     onViewProfile={handleViewProfile}
                     onRemove={handleRemoveMember}
+                    onReport={(m) => navigate(`/admin/relatorio/aluno/${m.uid || m.id}`)}
                     t={t}
                   />
                 ))}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail } from '@/firebase/firestore.js';
-import { generateAnalysis, loadApiKey } from '@/lib/apiKeyManager.js';
+import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
+import { generateAnalysis } from '@/lib/apiKeyManager.js';
+import useAuthStore from '@/store/authStore.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
 import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
@@ -103,6 +104,10 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
   // getUsersByGroup retorna { id: row.id || row.uid, ...row }). Cobre os dois.
   const memberUid = member?.uid || member?.id;
 
+  // uid do facilitador logado — chave de isolamento do Painel Estratégico (DELTA 10)
+  const { user } = useAuthStore();
+  const adminUid = user?.uid;
+
   // Busca perfil real de app_profiles quando o painel abre
   useEffect(() => {
     if (!isOpen || !memberUid) return;
@@ -127,7 +132,18 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
             }
           } catch { /* mantém profile como está */ }
         }
-        setProfileData(p || null);
+
+        // DELTA 10: carrega o Painel Estratégico persistido (tabela isolada por
+        // adminuid). Só o facilitador lê — o aluno nunca acessa esta tabela.
+        let merged = p || null;
+        if (adminUid) {
+          try {
+            const savedStrategy = await getAdminStrategy(adminUid, memberUid);
+            if (savedStrategy) merged = { ...(p || {}), adminStrategy: savedStrategy };
+          } catch { /* sem estratégia salva — segue normal */ }
+        }
+
+        setProfileData(merged);
       } catch (err) {
         if (import.meta.env.DEV) {
           console.error('[MemberProfileSlideOver] getProfile falhou:', err);
@@ -137,7 +153,7 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
         setLoadingProfile(false);
       }
     })();
-  }, [isOpen, memberUid]);
+  }, [isOpen, memberUid, adminUid]);
 
   // Fecha com Escape
   useEffect(() => {
@@ -229,16 +245,21 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
         judge: 0, stickler: 0, pleaser: 0, hyperAchiever: 0, victim: 0,
         hyperRational: 0, hyperVigilant: 0, restless: 0, controller: 0, avoider: 0,
       };
-      const apiKey = await loadApiKey();
-      const analysis = await generateAnalysis(discScores, emptySabScores, apiKey);
+      const analysis = await generateAnalysis(discScores, emptySabScores);
 
-      // 4. Constrói e salva adminStrategy
+      // 4. Constrói o adminStrategy (determinístico + enriquecimento da IA)
       const adminStrategy = buildAdminStrategy(analysis);
-      await updateProfile(memberUid, { adminStrategy });
 
-      // 5. Recarrega o profile
-      const fresh = await getProfile(memberUid);
-      setProfileData(fresh || null);
+      // 5. Mostra imediatamente a partir do estado local.
+      setProfileData((prev) => ({ ...(prev || profileObj || {}), scores: discScores, adminStrategy }));
+
+      // 6. DELTA 10: persiste o Painel Estratégico na tabela própria isolada por
+      //    adminuid (app_admin_strategies). A RLS garante que só o facilitador
+      //    lê/grava — o aluno nunca acessa. Substitui o antigo PATCH em
+      //    app_profiles, que casava zero linhas (profiles_update é só do dono).
+      if (adminUid) {
+        await saveAdminStrategy(adminUid, memberUid, adminStrategy);
+      }
     } catch (err) {
       setRegenError(err?.message || 'Falha ao gerar painel estratégico.');
       console.error('[MemberProfileSlideOver] regenerate error:', err);

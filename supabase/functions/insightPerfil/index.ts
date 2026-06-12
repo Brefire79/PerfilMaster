@@ -1,6 +1,5 @@
 import { callAnthropic } from '../_shared/anthropic.ts';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
-import { getAuthenticatedUser } from '../_shared/auth.ts';
 
 /**
  * insightPerfil
@@ -60,24 +59,18 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
-    const { perfil, nome, geminiKey } = await req.json();
+    const { perfil, nome } = await req.json();
     if (!perfil || !nome) {
       return jsonResponse({ error: 'perfil e nome são obrigatórios' }, 400, req);
     }
 
-    // D2a: auth é opcional — sem chave do usuário, usa fallback GEMINI_API_KEY do servidor.
+    // D2a: auth é opcional — a IA usa SOMENTE a chave do servidor (AI_API_KEY nos Secrets).
     // Necessário para ResultadoPublico (/resultado/:token) que é acessado sem login.
-    // Quando chamado por admin (Sessoes/RelatorioOficial), geminiKey vem do localStorage.
-    const caller = await getAuthenticatedUser(req);
-    const resolvedKey = geminiKey || null;
-
-    // Se não autenticado e sem geminiKey, ainda tenta com a env var do servidor (fallback).
     // callAnthropic já lida com chave ausente lançando erro humanizado.
     const result = await callAnthropic(
       buildSystemPrompt(),
       buildUserMessage(perfil, nome),
-      1200,
-      resolvedKey
+      1200
     );
 
     // Normalizar resposta

@@ -9,8 +9,8 @@ import clsx from 'clsx';
 
 export default function Login() {
   useEffect(() => {
-    document.title = 'Entrar — ProfileAI';
-    return () => { document.title = 'ProfileAI'; };
+    document.title = 'Entrar — Perfil Master';
+    return () => { document.title = 'Perfil Master'; };
   }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -182,7 +182,7 @@ export default function Login() {
 
       {/* Footer */}
       <p className="text-center text-xs text-[#A0A3B1] mt-6">
-        ProfileAI &copy; {new Date().getFullYear()}
+        Perfil Master &copy; {new Date().getFullYear()}
       </p>
     </div>
   );

@@ -50,8 +50,8 @@ function PasswordStrengthBar({ password }) {
 
 export default function Register() {
   useEffect(() => {
-    document.title = 'Criar conta — ProfileAI';
-    return () => { document.title = 'ProfileAI'; };
+    document.title = 'Criar conta — Perfil Master';
+    return () => { document.title = 'Perfil Master'; };
   }, []);
   const { t } = useTranslation();
   const navigate = useNavigate();

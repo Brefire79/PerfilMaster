@@ -80,7 +80,7 @@ function EstadoCentral({ emoji, titulo, texto, showCta = false }) {
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
-        <span className="text-sm font-heading font-semibold text-[#F7F8FC]">ProfileAI</span>
+        <span className="text-sm font-heading font-semibold text-[#F7F8FC]">Perfil Master</span>
       </div>
 
       <div className="app-shell text-center">
@@ -112,11 +112,11 @@ export default function ResultadoPublico() {
   // Atualiza document.title com o nome do avaliado quando disponível
   useEffect(() => {
     if (dados?.nome) {
-      document.title = `Resultado de ${dados.nome.split(' ')[0]} — ProfileAI`;
+      document.title = `Resultado de ${dados.nome.split(' ')[0]} — Perfil Master`;
     } else {
-      document.title = 'Resultado DISC — ProfileAI';
+      document.title = 'Resultado DISC — Perfil Master';
     }
-    return () => { document.title = 'ProfileAI'; };
+    return () => { document.title = 'Perfil Master'; };
   }, [dados?.nome]);
 
   useEffect(() => {
@@ -199,7 +199,7 @@ export default function ResultadoPublico() {
             </svg>
           </div>
           <span className="font-bold text-[#F7F8FC] text-base font-heading">
-            Profile<span className="text-[#6366F1]">AI</span>
+            Perfil <span className="text-[#6366F1]">Master</span>
           </span>
         </div>
 
@@ -366,7 +366,7 @@ export default function ResultadoPublico() {
         <footer className="text-center py-4 space-y-1">
           <p className="text-xs text-[#A0A3B1]">
             Relatório gerado pela plataforma{' '}
-            <span className="text-[#6366F1] font-medium">ProfileAI</span>
+            <span className="text-[#6366F1] font-medium">Perfil Master</span>
           </p>
           <p className="text-xs text-[#A0A3B1]">
             Converse com seu facilitador para aprofundar os resultados.

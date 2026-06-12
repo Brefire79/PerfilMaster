@@ -3,28 +3,13 @@ import { getValidAccessToken } from './auth.js';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-/** Funções que usam IA e devem receber a chave do usuário automaticamente */
-const AI_FUNCTIONS = new Set(['insightPerfil', 'therapyFlag', 'analyzeResponse', 'buildProfile', 'groupInsights']);
-
-/** Retorna a chave Gemini configurada pelo admin (localStorage → salva em Settings) */
-function getGeminiKey() {
-  try {
-    return localStorage.getItem('profileai_api_key') || null;
-  } catch {
-    return null;
-  }
-}
-
 async function callFunction(name, payload) {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     throw new Error('Supabase is not configured for edge functions.');
   }
 
-  // Injeta chave do usuário nas chamadas de IA para evitar cota gratuita do servidor
-  const enrichedPayload =
-    AI_FUNCTIONS.has(name)
-      ? { geminiKey: getGeminiKey(), ...payload }
-      : (payload || {});
+  // IA gerenciada pelo servidor (DeepSeek): a chave vem dos Secrets, nunca do cliente.
+  const enrichedPayload = payload || {};
 
   const token = await getValidAccessToken();
   const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {

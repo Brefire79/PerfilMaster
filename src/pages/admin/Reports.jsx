@@ -10,7 +10,7 @@ import ProgressRing from '@/components/ui/ProgressRing.jsx';
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
 import { useGroup } from '@/hooks/useGroup.js';
-import { getGroupReportsByAdmin, getAssessmentsByGroup, getUsersByGroup } from '@/firebase/firestore.js';
+import { getGroupReportsByAdmin, getAssessmentsByGroup, getUsersByGroup, getPessoas } from '@/firebase/firestore.js';
 import { getGroupColor } from '@/utils/groupColors.js';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
@@ -362,6 +362,9 @@ export default function Reports() {
   const [searchQuery,      setSearchQuery]     = useState('');
   // Dados reais de conclusão por grupo: { [groupId]: { completedCount, memberCount } }
   const [liveStats,        setLiveStats]       = useState({});
+  // Relatórios individuais (pessoas com avaliação concluída) — Central de Pessoas
+  const [pessoas,          setPessoas]         = useState([]);
+  const [pessoasQuery,     setPessoasQuery]    = useState('');
 
   // Load reports + live assessment stats
   useEffect(() => {
@@ -372,6 +375,11 @@ export default function Reports() {
       .then(setReports)
       .catch(() => setReports([]))
       .finally(() => setReportsLoading(false));
+
+    // Pessoas com avaliação concluída → relatórios individuais
+    getPessoas(user.uid)
+      .then(({ pessoas: lista }) => setPessoas(lista.filter((p) => p.diagnostico)))
+      .catch(() => setPessoas([]));
   }, [user?.uid]);
 
   // Quando os grupos carregam, busca stats reais de conclusão
@@ -539,6 +547,71 @@ export default function Reports() {
               />
             ))}
           </div>
+        </section>
+      )}
+
+      {/* ── Relatórios individuais (Central de Pessoas) ───────────────── */}
+      {pessoas.length > 0 && (
+        <section aria-label="Relatórios individuais">
+          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+            <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+              Relatórios individuais
+              <span className="text-[#A0A3B1] font-normal text-sm ml-2">({pessoas.length})</span>
+            </h2>
+            <div className="relative max-w-xs w-full sm:w-auto">
+              <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#A0A3B1]" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </span>
+              <input
+                type="search"
+                value={pessoasQuery}
+                onChange={(e) => setPessoasQuery(e.target.value)}
+                placeholder="Buscar pessoa..."
+                className="w-full h-9 pl-9 pr-4 text-sm rounded-xl bg-[#242736] border border-[#2D3047] text-[#F7F8FC] placeholder-[#A0A3B1] focus:outline-none focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all"
+                aria-label="Buscar pessoa"
+              />
+            </div>
+          </div>
+          <Card variant="default" bodyClassName="p-0">
+            <div className="divide-y divide-[#2D3047]">
+              {pessoas
+                .filter((p) => !pessoasQuery.trim() || (p.nome || '').toLowerCase().includes(pessoasQuery.toLowerCase().trim()))
+                .map((p) => {
+                  const diag = p.diagnostico;
+                  const cor = PROFILE_CONFIG[diag.perfilPrimario]?.hex || '#A0A3B1';
+                  // Rota: avaliação de sessão concluída (token) tem prioridade; senão a conta (uid).
+                  const av = [...p.avaliacoes]
+                    .filter((a) => a.diagnostico && a.token)
+                    .sort((x, y) => new Date(y.concluidoEm || 0) - new Date(x.concluidoEm || 0))[0];
+                  const rota = av ? `/admin/relatorio/${av.token}` : (p.conta?.uid ? `/admin/relatorio/aluno/${p.conta.uid}` : null);
+                  if (!rota) return null;
+                  return (
+                    <button
+                      key={p.id}
+                      onClick={() => navigate(rota)}
+                      className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-[#1A1D2E]/50 transition-colors group"
+                    >
+                      <span
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                        style={{ backgroundColor: `${cor}20`, color: cor }}
+                        aria-hidden="true"
+                      >
+                        {(p.nome || '?').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')}
+                      </span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-sm text-[#F7F8FC] font-medium truncate">{p.nome}</span>
+                        <span className="block text-xs" style={{ color: cor }}>
+                          {diag.perfilPrimarioNome}{diag.pqScore != null && ` · PQ ${diag.pqScore}`}
+                        </span>
+                      </span>
+                      <span className="text-xs font-medium text-[#A0A3B1] group-hover:text-[#6366F1]">Ver relatório →</span>
+                    </button>
+                  );
+                })}
+            </div>
+          </Card>
         </section>
       )}
     </div>

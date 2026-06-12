@@ -61,7 +61,7 @@ export default function TopBar({ role = 'student', onMenuClick }) {
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </div>
-              <span className="font-heading font-bold text-[#F7F8FC] text-base">ProfileAI</span>
+              <span className="font-heading font-bold text-[#F7F8FC] text-base">Perfil Master</span>
             </div>
           )}
         </div>

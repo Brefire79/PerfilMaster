@@ -1,5 +1,5 @@
 /**
- * ProfileAI — AMB FUSI | Sistema de Mentoria
+ * Perfil Master — Vianexx AI | Sistema de Mentoria
  * ToastContext.jsx — Sistema global de notificações (toast)
  */
 import { createContext, useContext, useState, useCallback, useRef } from 'react';

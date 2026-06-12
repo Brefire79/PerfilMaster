@@ -8,6 +8,7 @@ import SessionCreator from '@/components/sessao/SessionCreator.jsx';
 import AvaliadoForm from '@/components/sessao/AvaliadoForm.jsx';
 import { insightPerfil, therapyFlag } from '@/firebase/functions.js';
 import { marcarConviteEnviado } from '@/firebase/firestore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 // ─── Helpers visuais ──────────────────────────────────────────────────────────
 const STATUS_AVALIADO = {
@@ -100,7 +101,7 @@ function ResultadoModal({ avaliado, onClose }) {
     const numero = telefone?.replace(/\D/g, '');
     if (!numero) return;
 
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://perfilmaster.netlify.app';
+    const baseUrl = getPublicBaseUrl();
     const linkResultado = `${baseUrl}/resultado/${token}`;
     const pct = barras.map((b) => `${b.key}: ${b.valor}%`).join(' · ');
 

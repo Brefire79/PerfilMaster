@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'ProfileAI',
-        short_name: 'ProfileAI',
+        name: 'Perfil Master',
+        short_name: 'PerfilMaster',
         description: 'Plataforma de avaliação de perfil comportamental DISC com IA',
         theme_color: '#6366F1',
         background_color: '#0F1117',
@@ -84,7 +84,7 @@ export default defineConfig({
         ],
       },
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],
@@ -99,7 +99,6 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['react-router-dom'],
-          supabase: ['@supabase/supabase-js'],
           i18n: ['i18next', 'react-i18next'],
           charts: ['recharts'],
         },

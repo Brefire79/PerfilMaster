@@ -1,5 +1,5 @@
 /**
- * ProfileAI — Motor de Avaliação Local (offline)
+ * Perfil Master — Motor de Avaliação Local (offline)
  * Gera análises completas DISC + PQ sem depender de API externa.
  */
 

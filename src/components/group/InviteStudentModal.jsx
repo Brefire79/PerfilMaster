@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import clsx from 'clsx';
 import { createInvite } from '@/firebase/firestore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import Button from '@/components/ui/Button.jsx';
 import Modal from '@/components/ui/Modal.jsx';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
@@ -42,7 +43,7 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
       const targetGroupId = form.groupId || null;
       const token = await createInvite(targetGroupId, adminUid);
       const groupParam = targetGroupId ? `&group=${targetGroupId}` : '';
-      setInviteUrl(`${window.location.origin}/register?token=${token}${groupParam}`);
+      setInviteUrl(`${getPublicBaseUrl()}/register?token=${token}${groupParam}`);
       setStep(STEPS.LINK);
     } catch (err) {
       console.error('Erro ao gerar convite:', err);
@@ -61,12 +62,12 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
 
   const phoneClean = form.phone.replace(/\D/g, '');
   const whatsappMsg = encodeURIComponent(
-    `Olá${form.name ? ', ' + form.name : ''}! 👋\n\nVocê foi convidado(a) para realizar uma avaliação comportamental no *ProfileAI*.\n\nClique no link abaixo para se cadastrar e aguarde a liberação do administrador:\n${inviteUrl}`
+    `Olá${form.name ? ', ' + form.name : ''}! 👋\n\nVocê foi convidado(a) para realizar uma avaliação comportamental no *Perfil Master*.\n\nClique no link abaixo para se cadastrar e aguarde a liberação do administrador:\n${inviteUrl}`
   );
   const whatsappUrl = `https://wa.me/${phoneClean}?text=${whatsappMsg}`;
-  const emailSubject = encodeURIComponent('Convite — Avaliação ProfileAI');
+  const emailSubject = encodeURIComponent('Convite — Avaliação Perfil Master');
   const emailBody = encodeURIComponent(
-    `Olá${form.name ? ', ' + form.name : ''}!\n\nVocê foi convidado(a) para realizar uma avaliação comportamental no ProfileAI.\n\nClique no link abaixo para se cadastrar:\n${inviteUrl}\n\nApós o cadastro, aguarde a liberação do administrador para iniciar a avaliação.\n\nAté logo!`
+    `Olá${form.name ? ', ' + form.name : ''}!\n\nVocê foi convidado(a) para realizar uma avaliação comportamental no Perfil Master.\n\nClique no link abaixo para se cadastrar:\n${inviteUrl}\n\nApós o cadastro, aguarde a liberação do administrador para iniciar a avaliação.\n\nAté logo!`
   );
   const mailtoUrl = `mailto:${form.email}?subject=${emailSubject}&body=${emailBody}`;
 

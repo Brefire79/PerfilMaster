@@ -28,7 +28,7 @@ export default function AuthLayout() {
       {/* Footer */}
       <footer className="relative py-4 text-center">
         <p className="text-[#A0A3B1] text-xs">
-          © {new Date().getFullYear()} ProfileAI. Todos os direitos reservados.
+          © {new Date().getFullYear()} Perfil Master. Todos os direitos reservados.
         </p>
       </footer>
     </div>

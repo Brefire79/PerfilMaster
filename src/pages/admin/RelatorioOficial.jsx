@@ -6,9 +6,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { insightPerfil, therapyFlag, buscarPorToken } from '@/firebase/functions.js';
-import { getAvaliadoByToken, getHistoricoEvolucao } from '@/firebase/firestore.js';
+import { getAvaliadoByToken, getHistoricoEvolucao, getAvaliadoLikeFromUid } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import { formatCpf } from '@/lib/cpf.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
@@ -94,7 +95,8 @@ const PRINT_STYLE = `
 `;
 
 export default function RelatorioOficial() {
-  const { token } = useParams();
+  // Dois modos: por token (avaliado de sessão) ou por uid (conta de aluno).
+  const { token, uid } = useParams();
   const location  = useLocation();
   const navigate  = useNavigate();
   const { user }  = useAuthStore();
@@ -120,10 +122,22 @@ export default function RelatorioOficial() {
   // 2) buscarPorToken (Edge) complementa sessaoTitulo/descricao
   // 3) histórico de evolução por vínculos confirmados (F3)
   useEffect(() => {
-    if (!token) return;
+    if (!token && !uid) return;
     let cancel = false;
     (async () => {
       try {
+        // ── Modo CONTA (uid): monta avaliado-like a partir de app_users + app_profiles ──
+        if (uid && !token) {
+          let base = null;
+          try { base = await getAvaliadoLikeFromUid(uid); } catch { /* sem perfil */ }
+          if (!cancel) {
+            setAvaliado(base ? { ...(avaliado || {}), ...base } : (avaliado || null));
+            setLoading(false);
+          }
+          return; // sem histórico por token neste modo
+        }
+
+        // ── Modo SESSÃO (token) ──
         // Fonte primária autenticada — inclui cpf, perfil, status, etc.
         let base = null;
         try { base = await getAvaliadoByToken(token); } catch { /* tenta Edge abaixo */ }
@@ -157,14 +171,14 @@ export default function RelatorioOficial() {
     })();
     return () => { cancel = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, user?.uid]);
+  }, [token, uid, user?.uid]);
 
   const perfil   = avaliado?.perfil;
   const nome     = avaliado?.nome || '';
   const telefone = avaliado?.telefone || '';
   // CPF completo só no documento oficial (rastreabilidade legal — PRD §6.8)
   const cpfFmt   = avaliado?.cpf ? formatCpf(avaliado.cpf) : null;
-  const docId    = gerarDocId(token, avaliado?.criadoEm);
+  const docId    = gerarDocId(token || uid, avaliado?.criadoEm);
   const dataDoc  = hoje();
   const horaDoc  = agora();
 
@@ -180,9 +194,9 @@ export default function RelatorioOficial() {
 
   // Título dinâmico com ID do documento oficial
   useEffect(() => {
-    if (docId) document.title = `${docId} — ProfileAI`;
-    else document.title = 'Relatório Oficial — ProfileAI';
-    return () => { document.title = 'ProfileAI'; };
+    if (docId) document.title = `${docId} — Perfil Master`;
+    else document.title = 'Relatório Oficial — Perfil Master';
+    return () => { document.title = 'Perfil Master'; };
   }, [docId]);
 
     // ── IA: gerar insight ──────────────────────────────────────────────────────
@@ -217,7 +231,7 @@ export default function RelatorioOficial() {
   // ── Liberar via WhatsApp (versão limpa SEM flags) ──────────────────────────
   const handleLiberar = () => {
     const numero  = telefone.replace(/\D/g, '');
-    const baseUrl = window.location.origin;
+    const baseUrl = getPublicBaseUrl();
     const link    = `${baseUrl}/resultado/${token}`;
     const pct     = barras.map(b => `${b.letra}: ${b.valor}%`).join(' · ');
     const resumo  = insight?.insight ? `\n\n💡 ${insight.insight.slice(0, 280)}` : '';
@@ -236,7 +250,7 @@ export default function RelatorioOficial() {
   // ── Enviar relatório completo via WhatsApp (admin) ─────────────────────────
   const handleEnviarAdmin = () => {
     const numero  = user?.phoneNumber?.replace(/\D/g, '') || '';
-    const baseUrl = window.location.origin;
+    const baseUrl = getPublicBaseUrl();
     const link    = `${baseUrl}/admin/relatorio/${token}`;
     const msg = encodeURIComponent(
       `📋 *Relatório DISC — ${nome}*\n\n` +
@@ -303,14 +317,16 @@ export default function RelatorioOficial() {
                 {loadingFlag ? 'Verificando...' : '🔍 Indicadores clínicos'}
               </button>
             )}
-            <button onClick={handleLiberar}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-              style={{ background: '#25D36620', border: '1px solid #25D36660', color: '#25D366' }}>
-              <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-              </svg>
-              {liberado ? '✓ Reenviar ao aluno' : 'Enviar resultado ao aluno'}
-            </button>
+            {token && (
+              <button onClick={handleLiberar}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                style={{ background: '#25D36620', border: '1px solid #25D36660', color: '#25D366' }}>
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                {liberado ? '✓ Reenviar ao aluno' : 'Enviar resultado ao aluno'}
+              </button>
+            )}
             <button onClick={handlePrint}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1A1C2A] border border-[#2D3047] hover:border-[#6366F1] text-[#F7F8FC] text-xs font-semibold transition-colors">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
@@ -325,8 +341,7 @@ export default function RelatorioOficial() {
           <div className="max-w-4xl mx-auto mt-2 px-3 py-2 bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg">
             <p className="text-xs text-[#EF4444]">⚠️ {erroIA}</p>
             <p className="text-xs text-[#A0A3B1] mt-0.5">
-              Configure sua chave Gemini em{' '}
-              <a href="/admin/settings" className="text-[#6366F1] underline">Configurações → Integrações de IA</a>
+              Serviço de IA temporariamente indisponível — tente novamente em instantes.
             </p>
           </div>
         )}
@@ -344,7 +359,7 @@ export default function RelatorioOficial() {
                   <div style={{ width: '28px', height: '28px', background: '#4F46E5', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>P</span>
                   </div>
-                  <span style={{ fontFamily: 'Arial, sans-serif', fontWeight: '800', fontSize: '18px', color: '#4F46E5' }}>ProfileAI</span>
+                  <span style={{ fontFamily: 'Arial, sans-serif', fontWeight: '800', fontSize: '18px', color: '#4F46E5' }}>Perfil Master</span>
                 </div>
                 <p style={{ fontSize: '11px', color: '#6B7280', fontFamily: 'Arial, sans-serif', margin: 0 }}>
                   Plataforma de Avaliação Comportamental DISC com Inteligência Artificial
@@ -546,8 +561,8 @@ export default function RelatorioOficial() {
             )}
           </div>
 
-          {/* ══ SEÇÃO 6: EVOLUÇÃO (Fase 3) — só se o avaliado tem CPF ══ */}
-          {cpfFmt && (
+          {/* ══ SEÇÃO 6: EVOLUÇÃO (Fase 3) — só no modo sessão (token) com CPF ══ */}
+          {cpfFmt && token && (
             <div style={{ marginBottom: '24px' }}>
               <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
                 § 6. Evolução do Perfil
@@ -623,8 +638,8 @@ export default function RelatorioOficial() {
                 Os dados aqui contidos são protegidos pela Lei Geral de Proteção de Dados Pessoais (LGPD — Lei 13.709/2018) e pelo Código de Ética Profissional.
                 O perfil DISC é uma ferramenta de autoconhecimento e desenvolvimento profissional, não constitui diagnóstico clínico ou psicológico.
                 Este relatório pode ser solicitado como material de referência em processos de RH, coaching, mediação e, mediante autorização judicial, em perícias e inquéritos.
-                O número <strong style={{ color: '#6B7280' }}>{docId}</strong> identifica unicamente este documento e pode ser usado para verificação de autenticidade junto à plataforma ProfileAI.
-                Gerado automaticamente em {dataDoc} — ProfileAI © {new Date().getFullYear()}
+                O número <strong style={{ color: '#6B7280' }}>{docId}</strong> identifica unicamente este documento e pode ser usado para verificação de autenticidade junto à plataforma Perfil Master.
+                Gerado automaticamente em {dataDoc} — Perfil Master © {new Date().getFullYear()}
               </p>
             </div>
           </div>

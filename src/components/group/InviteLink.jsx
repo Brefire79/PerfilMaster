@@ -7,8 +7,9 @@ import Button from '@/components/ui/Button.jsx';
 import Card from '@/components/ui/Card.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
 import { createInvite, getActiveInviteForGroup } from '@/firebase/firestore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
-const APP_URL = import.meta.env.VITE_APP_URL || window.location.origin;
+const APP_URL = getPublicBaseUrl();
 
 const EXPIRY_OPTIONS = [
   { value: 7, label: '7 dias' },

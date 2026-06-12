@@ -1,4 +1,5 @@
 import { getValidAccessToken } from './auth.js';
+import { normalizeName } from '@/lib/cpf.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -22,11 +23,13 @@ export const COLLECTIONS = {
 };
 
 const GROUP_REPORTS = import.meta.env.VITE_SB_TABLE_GROUP_REPORTS || 'app_group_reports';
+const ADMIN_STRATEGIES = import.meta.env.VITE_SB_TABLE_ADMIN_STRATEGIES || 'app_admin_strategies';
 
 // ─── Key mapping: camelCase (app) ↔ lowercase (PostgreSQL) ───────────────────
 // PostgreSQL folds unquoted identifiers to lowercase; this table maps them back.
 const CAMEL_TO_DB = {
   adminUid: 'adminuid',
+  studentUid: 'studentuid',
   adminName: 'adminname',
   memberIds: 'memberids',
   moduleIds: 'moduleids',
@@ -587,6 +590,51 @@ export function subscribeToProfile(uid, callback) {
   return () => {};
 }
 
+/**
+ * getAvaliadoLikeFromUid — adapta uma CONTA de aluno (app_users + app_profiles)
+ * para o formato "avaliado" que o RelatorioOficial consome. Permite gerar o
+ * Relatório Oficial individual para alunos de grupo/avulsos (que têm uid, não token).
+ *
+ * Retorna null se não houver perfil DISC (sem dominantProfile nem scores válidos).
+ */
+export async function getAvaliadoLikeFromUid(uid) {
+  if (!uid) return null;
+  const [u, p] = await Promise.all([getUser(uid), getProfile(uid)]);
+  if (!p) return null;
+
+  const scores = p.scores || {};
+  const num = (v) => Math.round(Number(v) || 0);
+
+  // perfilPrimario: usa dominantProfile; se faltar, deduz do maior score.
+  let perfilPrimario = p.dominantProfile || null;
+  if (!perfilPrimario) {
+    const ordenado = [['D', scores.D], ['I', scores.I], ['S', scores.S], ['C', scores.C]]
+      .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0));
+    if ((Number(ordenado[0]?.[1]) || 0) > 0) perfilPrimario = ordenado[0][0];
+  }
+  if (!perfilPrimario) return null; // sem DISC → não há relatório
+
+  return {
+    uid,
+    nome: u?.displayName || u?.name || u?.email || 'Aluno',
+    telefone: u?.phoneNumber || u?.telefone || '',
+    email: u?.email || null,
+    cpf: u?.cpf || p?.cpf || null,
+    status: 'concluido',
+    sessaoTitulo: u?.groupName || 'Conta de aluno',
+    criadoEm: p?.updatedAt || p?.createdAt || null,
+    perfil: {
+      perfilPrimario,
+      perfilSecundario: p.secondaryProfile || null,
+      dominante: num(scores.D),
+      influente: num(scores.I),
+      estavel: num(scores.S),
+      analitico: num(scores.C),
+      pqScore: p.pqScore ?? scores.pqScore ?? null,
+    },
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INVITES
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -702,6 +750,34 @@ export async function getGroupReportsByAdmin(adminUid) {
     ascending: false,
   });
   return rows.map((row) => withDateWrapper({ id: row.id || row.groupId, ...row }));
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ADMIN STRATEGIES (DELTA 10) — Painel Estratégico do facilitador.
+// Tabela própria isolada por adminuid (RLS); o aluno NUNCA lê esta tabela.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export async function getAdminStrategy(adminUid, studentUid) {
+  if (!adminUid || !studentUid) return null;
+  const row = await selectRows(ADMIN_STRATEGIES, {
+    filters: [
+      { field: 'adminUid', op: 'eq', value: adminUid },
+      { field: 'studentUid', op: 'eq', value: studentUid },
+    ],
+    single: true,
+  });
+  return row?.strategy ?? null;
+}
+
+export async function saveAdminStrategy(adminUid, studentUid, strategy) {
+  if (!adminUid || !studentUid) throw new Error('adminUid e studentUid são obrigatórios');
+  // unique(adminuid, studentuid) → upsert por conflito composto
+  const row = await upsertRow(
+    ADMIN_STRATEGIES,
+    { adminUid, studentUid, strategy, atualizadoEm: nowIso() },
+    'adminuid,studentuid'
+  );
+  return row?.strategy ?? strategy;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -892,16 +968,24 @@ export async function getIdentityLinksByAdmin(adminUid) {
 }
 
 // Confirma um vínculo avaliado↔conta sob o mesmo CPF (admin é o autor).
-export async function createIdentityLink({ cpf, avaliadoId, userUid, adminUid, metadata }) {
+// auto=true → vínculo criado automaticamente por CPF idêntico (Central de Pessoas);
+// auto=false → confirmação manual do admin (Fase 2).
+export async function createIdentityLink({ cpf, avaliadoId, userUid, adminUid, metadata, auto = false }) {
   const row = await insertRow(COLLECTIONS.IDENTITY_LINKS, {
     cpf,
     avaliadoId: avaliadoId || null,
     userUid: userUid || null,
     linkedBy: adminUid,
     linkedAt: nowIso(),
+    auto: !!auto,
     metadata: metadata || {},
   });
   return row?.id;
+}
+
+// Remove um vínculo de identidade (desvincular). Só o admin autor consegue (RLS).
+export async function deleteIdentityLink(linkId) {
+  await deleteRows(COLLECTIONS.IDENTITY_LINKS, [{ field: 'id', op: 'eq', value: linkId }]);
 }
 
 /**
@@ -1031,6 +1115,219 @@ export async function getHistoricoEvolucao(token, adminUid) {
   const temOutrasNaoVinculadas = mesmosCpf.some((a) => !incluir.has(a.id));
 
   return { pontos, temOutrasNaoVinculadas, cpf: atual.cpf };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CENTRAL DE PESSOAS (DELTA 9 — identidade unificada híbrida)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const PROFILE_NAMES_PT = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+
+// Extrai um diagnóstico consolidado a partir do objeto perfil de um avaliado.
+function diagnosticoDoPerfil(perfil) {
+  if (!perfil || !perfil.perfilPrimario) return null;
+  return {
+    perfilPrimario: perfil.perfilPrimario,
+    perfilPrimarioNome: PROFILE_NAMES_PT[perfil.perfilPrimario] || perfil.perfilPrimario,
+    perfilSecundario: perfil.perfilSecundario || null,
+    scores: {
+      D: perfil.dominante ?? perfil.scores?.D ?? 0,
+      I: perfil.influente ?? perfil.scores?.I ?? 0,
+      S: perfil.estavel ?? perfil.scores?.S ?? 0,
+      C: perfil.analitico ?? perfil.scores?.C ?? 0,
+    },
+    pqScore: perfil.pqScore ?? null,
+  };
+}
+
+const isoDe = (d) => {
+  if (!d) return null;
+  if (typeof d === 'string') return d;
+  if (d.raw) return d.raw;
+  if (typeof d?.toDate === 'function') { try { return d.toDate()?.toISOString?.() ?? null; } catch { return null; } }
+  return null;
+};
+
+/**
+ * getPessoas — Central de Pessoas (PRD §5).
+ * Consolida toda pessoa física do admin numa lista única, cruzando avaliados de
+ * sessão + contas de aluno + vínculos confirmados. Unificação HÍBRIDA (§4):
+ *   - CPF idêntico  → mesma Pessoa (1 registro, sem duplicar)
+ *   - mesmo nome SEM cpf comum → vira *sugestão* de duplicata (não unifica)
+ *   - CPF diferente → pessoas separadas (homônimos preservados)
+ *
+ * Puro de I/O: faz os fetches e cruza em memória. NÃO grava nada.
+ * @returns {{ pessoas: Array, sugestoes: Array }}
+ */
+export async function getPessoas(adminUid) {
+  const [avaliados, students, links] = await Promise.all([
+    getAvaliadosByAdmin(adminUid),
+    getStudentsByAdmin(adminUid),
+    getIdentityLinksByAdmin(adminUid),
+  ]);
+
+  // Chave de agrupamento: CPF (forte) quando existe; senão chave sintética por registro.
+  const keyAvaliado = (a) => (a.cpf ? `cpf:${a.cpf}` : `av:${a.id}`);
+  const keyConta = (s) => (s.cpf ? `cpf:${s.cpf}` : `user:${s.uid || s.id}`);
+
+  const mapa = new Map(); // key → Pessoa em construção
+  const garante = (key) => {
+    if (!mapa.has(key)) {
+      mapa.set(key, { id: key, nome: '', cpf: null, conta: null, avaliacoes: [], origem: new Set() });
+    }
+    return mapa.get(key);
+  };
+
+  for (const a of avaliados) {
+    const p = garante(keyAvaliado(a));
+    if (a.cpf) p.cpf = a.cpf;
+    p.avaliacoes.push({
+      avaliadoId: a.id,
+      token: a.token || a.id,
+      nome: a.nome || '',
+      sessaoId: a.sessaoId || null,
+      sessaoTitulo: a.sessaoTitulo || null,
+      status: a.status || null,
+      criadoEm: isoDe(a.criadoEm),
+      concluidoEm: isoDe(a.concluidoEm),
+      diagnostico: diagnosticoDoPerfil(a.perfil),
+    });
+    p.origem.add(a.groupId ? 'grupo' : 'sessao');
+  }
+
+  for (const s of students) {
+    const p = garante(keyConta(s));
+    if (s.cpf) p.cpf = s.cpf;
+    p.conta = {
+      uid: s.uid || s.id,
+      nome: s.displayName || s.name || s.email || '',
+      email: s.email || null,
+      groupId: s.groupId || null,
+    };
+    p.origem.add(s.groupId ? 'grupo' : 'aluno');
+  }
+
+  // Vínculos confirmados manualmente apontam o "modo" da pessoa (auditoria/UI).
+  const cpfsComLinkManual = new Set(links.filter((l) => !l.auto).map((l) => l.cpf).filter(Boolean));
+  // Links por CPF (para a ação "desvincular" no detalhe).
+  const linksPorCpf = new Map();
+  for (const l of links) {
+    if (!l.cpf) continue;
+    if (!linksPorCpf.has(l.cpf)) linksPorCpf.set(l.cpf, []);
+    linksPorCpf.get(l.cpf).push({ id: l.id, auto: !!l.auto, avaliadoId: l.avaliadoId || null });
+  }
+
+  // Finaliza cada Pessoa: melhor nome, diagnóstico consolidado (avaliação concluída
+  // mais recente — PRD D5), origens e modo de vínculo.
+  const pessoas = [...mapa.values()].map((p) => {
+    const concluidas = p.avaliacoes
+      .filter((av) => av.diagnostico)
+      .sort((x, y) => new Date(y.concluidoEm || 0) - new Date(x.concluidoEm || 0));
+    const diagnostico = concluidas[0]?.diagnostico || null;
+
+    const nomeAvaliacaoRecente = [...p.avaliacoes]
+      .sort((x, y) => new Date(y.criadoEm || 0) - new Date(x.criadoEm || 0))[0]?.nome;
+    const nome = p.conta?.nome || nomeAvaliacaoRecente || 'Sem nome';
+
+    const totalRegistros = p.avaliacoes.length + (p.conta ? 1 : 0);
+    let vinculo = 'isolado';
+    if (totalRegistros >= 2) {
+      vinculo = p.cpf
+        ? (cpfsComLinkManual.has(p.cpf) ? 'manual' : 'auto')
+        : 'isolado';
+    }
+
+    return {
+      id: p.id,
+      nome,
+      cpf: p.cpf,
+      temCpf: !!p.cpf,
+      conta: p.conta,
+      avaliacoes: p.avaliacoes,
+      origem: [...p.origem],
+      totalAvaliacoes: p.avaliacoes.length,
+      diagnostico,
+      vinculo,
+      vinculoLinks: p.cpf ? (linksPorCpf.get(p.cpf) || []) : [],
+    };
+  });
+
+  // Sugestões por NOME (caso C): mesmas pessoas-chave distintas com nome igual,
+  // onde pelo menos uma NÃO tem CPF (CPFs diferentes = caso B, homônimos → ignora).
+  const porNome = new Map();
+  for (const p of pessoas) {
+    const chave = normalizeName(p.nome);
+    if (!chave || chave === 'sem nome') continue;
+    if (!porNome.has(chave)) porNome.set(chave, []);
+    porNome.get(chave).push(p);
+  }
+  const sugestoes = [];
+  for (const [chave, grupo] of porNome.entries()) {
+    if (grupo.length < 2) continue;
+    const cpfs = grupo.map((p) => p.cpf).filter(Boolean);
+    const todosTemCpf = grupo.every((p) => p.cpf);
+    const cpfsDistintos = new Set(cpfs).size;
+    // caso B puro (todos com CPF e CPFs diferentes) → homônimos, não sugere
+    if (todosTemCpf && cpfsDistintos > 1) continue;
+    sugestoes.push({ nome: grupo[0].nome, chave, pessoas: grupo });
+  }
+
+  return { pessoas, sugestoes };
+}
+
+/**
+ * autoVincularPorCpf — Central de Pessoas (PRD §4 caso A).
+ * Materializa em app_identity_links os vínculos que o CPF idêntico já garante,
+ * SEM clique do admin. Idempotente: não recria vínculos já existentes.
+ *
+ * Roda com a sessão do próprio admin (não service_role) → linked_by = ele.
+ * @returns {{ criados: number }}
+ */
+export async function autoVincularPorCpf(adminUid) {
+  const [avaliados, students, links] = await Promise.all([
+    getAvaliadosByAdmin(adminUid),
+    getStudentsByAdmin(adminUid),
+    getIdentityLinksByAdmin(adminUid),
+  ]);
+
+  // Agrupa registros COM cpf por CPF.
+  const porCpf = new Map();
+  for (const a of avaliados) {
+    if (!a.cpf) continue;
+    if (!porCpf.has(a.cpf)) porCpf.set(a.cpf, { avaliados: [], contas: [] });
+    porCpf.get(a.cpf).avaliados.push(a);
+  }
+  for (const s of students) {
+    if (!s.cpf) continue;
+    if (!porCpf.has(s.cpf)) porCpf.set(s.cpf, { avaliados: [], contas: [] });
+    porCpf.get(s.cpf).contas.push(s);
+  }
+
+  // Vínculos já existentes por (cpf|avaliadoId) para não duplicar.
+  const existentes = new Set(
+    links.filter((l) => l.avaliadoId).map((l) => `${l.cpf}|${l.avaliadoId}`)
+  );
+
+  const tarefas = [];
+  for (const [cpf, grupo] of porCpf.entries()) {
+    const total = grupo.avaliados.length + grupo.contas.length;
+    if (total < 2) continue; // nada a unificar (registro solitário)
+    const conta = grupo.contas[0] || null;
+    for (const av of grupo.avaliados) {
+      if (existentes.has(`${cpf}|${av.id}`)) continue;
+      tarefas.push(createIdentityLink({
+        cpf,
+        avaliadoId: av.id,
+        userUid: conta?.uid || conta?.id || null,
+        adminUid,
+        auto: true,
+        metadata: { auto: true, nome: av.nome || null },
+      }));
+    }
+  }
+
+  if (tarefas.length) await Promise.all(tarefas);
+  return { criados: tarefas.length };
 }
 
 // Keep named export compatibility.

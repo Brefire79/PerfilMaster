@@ -10,6 +10,7 @@ import {
 } from '@/firebase/firestore.js';
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 /**
  * useGroup — Group management hook for admin
@@ -121,7 +122,7 @@ export function useGroup() {
       setInviteLoading(true);
       try {
         const token = await createInvite(groupId, user.uid);
-        const inviteUrl = `${window.location.origin}/join/${token}`;
+        const inviteUrl = `${getPublicBaseUrl()}/join/${token}`;
         return { token, inviteUrl };
       } catch (err) {
         setError(err.message);

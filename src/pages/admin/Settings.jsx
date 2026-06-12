@@ -390,7 +390,7 @@ export default function Settings() {
               checked={notifications.systemUpdates}
               onChange={(v) => setNotifications((n) => ({ ...n, systemUpdates: v }))}
               label={t('settings.notif.systemUpdates', 'Atualizações do sistema')}
-              description={t('settings.notif.systemUpdatesDesc', 'Novidades sobre a plataforma ProfileAI.')}
+              description={t('settings.notif.systemUpdatesDesc', 'Novidades sobre a plataforma Perfil Master.')}
             />
           </div>
           <div className="mt-4 pt-4 border-t border-[#2D3047] flex justify-end">

@@ -413,8 +413,8 @@ export default function AvaliacaoPublica() {
 
   // document.title dinâmico para a tela de avaliação
   useEffect(() => {
-    document.title = 'Avaliação DISC — ProfileAI';
-    return () => { document.title = 'ProfileAI'; };
+    document.title = 'Avaliação DISC — Perfil Master';
+    return () => { document.title = 'Perfil Master'; };
   }, []);
 
   // Busca dados do avaliado ao montar
@@ -429,7 +429,7 @@ export default function AvaliacaoPublica() {
         dispatch({ type: 'CARREGADO_OK', avaliado: data });
         if (data?.nome) {
           const primeiro = data.nome.split(' ')[0];
-          document.title = 'Avaliação de ' + primeiro + ' — ProfileAI';
+          document.title = 'Avaliação de ' + primeiro + ' — Perfil Master';
         }
       })
       .catch((err) => dispatch({ type: 'ERRO_TOKEN', mensagem: err.message }));
@@ -538,7 +538,7 @@ export default function AvaliacaoPublica() {
         <header className="py-4 px-5 border-b border-[#1E2030] flex items-center justify-center">
           {/* h1 visualmente estilizado como marca; conteúdo semântico de nível de página */}
           <h1 className="text-base font-heading font-bold text-[#F7F8FC]">
-            Profile<span className="text-[#6366F1]">AI</span>
+            Perfil <span className="text-[#6366F1]">Master</span>
           </h1>
         </header>
 
@@ -602,7 +602,7 @@ export default function AvaliacaoPublica() {
         {/* Rodapé (apenas quando não há CTA fixo) */}
         {!cta && (
           <footer className="py-3 px-5 text-center text-xs text-[#A0A3B1]">
-            ProfileAI · AmbFusi AI · Avaliação{' '}
+            Perfil Master · Vianexx AI · Avaliação{' '}
             <SiglaComSignificado id="DISC" /> segura e confidencial
           </footer>
         )}

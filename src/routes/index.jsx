@@ -24,6 +24,7 @@ const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'
 // FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard.jsx'));
 const AdminSessoes = lazy(() => import('@/pages/admin/Sessoes.jsx'));
+const AdminPessoas = lazy(() => import('@/pages/admin/Pessoas.jsx'));
 const RelatorioOficial = lazy(() => import('@/pages/admin/RelatorioOficial.jsx'));
 
 // ─── Lazy-loaded Student Pages ────────────────────────────────────────────────
@@ -209,9 +210,11 @@ export default function AppRoutes() {
           <Route path="groups" element={<SafeAdminGroups />} />
           <Route path="groups/:id" element={<SafeAdminGroupDetail />} />
           <Route path="students" element={<SafeAdminStudents />} />
+          <Route path="pessoas" element={<AdminPessoas />} />
           <Route path="modules" element={<SafeAdminModules />} />
           <Route path="modules/:id" element={<SafeAdminModuleBuilder />} />
           <Route path="sessoes" element={<AdminSessoes />} />
+          <Route path="relatorio/aluno/:uid" element={<RelatorioOficial />} />
           <Route path="relatorio/:token" element={<RelatorioOficial />} />
           <Route path="reports" element={<SafeAdminReports />} />
           <Route path="settings" element={<SafeAdminSettings />} />

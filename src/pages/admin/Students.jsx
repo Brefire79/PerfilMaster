@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
 import IdentityLinkPanel from '@/components/admin/IdentityLinkPanel.jsx';
 
@@ -68,6 +69,18 @@ export default function Students() {
   const { user } = useAuthStore();
   const { groups, setGroups } = useGroupStore();
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // Abre o Relatório Oficial: avaliado de sessão usa token; conta de aluno usa uid.
+  const abrirRelatorio = (student) => {
+    if (student.isAvaliado && student.token) {
+      navigate(`/admin/relatorio/${student.token}`);
+    } else {
+      navigate(`/admin/relatorio/aluno/${student.uid || student.id}`);
+    }
+  };
+  const podeVerRelatorio = (student) =>
+    student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed';
 
   const [allStudents, setAllStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -193,6 +206,7 @@ export default function Students() {
             .filter((a) => !seen.has(a.id)) // evita duplicar se mesmo uid
             .map((a) => ({
               id: a.id,
+              token: a.token || a.id, // token = credencial p/ abrir o Relatório Oficial
               displayName: a.nome,
               email: a.email || null,
               groupName: sessaoMap[a.sessaoId]?.titulo || 'Sessão',
@@ -312,16 +326,16 @@ export default function Students() {
         prev.map((s) => s.id === assignStudent.id ? { ...s, assessmentStatus: 'pending' } : s)
       );
       const nome = assignStudent.displayName || assignStudent.name || 'aluno(a)';
-      const appUrl = `${window.location.origin}/student/dashboard`;
+      const appUrl = `${getPublicBaseUrl()}/student/dashboard`;
       const isReeval = assignStudent.assessmentStatus === 'completed' || assignStudent.assessmentStatus === 'analyzed';
       const subject = encodeURIComponent(
-        isReeval ? 'Nova reavaliação disponível no ProfileAI' : 'Você tem uma nova avaliação no ProfileAI'
+        isReeval ? 'Nova reavaliação disponível no Perfil Master' : 'Você tem uma nova avaliação no Perfil Master'
       );
       const body = encodeURIComponent(
         `Olá, ${nome}!\n\n` +
         (isReeval
-          ? `Uma nova avaliação comportamental DISC foi gerada para você no ProfileAI — desta vez para atualizar seu perfil.\n\n`
-          : `Uma nova avaliação comportamental DISC foi atribuída para você no ProfileAI.\n\n`) +
+          ? `Uma nova avaliação comportamental DISC foi gerada para você no Perfil Master — desta vez para atualizar seu perfil.\n\n`
+          : `Uma nova avaliação comportamental DISC foi atribuída para você no Perfil Master.\n\n`) +
         `Acesse o link abaixo para entrar no app e responder:\n` +
         `${appUrl}\n\n` +
         `⏱️ Tempo estimado: 10–15 minutos.\n` +
@@ -374,20 +388,20 @@ export default function Students() {
     if (!student?.email) return;
     const nome = student.displayName || student.name || 'aluno(a)';
     const status = student.assessmentStatus;
-    const appUrl = `${window.location.origin}/student/dashboard`;
+    const appUrl = `${getPublicBaseUrl()}/student/dashboard`;
     const subject = status === 'completed'
-      ? 'ProfileAI — Sobre sua avaliação'
-      : 'Lembrete: complete sua avaliação ProfileAI';
+      ? 'Perfil Master — Sobre sua avaliação'
+      : 'Lembrete: complete sua avaliação Perfil Master';
     const body = status === 'completed'
       ? (
         `Olá, ${nome}!\n\n` +
-        `Espero que esteja bem. Estou entrando em contato sobre sua avaliação no ProfileAI.\n\n` +
+        `Espero que esteja bem. Estou entrando em contato sobre sua avaliação no Perfil Master.\n\n` +
         `Você pode acessar seus resultados aqui:\n${appUrl}\n\n` +
         `Abraços,\n${user?.displayName || ''}`
       )
       : (
         `Olá, ${nome}!\n\n` +
-        `Vi que sua avaliação no ProfileAI ainda não foi concluída. Quando puder, acesse o link abaixo e responda — leva uns 10 minutos.\n\n` +
+        `Vi que sua avaliação no Perfil Master ainda não foi concluída. Quando puder, acesse o link abaixo e responda — leva uns 10 minutos.\n\n` +
         `👉 ${appUrl}\n\n` +
         `⏱️ Tempo estimado: 10–15 minutos.\n` +
         `📊 Seus resultados são confidenciais.\n\n` +
@@ -632,6 +646,22 @@ export default function Students() {
                     </svg>
                     <span className="hidden sm:inline">Ver perfil</span>
                   </button>
+                  {podeVerRelatorio(student) && (
+                    <button
+                      className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
+                      aria-label="Relatório oficial"
+                      title="Relatório oficial DISC"
+                      onClick={() => abrirRelatorio(student)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                      <span className="hidden sm:inline">Relatório</span>
+                    </button>
+                  )}
                   {(() => {
                     const concluido = student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed';
                     const label = concluido ? 'Reavaliar' : t('students.assignAssessment', 'Atribuir avaliação');

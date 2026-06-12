@@ -6,8 +6,8 @@ import Button from '@/components/ui/Button.jsx';
 
 export default function ForgotPassword() {
   React.useEffect(() => {
-    document.title = "Recuperar senha — ProfileAI";
-    return () => { document.title = "ProfileAI"; };
+    document.title = "Recuperar senha — Perfil Master";
+    return () => { document.title = "Perfil Master"; };
   }, []);
   const { t } = useTranslation();
   const [email, setEmail] = useState('');

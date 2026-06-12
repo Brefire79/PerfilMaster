@@ -10,10 +10,10 @@ import {
   deletarSessao,
   deleteAvaliado,
 } from '@/firebase/firestore.js';
+import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 function getAppUrl() {
-  if (typeof window !== 'undefined') return window.location.origin;
-  return 'https://perfilmaster.netlify.app';
+  return getPublicBaseUrl();
 }
 
 function montarMensagemWhatsApp(nome, token) {

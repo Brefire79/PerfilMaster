@@ -45,6 +45,17 @@ const adminNavItems = [
     ),
   },
   {
+    key: 'pessoas',
+    to: '/admin/pessoas',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
+        <path d="M8 8a4 4 0 0 1 8 0" />
+      </svg>
+    ),
+  },
+  {
     key: 'modules',
     to: '/admin/modules',
     icon: (
@@ -132,7 +143,7 @@ export default function Sidebar({ role = 'admin', mobile = false, onClose }) {
               <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </div>
-          <span className="font-heading font-bold text-[#F7F8FC] text-lg">ProfileAI</span>
+          <span className="font-heading font-bold text-[#F7F8FC] text-lg">Perfil Master</span>
         </div>
         {mobile && onClose && (
           <button

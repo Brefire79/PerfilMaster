@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "ProfileAI",
+    "name": "Perfil Master",
     "tagline": "Descubra seu perfil comportamental",
     "description": "Plataforma de avaliação de perfil comportamental DISC com inteligência artificial",
     "loading": "Carregando...",
@@ -99,6 +99,7 @@
     "dashboard": "Painel",
     "groups": "Grupos",
     "students": "Alunos",
+    "pessoas": "Pessoas",
     "modules": "Módulos",
     "reports": "Relatórios",
     "settings": "Configurações",

@@ -1,56 +1,72 @@
-const GEMINI_MODEL    = 'gemini-2.0-flash';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+/**
+ * IA compartilhada das Edge Functions — agora usa DeepSeek (OpenAI-compatible).
+ * Nome do arquivo/função mantido (callAnthropic) por compatibilidade com os callers.
+ *
+ * Chave: Deno.env.get('AI_API_KEY') nos Supabase Secrets (ou DEEPSEEK_API_KEY).
+ * A chave NUNCA é exposta ao cliente — roda só no servidor (Edge Function).
+ */
 
-function cleanGeminiError(status: number, body: string): string {
-  if (status === 429) {
-    return 'Cota da API gratuita esgotada. Acesse Configurações → Integrações de IA e adicione sua chave do Google AI Studio.';
+const DEFAULT_AI_URL = 'https://api.deepseek.com/v1/chat/completions';
+const DEFAULT_AI_MODEL = 'deepseek-chat';
+
+function cleanAiError(status: number, body: string): string {
+  if (status === 401 || status === 403) {
+    return 'Chave de IA inválida ou ausente no servidor. Configure AI_API_KEY nos secrets do Supabase.';
   }
+  if (status === 429) return 'Cota da API de IA esgotada. Tente novamente em instantes.';
   if (status === 400) return 'Requisição inválida para a API de IA (400).';
-  if (status === 403) return 'Chave de API inválida ou sem permissão (403). Verifique em Configurações.';
   if (status === 503) return 'Serviço de IA temporariamente indisponível. Tente novamente em instantes.';
-  // Tenta extrair mensagem curta do JSON de erro
   try {
     const parsed = JSON.parse(body);
-    const msg = parsed?.error?.message || parsed?.error?.status || '';
-    if (msg) return `Erro da API de IA: ${msg.slice(0, 160)}`;
+    const msg = parsed?.error?.message || parsed?.error?.type || '';
+    if (msg) return `Erro da API de IA: ${String(msg).slice(0, 160)}`;
   } catch { /* ignora */ }
-  return `Erro da API de IA (${status}). Verifique sua chave em Configurações.`;
+  return `Erro da API de IA (${status}).`;
 }
 
 /**
- * callAnthropic (usa Google Gemini internamente)
- * @param userKey Chave do usuário — se fornecida, tem prioridade sobre a env var
+ * callAnthropic — chama a IA (DeepSeek) e retorna JSON parseado.
+ * A chave vem SOMENTE dos Secrets do servidor (AI_API_KEY / DEEPSEEK_API_KEY);
+ * o cliente nunca fornece chave.
  */
 export async function callAnthropic(
   system: string,
   user: string,
-  maxTokens = 2500,
-  userKey?: string | null
+  maxTokens = 2500
 ) {
-  const apiKey = userKey || Deno.env.get('GEMINI_API_KEY');
+  const apiKey = Deno.env.get('AI_API_KEY') || Deno.env.get('DEEPSEEK_API_KEY');
   if (!apiKey) {
-    throw new Error(
-      'Chave de API não configurada. Acesse Configurações → Integrações de IA e adicione sua chave do Google AI Studio (AIza...).'
-    );
+    throw new Error('Serviço de IA não configurado no servidor (AI_API_KEY ausente nos secrets).');
   }
 
-  const response = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
+  const apiUrl = Deno.env.get('AI_API_URL') || DEFAULT_AI_URL;
+  const model = Deno.env.get('AI_MODEL') || DEFAULT_AI_MODEL;
+
+  const response = await fetch(apiUrl, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
     body: JSON.stringify({
-      system_instruction: { parts: [{ text: system }] },
-      contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { maxOutputTokens: maxTokens, temperature: 0.4 },
+      model,
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.4,
+      max_tokens: maxTokens,
+      response_format: { type: 'json_object' },
     }),
   });
 
   if (!response.ok) {
     const errorBody = await response.text().catch(() => '');
-    throw new Error(cleanGeminiError(response.status, errorBody));
+    throw new Error(cleanAiError(response.status, errorBody));
   }
 
   const data = await response.json();
-  const rawText: string = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+  const rawText: string = data.choices?.[0]?.message?.content ?? '';
   const cleaned = rawText.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
   if (!cleaned) throw new Error('Resposta vazia da API de IA. Tente novamente.');
   return JSON.parse(cleaned);

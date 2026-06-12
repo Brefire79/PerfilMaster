@@ -8,7 +8,7 @@
  * DeepSeek é OpenAI-compatible (/chat/completions + messages), então o mesmo
  * código serve. Provider configurável por env para trocar sem mexer no código:
  *   AI_API_URL   (default: DeepSeek)
- *   AI_API_KEY   (chave secreta — preferida; cai p/ DEEPSEEK_API_KEY / XAI_API_KEY)
+ *   AI_API_KEY   (chave secreta — preferida; cai p/ DEEPSEEK_API_KEY)
  *   AI_MODEL     (default: deepseek-chat)
  */
 
@@ -83,7 +83,7 @@ export const handler = async (event) => {
   }
 
   // Chave secreta no servidor (Netlify env). Aceita nomes alternativos p/ migração.
-  const apiKey = process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.XAI_API_KEY;
+  const apiKey = process.env.AI_API_KEY || process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
     return {
       statusCode: 503,

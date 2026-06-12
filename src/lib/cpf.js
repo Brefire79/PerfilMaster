@@ -1,5 +1,5 @@
 /**
- * ProfileAI — Utilitários de CPF (Fase 2: Convergência de Identidade)
+ * Perfil Master — Utilitários de CPF (Fase 2: Convergência de Identidade)
  *
  * CPF é OPCIONAL em todo o app. Quando informado, vira a chave de identidade
  * que liga avaliações de sessão a contas de aluno (matching feito pelo admin).
@@ -73,4 +73,22 @@ export function maskCpf(value) {
 export function handleCpfInput(rawValue) {
   const digits = cleanCpf(rawValue).slice(0, 11);
   return { masked: formatCpf(digits), digits };
+}
+
+/**
+ * Normaliza nome para COMPARAÇÃO (Central de Pessoas — sugestão por nome).
+ * minúsculas · sem acento · sem pontuação · espaços colapsados.
+ * "José  da Silva-Júnior" → "jose da silva junior".
+ *
+ * ATENÇÃO: usar SÓ para gerar sugestão de duplicata — nome NUNCA auto-unifica
+ * (só CPF idêntico unifica automaticamente). Ver PRD Central de Pessoas §4.
+ */
+export function normalizeName(value) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // remove diacríticos (acentos)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')    // pontuação/hífen → espaço
+    .replace(/\s+/g, ' ')            // colapsa espaços
+    .trim();
 }
