@@ -162,7 +162,7 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
             </div>
             <div>
               <p className="text-sm font-semibold text-[#22C55E]">Link de convite gerado!</p>
-              <p className="text-xs text-[#A0A3B1]">Válido por 7 dias · uso único</p>
+              <p className="text-xs text-[#A0A3B1]">Válido por 7 dias · {form.groupId ? 'vários cadastros' : 'uso único'}</p>
             </div>
           </div>
 

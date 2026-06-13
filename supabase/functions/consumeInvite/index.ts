@@ -113,10 +113,20 @@ Deno.serve(async (req) => {
       }
     }
 
-    await sb
-      .from('app_invites')
-      .update({ used: true, usedat: agora, usedby: user.id })
-      .eq('token', token);
+    // Convite de GRUPO (groupid presente) é MULTIUSO: registra o último uso
+    // sem invalidar, permitindo vários cadastros até a data de expiração.
+    // Convite avulso (sem groupid) permanece de USO ÚNICO.
+    if (invite.groupid) {
+      await sb
+        .from('app_invites')
+        .update({ usedat: agora, usedby: user.id }) // NÃO seta used:true
+        .eq('token', token);
+    } else {
+      await sb
+        .from('app_invites')
+        .update({ used: true, usedat: agora, usedby: user.id })
+        .eq('token', token);
+    }
 
     return jsonResponse(
       { success: true, groupId: invite.groupid || null, adminUid: invite.adminuid || null },

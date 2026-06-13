@@ -64,6 +64,7 @@ export default function Register() {
 
   const [invite, setInvite] = useState(null);
   const [inviteStatus, setInviteStatus] = useState('loading'); // 'loading' | 'valid' | 'invalid' | 'expired'
+  const [inviteMsg, setInviteMsg] = useState(''); // mensagem específica por motivo
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -90,7 +91,13 @@ export default function Register() {
         // colega deslogado não conseguia ler o convite via getInvite (REST).
         const res = await validateInviteToken({ token });
         if (!res?.valid) {
-          setInviteStatus(res?.reason === 'used' || res?.reason === 'expired' ? 'expired' : 'invalid');
+          const reason = res?.reason;
+          setInviteStatus(reason === 'used' || reason === 'expired' ? 'expired' : 'invalid');
+          setInviteMsg({
+            used: 'Este convite já atingiu o limite de cadastros.',
+            expired: 'Este convite expirou. Peça um novo ao seu facilitador.',
+            not_found: 'Convite não encontrado. Confira o link recebido.',
+          }[reason] || 'Link inválido ou expirado.');
           return;
         }
         // Normaliza para o shape que o handleSubmit espera (groupId/adminUid)
@@ -98,6 +105,7 @@ export default function Register() {
         setInviteStatus('valid');
       } catch {
         setInviteStatus('invalid');
+        setInviteMsg('Não foi possível validar o convite. Confira o link e sua conexão.');
       }
     };
 
@@ -202,7 +210,7 @@ export default function Register() {
             {inviteStatus === 'expired' ? t('auth.inviteExpired') : t('auth.inviteInvalid')}
           </h2>
           <p className="text-[#A0A3B1] text-sm mb-6">
-            {inviteStatus === 'expired' ? t('auth.inviteExpired') : t('auth.inviteInvalid')}
+            {inviteMsg || (inviteStatus === 'expired' ? t('auth.inviteExpired') : t('auth.inviteInvalid'))}
           </p>
           <Link to="/login">
             <Button variant="secondary" fullWidth>

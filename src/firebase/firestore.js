@@ -1225,6 +1225,11 @@ export async function getPessoas(adminUid) {
       .sort((x, y) => new Date(y.concluidoEm || 0) - new Date(x.concluidoEm || 0));
     const diagnostico = concluidas[0]?.diagnostico || null;
 
+    // Conclusão REAL independente do shape do perfil: o avaliado pode ter
+    // status 'concluido' mesmo que `perfil` ainda não tenha sido populado
+    // (ex.: avaliação concluída antes do deploy da Edge atualizarStatus).
+    const concluiu = p.avaliacoes.some((av) => av.status === 'concluido' || !!av.diagnostico);
+
     const nomeAvaliacaoRecente = [...p.avaliacoes]
       .sort((x, y) => new Date(y.criadoEm || 0) - new Date(x.criadoEm || 0))[0]?.nome;
     const nome = p.conta?.nome || nomeAvaliacaoRecente || 'Sem nome';
@@ -1247,6 +1252,7 @@ export async function getPessoas(adminUid) {
       origem: [...p.origem],
       totalAvaliacoes: p.avaliacoes.length,
       diagnostico,
+      concluiu,
       vinculo,
       vinculoLinks: p.cpf ? (linksPorCpf.get(p.cpf) || []) : [],
     };

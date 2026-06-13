@@ -72,7 +72,7 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
     const msg = encodeURIComponent(
       `Olá! 👋\n\n` +
       `Você foi convidado(a) para entrar no meu grupo de avaliação comportamental DISC no Perfil Master.\n\n` +
-      `Cadastre-se pelo link abaixo (uso único, expira em ${expiry} dias):\n${inviteUrl}\n\n` +
+      `Cadastre-se pelo link abaixo (vários cadastros, expira em ${expiry} dias):\n${inviteUrl}\n\n` +
       `Depois do cadastro, sua avaliação é liberada no próprio app. 😊`
     );
     // Sem número: o WhatsApp abre e o admin escolhe o contato

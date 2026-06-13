@@ -270,6 +270,8 @@ export default function Pessoas() {
                         {diag.perfilPrimarioNome}
                         {diag.pqScore != null && <span className="opacity-80">· PQ {diag.pqScore}</span>}
                       </span>
+                    ) : p.concluiu ? (
+                      <span className="text-xs text-[#22C55E]">Concluída · perfil processando</span>
                     ) : (
                       <span className="text-xs text-[#A0A3B1]/70 italic">Sem avaliação concluída</span>
                     )}
