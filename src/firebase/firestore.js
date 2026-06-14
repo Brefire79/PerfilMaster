@@ -585,6 +585,17 @@ export async function getProfilesByGroup(groupId) {
   return rows.map((row) => withDateWrapper(flattenProfile({ id: row.id || row.uid, ...row })));
 }
 
+// Busca os perfis (app_profiles) de uma lista de uids numa única query (PostgREST in).
+// Usado pela Central de Pessoas para enriquecer contas de aluno com o diagnóstico.
+export async function getProfilesByUids(uids) {
+  const list = (Array.isArray(uids) ? uids : []).filter(Boolean);
+  if (list.length === 0) return [];
+  const rows = await selectRows(COLLECTIONS.PROFILES, {
+    filters: [{ field: 'uid', op: 'in', value: `(${list.join(',')})` }],
+  });
+  return rows.map((row) => withDateWrapper(flattenProfile({ id: row.id || row.uid, ...row })));
+}
+
 export function subscribeToProfile(uid, callback) {
   getProfile(uid).then(callback).catch(() => callback(null));
   return () => {};
@@ -1159,12 +1170,43 @@ const isoDe = (d) => {
  * Puro de I/O: faz os fetches e cruza em memória. NÃO grava nada.
  * @returns {{ pessoas: Array, sugestoes: Array }}
  */
+// Diagnóstico a partir do perfil de uma CONTA de aluno (app_profiles).
+// O AssessmentWizard grava aqui dominantProfile/scores; a Central usa isso para
+// mostrar o perfil de alunos de grupo/avulsos (não só de avaliados de sessão).
+function diagnosticoDoProfileConta(prof) {
+  if (!prof) return null;
+  const scores = prof.scores || {};
+  let letra = prof.dominantProfile || null;
+  if (!letra) {
+    const ord = [['D', scores.D], ['I', scores.I], ['S', scores.S], ['C', scores.C]]
+      .sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0));
+    if ((Number(ord[0]?.[1]) || 0) > 0) letra = ord[0][0];
+  }
+  if (!letra) return null;
+  const num = (v) => Math.round(Number(v) || 0);
+  return {
+    perfilPrimario: letra,
+    perfilPrimarioNome: PROFILE_NAMES_PT[letra] || letra,
+    perfilSecundario: prof.secondaryProfile || null,
+    scores: { D: num(scores.D), I: num(scores.I), S: num(scores.S), C: num(scores.C) },
+    pqScore: prof.pqScore ?? scores.pqScore ?? null,
+  };
+}
+
 export async function getPessoas(adminUid) {
   const [avaliados, students, links] = await Promise.all([
     getAvaliadosByAdmin(adminUid),
     getStudentsByAdmin(adminUid),
     getIdentityLinksByAdmin(adminUid),
   ]);
+
+  // Enriquece contas de aluno com o perfil (app_profiles) numa única query.
+  const studentUids = students.map((s) => s.uid || s.id).filter(Boolean);
+  let profileByUid = new Map();
+  try {
+    const profs = await getProfilesByUids(studentUids);
+    profileByUid = new Map(profs.map((p) => [p.uid || p.id, p]));
+  } catch { /* sem perfis — segue sem diagnóstico de conta */ }
 
   // Chave de agrupamento: CPF (forte) quando existe; senão chave sintética por registro.
   const keyAvaliado = (a) => (a.cpf ? `cpf:${a.cpf}` : `av:${a.id}`);
@@ -1203,6 +1245,8 @@ export async function getPessoas(adminUid) {
       nome: s.displayName || s.name || s.email || '',
       email: s.email || null,
       groupId: s.groupId || null,
+      assessmentStatus: s.assessmentStatus || null,
+      diagnostico: diagnosticoDoProfileConta(profileByUid.get(s.uid || s.id)),
     };
     p.origem.add(s.groupId ? 'grupo' : 'aluno');
   }
@@ -1223,12 +1267,18 @@ export async function getPessoas(adminUid) {
     const concluidas = p.avaliacoes
       .filter((av) => av.diagnostico)
       .sort((x, y) => new Date(y.concluidoEm || 0) - new Date(x.concluidoEm || 0));
-    const diagnostico = concluidas[0]?.diagnostico || null;
+    // Diagnóstico: avaliação de sessão tem prioridade (token); senão usa o
+    // perfil da CONTA de aluno (AssessmentWizard grava em app_profiles).
+    const contaDiag = p.conta?.diagnostico || null;
+    const diagnostico = concluidas[0]?.diagnostico || contaDiag || null;
 
-    // Conclusão REAL independente do shape do perfil: o avaliado pode ter
-    // status 'concluido' mesmo que `perfil` ainda não tenha sido populado
-    // (ex.: avaliação concluída antes do deploy da Edge atualizarStatus).
-    const concluiu = p.avaliacoes.some((av) => av.status === 'concluido' || !!av.diagnostico);
+    // Conclusão REAL independente do shape do perfil: cobre tanto avaliados de
+    // sessão (status 'concluido') quanto contas de aluno (perfil gerado OU
+    // assessmentStatus 'completed' — ex.: perfil ainda processando pela IA).
+    const concluiu =
+      !!contaDiag ||
+      p.conta?.assessmentStatus === 'completed' ||
+      p.avaliacoes.some((av) => av.status === 'concluido' || !!av.diagnostico);
 
     const nomeAvaliacaoRecente = [...p.avaliacoes]
       .sort((x, y) => new Date(y.criadoEm || 0) - new Date(x.criadoEm || 0))[0]?.nome;

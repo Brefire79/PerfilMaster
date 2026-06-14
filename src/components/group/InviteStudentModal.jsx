@@ -60,6 +60,31 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
     });
   };
 
+  // Contact Picker API — disponível em navegadores móveis (Android/Chrome).
+  // Abre a agenda do aparelho e preenche nome/telefone/e-mail num toque.
+  const supportsContactPicker =
+    typeof navigator !== 'undefined' && 'contacts' in navigator && 'ContactsManager' in window;
+
+  const handlePickContact = async () => {
+    try {
+      const supported = (await navigator.contacts.getProperties?.()) || ['name', 'tel'];
+      const want = ['name', 'tel', 'email'].filter((p) => supported.includes(p));
+      const picked = await navigator.contacts.select(want, { multiple: false });
+      if (!picked || !picked.length) return;
+      const c = picked[0];
+      const first = (v) => (Array.isArray(v) ? v[0] : v) || '';
+      setForm((f) => ({
+        ...f,
+        name: first(c.name) || f.name,
+        phone: first(c.tel) || f.phone,
+        email: first(c.email) || f.email,
+      }));
+      setErrors({});
+    } catch {
+      // usuário cancelou ou API indisponível — silencioso
+    }
+  };
+
   const phoneClean = form.phone.replace(/\D/g, '');
   const whatsappMsg = encodeURIComponent(
     `Olá${form.name ? ', ' + form.name : ''}! 👋\n\nVocê foi convidado(a) para realizar uma avaliação comportamental no *Perfil Master*.\n\nClique no link abaixo para se cadastrar e aguarde a liberação do administrador:\n${inviteUrl}`
@@ -103,6 +128,22 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
             />
             {errors.name && <p className="text-xs text-[#EF4444]">{errors.name}</p>}
           </div>
+
+          {supportsContactPicker && (
+            <button
+              type="button"
+              onClick={handlePickContact}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-[#6366F1]/40 bg-[#6366F1]/10 text-[#818CF8] text-sm font-medium hover:bg-[#6366F1]/20 transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-4 h-4" aria-hidden="true">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <line x1="19" y1="8" x2="19" y2="14" />
+                <line x1="22" y1="11" x2="16" y2="11" />
+              </svg>
+              Escolher da agenda do celular
+            </button>
+          )}
 
           <PhoneInput
             label="Telefone / WhatsApp"
