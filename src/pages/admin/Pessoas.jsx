@@ -378,10 +378,14 @@ function PessoaDetalhe({ pessoa, onClose, onDesvincular, onAbrirRelatorio, onAbr
           {/* Avaliações (contextos) */}
           <div>
             <h3 className="text-xs font-medium text-[#A0A3B1] uppercase tracking-wider mb-2">
-              Avaliações ({pessoa.avaliacoes.length})
+              Avaliações de sessão ({pessoa.avaliacoes.length})
             </h3>
             {pessoa.avaliacoes.length === 0 ? (
-              <p className="text-sm text-[#A0A3B1] italic">Nenhuma avaliação de sessão.</p>
+              <p className="text-sm text-[#A0A3B1] italic">
+                {pessoa.conta?.diagnostico
+                  ? 'Sem avaliação de sessão — esta pessoa concluiu a avaliação pela conta de aluno (veja acima).'
+                  : 'Nenhuma avaliação de sessão.'}
+              </p>
             ) : (
               <ul className="space-y-2">
                 {pessoa.avaliacoes.map((a) => (

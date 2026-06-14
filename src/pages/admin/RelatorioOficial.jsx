@@ -508,6 +508,39 @@ export default function RelatorioOficial() {
             </div>
           )}
 
+          {/* ══ SEÇÃO 3.1: PADRÕES SABOTADORES + DERAILMENT (só contas de aluno) ══ */}
+          {/* Avaliados de sessão respondem só as 28 DISC → estes arrays vêm vazios
+              e a seção não aparece. Contas de aluno (78 questões) têm os dados. */}
+          {(avaliado?.saboteurPatterns?.length > 0 || avaliado?.derailmentRisks?.length > 0) && (
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
+                § 3.1. Padrões Sabotadores e Riscos de Derailment
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {avaliado.saboteurPatterns?.length > 0 && (
+                  <div style={{ background: '#FFFBEB', border: '1px solid #FDE68A', borderRadius: '8px', padding: '12px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: '700', color: '#92400E', fontFamily: 'Arial, sans-serif', margin: '0 0 6px', textTransform: 'uppercase' }}>🔍 Padrões Sabotadores</p>
+                    {avaliado.saboteurPatterns.map((s, i) => (
+                      <p key={i} style={{ fontSize: '11px', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 3px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                        <span style={{ color: '#D97706', fontWeight: '700', flexShrink: 0 }}>•</span>{typeof s === 'string' ? s : (s?.nome || s?.name || s?.label || JSON.stringify(s))}
+                      </p>
+                    ))}
+                  </div>
+                )}
+                {avaliado.derailmentRisks?.length > 0 && (
+                  <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '8px', padding: '12px' }}>
+                    <p style={{ fontSize: '11px', fontWeight: '700', color: '#991B1B', fontFamily: 'Arial, sans-serif', margin: '0 0 6px', textTransform: 'uppercase' }}>🚨 Riscos de Derailment</p>
+                    {avaliado.derailmentRisks.map((r, i) => (
+                      <p key={i} style={{ fontSize: '11px', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 3px', display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                        <span style={{ color: '#DC2626', fontWeight: '700', flexShrink: 0 }}>•</span>{typeof r === 'string' ? r : (r?.nome || r?.name || r?.label || JSON.stringify(r))}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ══ SEÇÃO 4: INDICADORES CLÍNICOS (ADMIN ONLY) ══ */}
           {flagClinica && (
             // D1: no-print obrigatório — indicadores clínicos não devem aparecer no PDF/impressão (PRD §6.8, LGPD §8.1)

@@ -219,6 +219,7 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - **§ 1 — Identificação**: nome, telefone, sessão, documento ID, data
 - **§ 2 — Perfil DISC**: barras animadas, tabela com valores e percentuais, interpretação
 - **§ 3 — Análise IA**: insight, forças, desafios, carreiras, estilo de comunicação
+- **§ 3.1 — Padrões Sabotadores e Riscos de Derailment** *(só contas de aluno)*: renderizada apenas quando há dados em `app_profiles` (alunos respondem as 78 questões — 28 DISC + 50 sabotadores). Avaliados de sessão respondem só as 28 DISC, então a seção não aparece. Fonte: `getAvaliadoLikeFromUid` (campos `saboteurPatterns`/`derailmentRisks`). Paridade com o "Ver perfil" (`ProfileDetail`).
 - **§ 4 — Indicadores Clínicos** *(admin only — não impresso para o avaliado)*: nível de atenção, nota interna, disclaimer ético
 - **§ 5 — Observações do Instrutor**: textarea livre, incluída na impressão
 - **Barra de controles** (não impressa):

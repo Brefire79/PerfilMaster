@@ -195,7 +195,7 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 
 - **Usuários:** `createUser`, `getUser`, `updateUser`, `getUsersByGroup`, `getAvulsosByAdmin`
 - **Grupos/Módulos:** `createGroup`, `getGroupsByAdmin`, `getModulesByGroup`
-- **Avaliações/Perfis:** `createAssessment`, `submitAssessment`, `createProfile`, `getProfile`
+- **Avaliações/Perfis:** `createAssessment`, `submitAssessment`, `createProfile`, `getProfile`, `getProfilesByGroup`, `getProfilesByUids` (busca perfis de vários uids em 1 query — usado pela Central de Pessoas)
 - **Sessões esporádicas:** `criarSessao`, `getSessoesByAdmin`, `criarAvaliado`, `getAvaliadosByAdmin`
 - **Central de Pessoas (CPF):** `getPessoas`, `createIdentityLink`, `autoVincularPorCpf`
 - **Painel Estratégico (DELTA 10):** `getAdminStrategy`, `saveAdminStrategy` (tabela `app_admin_strategies`, isolada por `adminuid`)
@@ -211,6 +211,7 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 - **Questões:** `src/constants/sampleQuestions.js` — 78 questões (28 DISC + 50 sabotadores). O fluxo público usa só as 28 DISC; os ids/pesos DISC estão **duplicados** em `atualizarStatus/index.ts` — alterou questão DISC, atualize os dois lugares.
 - **Fórmula PQ Score:** `PQ Score = 100 − (média dos 3 maiores scores brutos × 10)`. Sincronizar entre `calculate-assessment`, `generate-report` e `src/lib/localEngine.js`.
 - **Cores DISC canônicas:** D `#EF4444` · I `#F59E0B` · S `#22C55E` · C `#6366F1`.
+- **Relatório Oficial × "Ver perfil":** o `RelatorioOficial` é DISC-only por origem (fluxo de sessão usa só 28 questões). Para **contas de aluno** (uid), `getAvaliadoLikeFromUid` traz também `saboteurPatterns`/`derailmentRisks`/`summary` do `app_profiles`, e o relatório renderiza a **§ 3.1 (Padrões Sabotadores e Riscos de Derailment)** quando esses dados existem — paridade com o `ProfileDetail` ("Ver perfil"). Avaliados de sessão não têm esses dados → seção oculta.
 
 ---
 

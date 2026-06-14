@@ -162,6 +162,12 @@ Em **Configurações → Preferências → Idioma padrão**, escolha o idioma e 
 **🔹 Esqueci minha senha.**
 Na tela de login, clique em **Esqueci minha senha** e siga as instruções.
 
+**🔹 O Relatório Oficial mostra os sabotadores?**
+Para **alunos com conta** (que responderam as 78 questões — DISC + Sabotadores), o Relatório inclui a seção **"Padrões Sabotadores e Riscos de Derailment"**, igual ao "Ver perfil". Para avaliações **de sessão** (link público), que respondem só as 28 questões DISC, essa seção não aparece — pois esses dados não foram coletados.
+
+**🔹 Por que alguns avaliados não têm o botão "Enviar resultado ao aluno"?**
+Esse botão é só para avaliações **de sessão** (link público por WhatsApp). **Contas de aluno** veem o resultado dentro da própria conta, então o botão não aparece — use "Imprimir / PDF" para gerar o documento.
+
 ---
 
 *Perfil Master · Vianexx AI · Manual do Usuário*

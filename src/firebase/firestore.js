@@ -643,6 +643,15 @@ export async function getAvaliadoLikeFromUid(uid) {
       analitico: num(scores.C),
       pqScore: p.pqScore ?? scores.pqScore ?? null,
     },
+    // Dados ricos do app_profiles (gerados pela IA buildProfile a partir das 78
+    // questões do AssessmentWizard). Só existem para CONTAS de aluno — avaliados
+    // de sessão respondem só as 28 DISC e não têm sabotadores/derailment.
+    // O Relatório Oficial renderiza estas seções apenas quando vierem preenchidas.
+    saboteurPatterns: Array.isArray(p.saboteurPatterns) ? p.saboteurPatterns : [],
+    derailmentRisks: Array.isArray(p.derailmentRisks) ? p.derailmentRisks : [],
+    strengths: Array.isArray(p.strengths) ? p.strengths : [],
+    challenges: Array.isArray(p.challenges) ? p.challenges : [],
+    aiSummary: typeof p.summary === 'string' ? p.summary : null,
   };
 }
 

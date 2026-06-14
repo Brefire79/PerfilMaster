@@ -121,6 +121,13 @@ ALTER TABLE public.app_identity_links
   - **Detalhe da pessoa** (slideover/rota): contextos onde aparece + atalho para o Relatório/Evolução (Fase 3) + ação "desvincular" (reverter).
 - Entrada no menu do admin (sidebar) e, opcionalmente, contador no dashboard.
 
+### 7.3.1 Atualização (13/06/2026) — diagnóstico de contas de aluno
+- `getPessoas` passou a buscar os perfis das contas em uma query (`getProfilesByUids`) e expor:
+  - `conta.diagnostico` (perfil DISC + scores + PQ vindos de `app_profiles`) e `conta.assessmentStatus`;
+  - `concluiu` (booleano de conclusão real): cobre **avaliados de sessão** (`status='concluido'`) **e contas de aluno** (perfil gerado ou `assessmentStatus='completed'`).
+- **Motivo:** alunos de grupo/avulsos concluem pelo `AssessmentWizard` (grava em `app_profiles`), que a Central ignorava (só lia `app_avaliados`). Antes apareciam como "Sem avaliação concluída" mesmo tendo concluído.
+- **UI (`Pessoas.jsx`):** lista mostra o badge do perfil para contas concluídas (ou "Concluída · perfil processando" se o perfil ainda não foi gravado). No detalhe, a seção foi renomeada para **"Avaliações de sessão (n)"** e, quando n=0 mas a conta concluiu, exibe "concluiu pela conta de aluno (veja acima)" em vez de "Nenhuma avaliação".
+
 ### 7.4 Sincronização do diagnóstico (D5)
 - Onde hoje se mostra o perfil de um aluno/avaliado isolado, passar a resolver via Pessoa quando ela for unificada (ex.: card do aluno mostra também "avaliações de sessão vinculadas"). **Incremental** — não reescrever as telas; só ligar o "ver pessoa completa".
 
