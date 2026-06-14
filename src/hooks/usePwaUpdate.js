@@ -15,7 +15,7 @@ import { useEffect, useState, useCallback } from 'react';
 
 // Versão "embutida" no bundle. Trocada a cada build pelo bump-version.mjs.
 // Precisa bater com public/version.json.
-const APP_VERSION = '1.0.38';
+const APP_VERSION = '1.0.39';
 const CHECK_INTERVAL_MS = 60_000; // 1 minuto
 
 async function fetchRemoteVersion() {
