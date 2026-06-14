@@ -67,17 +67,26 @@ Deno.serve(async (req) => {
     const safe = userData && typeof userData === 'object' ? userData : {};
     const cpf = isValidCpfServer(safe.cpf) ? cpfDigitsOnly(safe.cpf) : null;
 
+    // DELTA 12: convite de ADMIN promove a admin INDEPENDENTE (workspace próprio).
+    // Roda via service_role → o trigger protect_user_privileges permite a role.
+    // Admin convidado NÃO herda grupo/adminuid do convidante (dados isolados);
+    // guardamos `invitedby` apenas para o convidante poder listar/revogar.
+    const isAdminInvite = invite.role === 'admin';
+
     // Campos sensíveis (role, groupid, adminuid) NUNCA vêm do cliente —
-    // role fixa em 'student' e vínculos derivados do convite.
+    // role/vínculos derivam do CONVITE (server-side).
     const row: Record<string, unknown> = {
       uid: user.id,
-      role: 'student',
+      role: isAdminInvite ? 'admin' : 'student',
       email: user.email || (typeof safe.email === 'string' ? safe.email : null),
       displayname: typeof safe.displayName === 'string' ? safe.displayName.slice(0, 120) : null,
-      groupid: invite.groupid || null,
-      adminuid: invite.adminuid || null,
+      groupid: isAdminInvite ? null : (invite.groupid || null),
+      adminuid: isAdminInvite ? null : (invite.adminuid || null),
       updatedat: agora,
     };
+    // Resiliência: só referencia a coluna `invitedby` (DELTA 12) em convite de
+    // admin — cadastro de aluno não toca na coluna nova.
+    if (isAdminInvite) row.invitedby = invite.adminuid || null;
     if (cpf && safe.cpfConsent === true) {
       row.cpf = cpf;
       row.cpf_consent = true;
@@ -129,7 +138,7 @@ Deno.serve(async (req) => {
     }
 
     return jsonResponse(
-      { success: true, groupId: invite.groupid || null, adminUid: invite.adminuid || null },
+      { success: true, role: row.role, groupId: invite.groupid || null, adminUid: invite.adminuid || null },
       200,
       req
     );

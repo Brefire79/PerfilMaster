@@ -37,6 +37,7 @@ Deno.serve(async (req) => {
 
     return jsonResponse({
       valid: true,
+      role: invite.role === 'admin' ? 'admin' : 'student', // DELTA 12: convite de admin
       groupId: invite.groupid || null,
       adminUid: invite.adminuid || null,   // Register precisa para vincular o aluno (DELTA 6)
       groupName: group?.name || null,

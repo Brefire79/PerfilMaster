@@ -60,6 +60,11 @@ export async function validateInviteToken(payload) {
   return callFunction('validateInviteToken', payload);
 }
 
+/** DELTA 12: gestão de admins convidados (listar / revogar / reativar) */
+export async function manageTeamAdmins(payload) {
+  return callFunction('manageTeamAdmins', payload);
+}
+
 /** DELTA 8: consome o convite no backend (service-role) — cria app_users,
  *  entra no grupo e marca o convite como usado, sem policies públicas. */
 export async function consumeInvite(payload) {

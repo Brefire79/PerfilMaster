@@ -101,7 +101,7 @@ export default function Register() {
           return;
         }
         // Normaliza para o shape que o handleSubmit espera (groupId/adminUid)
-        setInvite({ groupId: res.groupId || null, adminUid: res.adminUid || null });
+        setInvite({ groupId: res.groupId || null, adminUid: res.adminUid || null, role: res.role || 'student' });
         setInviteStatus('valid');
       } catch {
         setInviteStatus('invalid');
@@ -153,8 +153,11 @@ export default function Register() {
         cpf: cpfDigits || null,
         cpfConsent: cpfDigits ? cpfConsent : false,
       };
+      let role = 'student';
       if (token && invite) {
-        await consumeInvite({ token, userData });
+        // DELTA 12: consumeInvite retorna a role (convite de admin → 'admin')
+        const res = await consumeInvite({ token, userData });
+        if (res?.role === 'admin') role = 'admin';
       } else {
         await createUser(firebaseUser.uid, {
           ...userData,
@@ -167,10 +170,10 @@ export default function Register() {
       }
 
       // 3. Update auth store
-      setUser(firebaseUser, 'student');
+      setUser(firebaseUser, role);
 
-      // 4. Navigate to student dashboard
-      navigate('/student/dashboard', { replace: true });
+      // 4. Navega para o painel correto conforme a role
+      navigate(role === 'admin' ? '/admin/dashboard' : '/student/dashboard', { replace: true });
     } catch (err) {
       const map = {
         'auth/email-already-in-use': t('errors.emailInUse'),
@@ -236,10 +239,15 @@ export default function Register() {
           {t('auth.registerTitle')}
         </h1>
         {invite && (
-          <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#22C55E]/10 border border-[#22C55E]/25">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E]" />
-            <p className="text-sm text-[#22C55E]">
-              {t('auth.inviteValid')}
+          <div className={clsx(
+            'mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full border',
+            invite.role === 'admin'
+              ? 'bg-[#6366F1]/10 border-[#6366F1]/25'
+              : 'bg-[#22C55E]/10 border-[#22C55E]/25'
+          )}>
+            <div className={clsx('w-1.5 h-1.5 rounded-full', invite.role === 'admin' ? 'bg-[#6366F1]' : 'bg-[#22C55E]')} />
+            <p className={clsx('text-sm', invite.role === 'admin' ? 'text-[#818CF8]' : 'text-[#22C55E]')}>
+              {invite.role === 'admin' ? 'Convite de administrador' : t('auth.inviteValid')}
             </p>
           </div>
         )}

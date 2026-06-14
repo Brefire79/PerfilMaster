@@ -241,12 +241,14 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - Associação de módulos a grupos
 
 ### 6.11 Configurações (`/admin/settings`)
-- **Integrações de IA**: campo para inserir chave Google AI Studio (Gemini)
-  - Prefixo reconhecido: `AIza...` → Google Gemini
-  - Armazenado em: `localStorage('profileai_api_key')` + tabela `settings` no Supabase
-  - Injetado automaticamente em todas as chamadas de IA
-- Perfil do admin (nome, foto)
-- Notificações
+- **Perfil do admin** (nome) e **Empresa** (nome/logo nos relatórios)
+- **Preferências**: idioma (pt-BR/en/es)
+- **Notificações**: preferências persistidas em `app_users.notifications` (DELTA 11). Entrega por e-mail/push ainda não implementada.
+- **Inteligência Artificial**: card informativo — IA é **gerenciada pelo servidor (DeepSeek)**, sem chave para o usuário configurar.
+- **Equipe de administradores** (DELTA 12): convidar profissionais como **admin independente** (workspace próprio) por link; listar e **revogar/reativar** o acesso dos admins que o próprio admin convidou.
+  - Promoção/revogação via Edge Functions `consumeInvite` / `manageTeamAdmins` (service_role) — o trigger `protect_user_privileges` continua bloqueando o app comum.
+  - Escopo: cada admin só gerencia quem ele convidou (`app_users.invitedby`).
+- **Zona de Perigo**: excluir conta — reapresenta o risco e **exige a senha** (validada no servidor) antes de prosseguir. Exclusão completa de dados (Edge `deleteAccount`) ainda pendente.
 
 ---
 

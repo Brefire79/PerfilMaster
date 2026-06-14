@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return jsonResponse({ error: 'Não autenticado.' }, 401, req);
 
-    const { groupId, baseUrl, expiryDays } = await req.json();
+    const { groupId, baseUrl, expiryDays, role } = await req.json();
 
     const sb = serviceClient();
     const { data: caller } = await sb
@@ -28,7 +28,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Apenas administradores podem gerar convites.' }, 403, req);
     }
 
-    if (groupId && !(await isGroupAdmin(user.id, groupId))) {
+    // DELTA 12: convite de ADMIN (admin independente). Só admins chegam aqui.
+    // Ignora groupId (admin convidado tem workspace próprio, não entra em grupo).
+    const isAdminInvite = role === 'admin';
+
+    if (!isAdminInvite && groupId && !(await isGroupAdmin(user.id, groupId))) {
       return jsonResponse({ error: 'Você não é admin deste grupo.' }, 403, req);
     }
 
@@ -36,14 +40,19 @@ Deno.serve(async (req) => {
     const days = Number(expiryDays) > 0 ? Math.min(Number(expiryDays), 90) : 7;
     const expiresat = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
 
-    const { error } = await sb.from('app_invites').insert({
+    // Resiliência: só referencia a coluna `role` (DELTA 12) em convite de admin,
+    // para não quebrar convites de aluno caso a migração ainda não tenha rodado.
+    const inviteRow: Record<string, unknown> = {
       token,
-      groupid: groupId || null,   // null → convite de aluno avulso (DELTA 6)
-      adminuid: user.id,          // sempre o caller autenticado
+      groupid: isAdminInvite ? null : (groupId || null), // null → avulso/admin
+      adminuid: user.id,          // sempre o caller autenticado (quem convidou)
       used: false,
       createdat: new Date().toISOString(),
       expiresat,
-    });
+    };
+    if (isAdminInvite) inviteRow.role = 'admin';
+
+    const { error } = await sb.from('app_invites').insert(inviteRow);
     if (error) return jsonResponse({ error: error.message }, 500, req);
 
     const root = (baseUrl || '').replace(/\/$/, '');

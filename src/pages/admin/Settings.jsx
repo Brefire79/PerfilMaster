@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.jsx';
 import Input from '@/components/ui/Input.jsx';
 import Modal from '@/components/ui/Modal.jsx';
 import ApiKeySection from '@/components/ApiKeySection.jsx';
+import TeamAdminsSection from '@/components/TeamAdminsSection.jsx';
 
 const LANGUAGES = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
@@ -463,6 +464,16 @@ export default function Settings() {
       >
         <Card variant="default">
           <ApiKeySection />
+        </Card>
+      </SettingsSection>
+
+      {/* ── Equipe de administradores (DELTA 12) ── */}
+      <SettingsSection
+        title="Equipe de administradores"
+        description="Convide outros profissionais para acessar como administradores e gerencie o acesso deles."
+      >
+        <Card variant="default">
+          <TeamAdminsSection />
         </Card>
       </SettingsSection>
 
