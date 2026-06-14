@@ -132,6 +132,17 @@ export async function signUpWithEmail(email, password, displayName) {
   return toUserShape(data.user);
 }
 
+// Valida a senha do usuário logado SEM alterar a sessão atual (não chama
+// saveSession). Usado como confirmação em ações sensíveis (ex.: excluir conta).
+// Lança auth/invalid-credential se a senha estiver errada.
+export async function verifyPassword(password) {
+  const email = getCurrentUser()?.email;
+  if (!email) throw buildAuthError('auth/user-not-found', 'Sessão não encontrada. Faça login novamente.');
+  if (!password) throw buildAuthError('auth/missing-password', 'Informe sua senha.');
+  await authRequest('token?grant_type=password', { method: 'POST', body: { email, password } });
+  return true;
+}
+
 export async function signInWithGoogle() {
   throw buildAuthError(
     'auth/operation-not-supported-in-this-environment',

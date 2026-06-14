@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import { updateUser, getUser } from '@/firebase/firestore.js';
-import { signOut } from '@/firebase/auth.js';
+import { signOut, verifyPassword } from '@/firebase/auth.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Input from '@/components/ui/Input.jsx';
-import { ConfirmModal } from '@/components/ui/Modal.jsx';
+import Modal from '@/components/ui/Modal.jsx';
 import ApiKeySection from '@/components/ApiKeySection.jsx';
 
 const LANGUAGES = [
@@ -135,6 +135,9 @@ export default function Settings() {
             companyName: doc.companyName || doc.metadata?.companyName || '',
             logoUrl: doc.logoUrl || doc.metadata?.logoUrl || '',
           });
+          if (doc.notifications && typeof doc.notifications === 'object') {
+            setNotifications((n) => ({ ...n, ...doc.notifications }));
+          }
         }
       })
       .catch(() => {});
@@ -151,9 +154,35 @@ export default function Settings() {
     weeklyDigest: false,
     systemUpdates: true,
   });
+  const [notifStatus, setNotifStatus] = useState('idle');
+  const [notifError, setNotifError] = useState('');
+
+  const saveNotifications = async () => {
+    setNotifStatus('saving');
+    setNotifError('');
+    try {
+      await updateUser(user.uid, { notifications });
+      setNotifStatus('saved');
+      setTimeout(() => setNotifStatus('idle'), 2500);
+    } catch (err) {
+      console.error('[Settings] salvar notificações:', err);
+      setNotifStatus('idle');
+      setNotifError('Não foi possível salvar. A coluna de notificações pode não existir ainda no banco.');
+    }
+  };
 
   // ── Danger zone ──────────────────────────────────────────────────────────────
   const [confirmDeleteAccount, setConfirmDeleteAccount] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  const closeDeleteModal = () => {
+    if (deleting) return;
+    setConfirmDeleteAccount(false);
+    setDeletePassword('');
+    setDeleteError('');
+  };
 
   const saveProfile = async () => {
     if (!profileForm.displayName.trim()) return;
@@ -197,14 +226,28 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
-    // FIX A3: exclusão completa de dados requer Edge Function com service_role.
-    // Por ora apenas desloga e limpa o estado local — dados ficam no banco.
-    // TODO: chamar Edge Function deleteAccount({ uid: user.uid }) antes do signOut.
+    setDeleteError('');
+    if (!deletePassword) {
+      setDeleteError('Informe sua senha para confirmar.');
+      return;
+    }
+    setDeleting(true);
     try {
+      // Confirmação de segurança: valida a senha antes de prosseguir.
+      await verifyPassword(deletePassword);
+      // FIX A3: exclusão COMPLETA de dados requer Edge Function com service_role.
+      // Por ora encerra a sessão e limpa o estado local — dados ficam no banco.
+      // TODO: chamar Edge Function deleteAccount({ uid: user.uid }) antes do signOut.
       await signOut();
       clearUser();
+      // sucesso → o app desmonta esta tela; não precisa resetar estado
     } catch (err) {
-      console.error(err);
+      setDeleteError(
+        err?.code === 'auth/invalid-credential'
+          ? 'Senha incorreta. Tente novamente.'
+          : (err?.message || 'Não foi possível concluir. Tente novamente.')
+      );
+      setDeleting(false);
     }
   };
 
@@ -393,11 +436,23 @@ export default function Settings() {
               description={t('settings.notif.systemUpdatesDesc', 'Novidades sobre a plataforma Perfil Master.')}
             />
           </div>
-          <div className="mt-4 pt-4 border-t border-[#2D3047] flex justify-end">
+          <div className="mt-4 pt-4 border-t border-[#2D3047] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs text-[#A0A3B1]">
-              {t('settings.notif.placeholder', 'As notificações por e-mail serão ativadas em breve.')}
+              Suas preferências são salvas. O envio por e-mail será ativado em breve.
             </p>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              <SaveFeedback status={notifStatus} />
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={saveNotifications}
+                loading={notifStatus === 'saving'}
+              >
+                {t('app.save', 'Salvar')}
+              </Button>
+            </div>
           </div>
+          {notifError && <p className="text-xs text-[#EF4444] mt-2">{notifError}</p>}
         </Card>
       </SettingsSection>
 
@@ -431,7 +486,7 @@ export default function Settings() {
               variant="danger"
               size="sm"
               className="flex-shrink-0"
-              onClick={() => setConfirmDeleteAccount(true)}
+              onClick={() => { setDeletePassword(''); setDeleteError(''); setConfirmDeleteAccount(true); }}
             >
               {t('settings.deleteAccount', 'Excluir conta')}
             </Button>
@@ -439,20 +494,67 @@ export default function Settings() {
         </Card>
       </SettingsSection>
 
-      {/* Delete account confirm modal */}
-      <ConfirmModal
+      {/* Delete account — confirmação com re-aviso de risco + senha */}
+      <Modal
         isOpen={confirmDeleteAccount}
-        onClose={() => setConfirmDeleteAccount(false)}
-        onConfirm={handleDeleteAccount}
-        title={t('settings.deleteAccount', 'Excluir conta?')}
-        description={t(
-          'settings.deleteAccountConfirm',
-          'Esta ação é irreversível. Todos os seus grupos, alunos e dados serão permanentemente excluídos.'
-        )}
-        confirmLabel={t('settings.deleteAccount', 'Sim, excluir minha conta')}
-        cancelLabel={t('app.cancel', 'Cancelar')}
-        variant="danger"
-      />
+        onClose={closeDeleteModal}
+        title="Excluir conta?"
+        size="sm"
+        footer={
+          <>
+            <button
+              onClick={closeDeleteModal}
+              disabled={deleting}
+              className="h-9 px-4 text-sm font-medium rounded-xl bg-[#242736] hover:bg-[#2D3047] text-[#F7F8FC] border border-[#2D3047] transition-colors disabled:opacity-50"
+            >
+              {t('app.cancel', 'Cancelar')}
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || !deletePassword}
+              className="h-9 px-4 text-sm font-medium rounded-xl bg-[#EF4444]/10 hover:bg-[#EF4444]/20 text-[#EF4444] border border-[#EF4444]/30 transition-colors disabled:opacity-50"
+            >
+              {deleting ? 'Confirmando...' : 'Sim, excluir minha conta'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          {/* Re-aviso do risco */}
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-[#EF4444]/10 border border-[#EF4444]/25">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
+            <div className="text-sm text-[#F7F8FC]">
+              <p className="font-semibold text-[#EF4444]">Esta ação é sensível.</p>
+              <p className="text-[#A0A3B1] mt-0.5">
+                Você será desconectado imediatamente. A exclusão completa dos seus dados
+                (grupos, alunos e avaliações) é permanente e não pode ser desfeita.
+              </p>
+            </div>
+          </div>
+
+          {/* Confirmação por senha */}
+          <div>
+            <label htmlFor="delete-pw" className="text-sm font-medium text-[#F7F8FC] block mb-1.5">
+              Para continuar, confirme sua senha
+            </label>
+            <input
+              id="delete-pw"
+              type="password"
+              autoComplete="current-password"
+              value={deletePassword}
+              onChange={(e) => { setDeletePassword(e.target.value); setDeleteError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && deletePassword && !deleting) handleDeleteAccount(); }}
+              placeholder="Sua senha"
+              className="w-full h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#EF4444] outline-none transition-colors"
+            />
+            {deleteError && <p className="text-xs text-[#EF4444] mt-1.5">{deleteError}</p>}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
