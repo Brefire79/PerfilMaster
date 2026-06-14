@@ -537,7 +537,7 @@ export default function RelatorioOficial() {
             <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
               § 5. Observações do Facilitador
             </h2>
-            {printMode || obs ? (
+            {printMode ? (
               <div style={{ background: obs ? '#FAFAFA' : '#F3F4F6', border: '1px solid #E5E7EB', borderRadius: '8px', padding: '14px', minHeight: '80px' }}>
                 {obs ? (
                   <p style={{ fontSize: '13px', color: '#1F2937', fontFamily: 'Arial, sans-serif', lineHeight: '1.7', margin: 0, whiteSpace: 'pre-wrap' }}>{obs}</p>
