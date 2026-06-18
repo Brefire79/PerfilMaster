@@ -1,4 +1,4 @@
-# Manual do Administrador — ProfileAI
+# Manual do Administrador — Perfil Master
 
 Manual completo do instrutor/administrador para operar a plataforma de avaliação comportamental DISC.
 
@@ -18,11 +18,14 @@ Você pode acessar `/student/dashboard` mesmo sendo admin, e fazer a própria av
 
 Tela inicial em `/admin/dashboard`. Mostra:
 
-### Cards de KPIs
-- **Total de Alunos** — somatório de membros em todos os seus grupos
-- **Total de Grupos** — grupos que você administra
-- **Avaliações Realizadas** — UIDs únicos com avaliação concluída
-- **Taxa de Conclusão** — percentual
+### Cards de KPIs (clicáveis)
+- **Total de Alunos** — somatório de membros em todos os seus grupos → abre **Alunos**
+- **Total de Grupos** — grupos que você administra → abre **Grupos**
+- **Avaliações Realizadas** — UIDs únicos com avaliação concluída → abre **Relatórios**
+- **Taxa de Conclusão** — percentual → abre **Relatórios**
+
+### Painel de perfis DISC
+Os 4 cards (Dominante / Influente / Estável / Analítico) são **expansíveis**: clique em **Saiba mais** para ver a descrição do perfil ali mesmo.
 
 ### Atalhos rápidos
 - Criar Grupo
@@ -218,10 +221,32 @@ Use o campo **Foco da próxima avaliação** do painel estratégico para definir
 
 ## 10. Configurações (`/admin/settings`)
 
-- Idioma da interface (PT-BR / EN / ES)
-- Notificações por e-mail
-- Dados da conta (nome, e-mail)
-- **Encerrar sessão** (logout)
+- **Dados da conta** (nome) e **Empresa** (nome/logo nos relatórios)
+- **Notificações** — preferências persistidas (entrega por e-mail/push ainda não implementada)
+- **Inteligência Artificial** — gerenciada pelo servidor (DeepSeek); não há chave para configurar
+- **Tema** — alternância **claro/escuro** pelo botão sol/lua no topo (lembra a escolha por dispositivo)
+- **Equipe de administradores** — ver §10.1
+- **Zona de Perigo** — excluir conta (exige a senha)
+
+### 10.1 Equipe de administradores
+
+Permite dar acesso de administrador a outros profissionais. Cada admin convidado é **independente** (tem o próprio espaço — não enxerga seus grupos/alunos).
+
+**A) Convidar quem ainda NÃO tem conta**
+1. **Gerar link de convite de admin** → copie ou envie por WhatsApp
+2. A pessoa abre o link, cadastra-se e já entra como administrador
+
+**B) Promover quem JÁ tem conta**
+> Use quando o link de convite acusa **"e-mail já está em uso"** (a pessoa já se cadastrou antes, p.ex. como aluno).
+1. No campo **"Promover um usuário que já tem conta"**, digite o e-mail dela
+2. Clique em **Promover a admin**
+3. Pronto — ela vira administrador sem perder nada
+
+**Revogar / Reativar**
+- Na lista **Administradores da sua equipe**, cada pessoa mostra **Ativo** ou **Revogado**.
+- **Revogar** devolve a pessoa à condição anterior (aluno), sem apagar dados. **Reativar** a promove de novo.
+- Pode alternar **quantas vezes quiser** — promover é só um interruptor.
+- Você só gerencia quem **você** convidou/promoveu. Não é possível alterar a própria conta.
 
 ---
 

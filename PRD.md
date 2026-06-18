@@ -237,6 +237,11 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - Análise de complementaridade de perfis
 - **Relatórios individuais**: lista de pessoas (Central de Pessoas) com **contagem de quantas vezes foram avaliadas**. Pessoas com 2+ avaliações **expandem o histórico** com data, perfil e a **anotação de acompanhamento** salva por relatório (DELTA 13). Componente: `components/admin/PessoaRelatorioRow.jsx`.
 
+### 6.8.1 Dashboard Administrativo (`/admin/dashboard`)
+- 4 **stat cards** (Total de Alunos, Grupos, Avaliações, Taxa de Conclusão) — **clicáveis**, navegam para Alunos/Grupos/Relatórios.
+- **Painel de perfis DISC**: os 4 cards (D/I/S/C) são **expansíveis** ("Saiba mais" → descrição do perfil inline).
+- **Atividade recente**: feed dos últimos eventos (avaliação concluída, perfil identificado, entrada em grupo, grupo criado); clique navega ao grupo.
+
 ### 6.9.1 Gestão de Alunos (`/admin/students`)
 - Lista unificada (contas de aluno + avaliados de sessão), busca e filtros por grupo/perfil
 - **Mover aluno para outro grupo**: ação por linha (só contas de aluno) — reatribui `app_users.groupid` + `memberids` dos grupos de origem/destino. Avaliados de sessão pertencem a um grupo pela sessão, não por aqui.
@@ -249,12 +254,14 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 
 ### 6.11 Configurações (`/admin/settings`)
 - **Perfil do admin** (nome) e **Empresa** (nome/logo nos relatórios)
-- **Preferências**: idioma (pt-BR/en/es)
+- **Preferências**: app é **PT-BR exclusivo** (seletor de idioma removido)
 - **Notificações**: preferências persistidas em `app_users.notifications` (DELTA 11). Entrega por e-mail/push ainda não implementada.
 - **Inteligência Artificial**: card informativo — IA é **gerenciada pelo servidor (DeepSeek)**, sem chave para o usuário configurar.
 - **Equipe de administradores** (DELTA 12): convidar profissionais como **admin independente** (workspace próprio) por link; listar e **revogar/reativar** o acesso dos admins que o próprio admin convidou.
+  - **Promover conta já existente** (`manageTeamAdmins` ação `promoteByEmail`): quando o convidado já tinha conta (o link de convite acusa "e-mail já em uso"), o admin digita o e-mail e promove a pessoa a admin. A promoção é apenas um **interruptor de `role`** — `groupid`/`adminuid` ficam intactos, então **revogar** (volta a `student`) devolve a pessoa exatamente ao estado anterior. **Reversível N vezes**, sem perda de dados.
   - Promoção/revogação via Edge Functions `consumeInvite` / `manageTeamAdmins` (service_role) — o trigger `protect_user_privileges` continua bloqueando o app comum.
-  - Escopo: cada admin só gerencia quem ele convidou (`app_users.invitedby`).
+  - Escopo: cada admin só gerencia quem ele convidou ou promoveu (`app_users.invitedby`); não promove quem já é admin nem reivindica conta de outra equipe.
+- **Aparência**: alternância de **tema claro/escuro** (botão sol/lua no TopBar), persistida por dispositivo (`localStorage`). App é dark-first; o tema claro reaplica as variáveis e sobrepõe as classes estruturais (`html.light` em `index.css`).
 - **Zona de Perigo**: excluir conta — reapresenta o risco e **exige a senha** (validada no servidor) antes de prosseguir. Exclusão completa de dados (Edge `deleteAccount`) ainda pendente.
 
 ---
@@ -391,6 +398,8 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 **Raio de borda padrão:** `rounded-xl` (12 px)  
 **Animações:** fade-in, slide-up nos modais e resultado público
 
+**Tema claro/escuro:** dark-first. O tema claro é ativado pela classe `html.light` (toggle no TopBar, persistido em `localStorage` via `themeStore`), que redefine as variáveis CSS (`--bg-*`, `--text-*`, `--border`) e sobrepõe as classes estruturais de fundo/texto/borda. Os acentos DISC (D/I/S/C) e o indigo são preservados nos dois temas.
+
 ---
 
 ## 12. Integrações Externas
@@ -413,8 +422,11 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 | 1.0 | Mai 2026 | Versão inicial — DISC wizard, grupos, convites, sessões básicas |
 | 1.1 | Mai 2026 | Auditoria autônoma — documentação de arquitetura |
 | 2.0 | Mai 2026 | Google Gemini (migração de Anthropic), `insightPerfil`, `therapyFlag` com chave do usuário, RelatorioOficial (documento legal com ID único + LGPD), ResultadoPublico (página pública para avaliado), configuração de API key no painel, CORS localhost:3001, erros de IA humanizados |
+| 1.0.43 | Jun 2026 | Rebrand **Perfil Master**; IA **DeepSeek server-side** (provider único, sem chave do admin); abas Sessões/Pessoas ocultadas; DELTAs 8–13; **tema claro/escuro**; **Dashboard interativo** (stat cards clicáveis + DISC expansível); **Equipe de administradores** com convite, **promoção de conta existente** (`promoteByEmail`) e revogação reversível |
+
+> **Nota:** as seções 1–5 e 12 deste PRD ainda descrevem o estado v2.0 (Google Gemini, naming "ProfileAI"). A **fonte da verdade atual** da arquitetura é o `CLAUDE.md` na raiz do projeto: IA é **DeepSeek server-side** (provider único), o produto chama-se **Perfil Master** e a camada de dados é Supabase (pasta `src/firebase/` com nomes legados).
 
 ---
 
-*ProfileAI © 2026 — AmbFusi AI / Vianexx AI*  
-*Documento elaborado por Breno Luis — Confidencial*
+*Perfil Master © 2026 — Vianexx AI / Breno Luis*  
+*Documento elaborado por Breno Luis — Confidencial · v2.0 + addendum 1.0.43*
