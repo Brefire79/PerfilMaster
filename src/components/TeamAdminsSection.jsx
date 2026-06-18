@@ -22,6 +22,9 @@ export default function TeamAdminsSection() {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [busyUid, setBusyUid] = useState(null);
+  const [promoteEmail, setPromoteEmail] = useState('');
+  const [promoting, setPromoting] = useState(false);
+  const [promoteMsg, setPromoteMsg] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -66,6 +69,25 @@ export default function TeamAdminsSection() {
         `Olá! 👋\n\nVocê foi convidado(a) para acessar o *Perfil Master* como administrador.\n\nCadastre-se pelo link abaixo (válido por 7 dias):\n${inviteUrl}`
       )}`
     : null;
+
+  const handlePromote = async () => {
+    const email = promoteEmail.trim();
+    if (!email) return;
+    setPromoting(true);
+    setError('');
+    setPromoteMsg('');
+    try {
+      const res = await manageTeamAdmins({ action: 'promoteByEmail', email });
+      const nome = res?.admin?.displayName || email;
+      setPromoteMsg(`${nome} agora é administrador da sua equipe.`);
+      setPromoteEmail('');
+      await load();
+    } catch (err) {
+      setError(err?.message || 'Falha ao promover o usuário.');
+    } finally {
+      setPromoting(false);
+    }
+  };
 
   const setRole = async (uid, role) => {
     setBusyUid(uid);
@@ -129,12 +151,42 @@ export default function TeamAdminsSection() {
         )}
       </div>
 
+      {/* Promover conta existente */}
+      <div className="rounded-xl border border-[#2D3047] p-4">
+        <p className="text-sm font-medium text-[#F7F8FC]">Promover um usuário que já tem conta</p>
+        <p className="text-xs text-[#A0A3B1] mt-0.5">
+          Se a pessoa já se cadastrou no app (o link de convite acusa
+          {' '}<strong>“e-mail já está em uso”</strong>), promova-a a administrador pelo e-mail.
+          Você pode <strong>revogar</strong> a qualquer momento — ela volta a aluno sem perder nada.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <input
+            type="email"
+            value={promoteEmail}
+            onChange={(e) => { setPromoteEmail(e.target.value); setPromoteMsg(''); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handlePromote(); }}
+            placeholder="email@exemplo.com"
+            className="flex-1 h-9 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] placeholder:text-[#A0A3B1]/60 focus:outline-none focus:border-[#6366F1]"
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handlePromote}
+            loading={promoting}
+            disabled={!promoteEmail.trim()}
+          >
+            Promover a admin
+          </Button>
+        </div>
+        {promoteMsg && <p className="text-xs text-[#22C55E] mt-2">{promoteMsg}</p>}
+      </div>
+
       {error && <p className="text-xs text-[#EF4444]">{error}</p>}
 
-      {/* Lista de admins convidados */}
+      {/* Lista de admins da equipe */}
       <div>
         <p className="text-xs font-medium text-[#A0A3B1] uppercase tracking-wider mb-2">
-          Administradores convidados ({admins.length})
+          Administradores da sua equipe ({admins.length})
         </p>
 
         {loading ? (

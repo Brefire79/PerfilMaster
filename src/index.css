@@ -62,6 +62,59 @@
   --z-tooltip: 60;
 }
 
+/* ─── Tema claro (light) — override das telas principais ──────────────────────
+   O app é dark-first com cores fixas em ~47 telas. Em vez de refatorar tudo, o
+   tema claro redefine as variáveis e sobrepõe as classes de cor estruturais mais
+   usadas quando `html.light` está ativo. Acentos (indigo/verde/vermelho/âmbar)
+   são mantidos. Telas secundárias podem ter pequenos ajustes pendentes. */
+html.light {
+  --bg-primary: #EEF0F6;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #F3F4F8;
+  --text-primary: #1A1D2E;
+  --text-secondary: #5B6070;
+  --border: #E2E4EE;
+  color-scheme: light;
+}
+
+/* Fundos → superfícies claras */
+html.light .bg-\[\#0F1117\]{background-color:#EEF0F6 !important;}
+html.light .bg-\[\#1A1D2E\]{background-color:#FFFFFF !important;}
+html.light .bg-\[\#242736\]{background-color:#F3F4F8 !important;}
+html.light .bg-\[\#1A1C2A\]{background-color:#FFFFFF !important;}
+html.light .bg-\[\#13151F\]{background-color:#FFFFFF !important;}
+html.light .bg-\[\#2D3047\]{background-color:#E4E6EF !important;}
+html.light .bg-\[\#1E2030\]{background-color:#FFFFFF !important;}
+html.light .bg-\[\#4A4D6A\]{background-color:#E4E6EF !important;}
+html.light .bg-\[\#A0A3B1\]{background-color:#CFD2DD !important;}
+/* Superfícies translúcidas (topbar / sidebar / bottomnav / linhas de lista) */
+html.light .bg-\[\#1A1D2E\]\/80{background-color:rgba(255,255,255,.85) !important;}
+html.light .bg-\[\#1A1D2E\]\/90{background-color:rgba(255,255,255,.9) !important;}
+html.light .bg-\[\#1A1D2E\]\/95{background-color:rgba(255,255,255,.95) !important;}
+html.light .bg-\[\#1A1D2E\]\/50{background-color:rgba(244,245,249,.6) !important;}
+html.light .bg-\[\#1A1D2E\]\/40{background-color:rgba(244,245,249,.5) !important;}
+
+/* Hover de superfícies */
+html.light .hover\:bg-\[\#242736\]:hover{background-color:#E9EBF2 !important;}
+html.light .hover\:bg-\[\#2D3047\]:hover{background-color:#E4E6EF !important;}
+html.light .hover\:bg-\[\#1A1D2E\]\/50:hover{background-color:rgba(99,102,241,.06) !important;}
+html.light .hover\:bg-\[\#1A1D2E\]\/40:hover{background-color:rgba(99,102,241,.05) !important;}
+
+/* Bordas */
+html.light .border-\[\#2D3047\]{border-color:#E2E4EE !important;}
+html.light .border-\[\#4A4D6A\]{border-color:#CFD2DD !important;}
+
+/* Divisores (divide-[#2D3047]) */
+html.light .divide-\[\#2D3047\] > :not([hidden]) ~ :not([hidden]){border-color:#E2E4EE !important;}
+
+/* Texto */
+html.light .text-\[\#F7F8FC\]{color:#1A1D2E !important;}
+html.light .text-\[\#A0A3B1\]{color:#5B6070 !important;}
+html.light .text-\[\#4A4D6A\]{color:#8A8FA3 !important;}
+html.light .text-\[\#E2E8F0\]{color:#1A1D2E !important;}
+html.light .text-\[\#A0A3B1\]\/50{color:rgba(91,96,112,.6) !important;}
+html.light .text-\[\#A0A3B1\]\/60{color:rgba(91,96,112,.7) !important;}
+
 /* ─── Base Styles ───────────────────────────────────────────────────────────── */
 @layer base {
   *,

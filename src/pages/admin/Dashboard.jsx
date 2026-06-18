@@ -69,9 +69,12 @@ function ActivityRow({ event, t }) {
 }
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
-function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', loading = false }) {
-  return (
-    <Card variant="elevated" className="relative overflow-hidden">
+function StatCard({ to, label, value, icon, trend, trendLabel, color = '#6366F1', loading = false }) {
+  const card = (
+    <Card
+      variant="elevated"
+      className={clsx('relative overflow-hidden h-full', to && 'transition-all duration-200 hover:border-[#6366F1]/40 cursor-pointer')}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-[#A0A3B1] uppercase tracking-wider mb-1">
@@ -113,6 +116,7 @@ function StatCard({ label, value, icon, trend, trendLabel, color = '#6366F1', lo
       />
     </Card>
   );
+  return to ? <Link to={to} className="block h-full">{card}</Link> : card;
 }
 
 // ─── Quick Action Card ─────────────────────────────────────────────────────────
@@ -150,6 +154,7 @@ export default function AdminDashboard() {
     totalStudents: 0, totalGroups: 0, completedAssessments: 0, completionRate: 0,
   });
   const [recentActivity, setRecentActivity] = useState([]);
+  const [expandedDisc, setExpandedDisc] = useState(null); // card DISC aberto no Painel
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -287,6 +292,7 @@ export default function AdminDashboard() {
   const stats = [
     {
       key: 'totalStudents',
+      to: '/admin/students',
       label: t('admin.totalStudents'),
       value: String(statsData.totalStudents),
       color: '#6366F1',
@@ -299,6 +305,7 @@ export default function AdminDashboard() {
     },
     {
       key: 'totalGroups',
+      to: '/admin/groups',
       label: t('admin.totalGroups'),
       value: String(statsData.totalGroups),
       color: '#22C55E',
@@ -313,6 +320,7 @@ export default function AdminDashboard() {
     },
     {
       key: 'totalAssessments',
+      to: '/admin/reports',
       label: t('admin.totalAssessments'),
       value: String(statsData.completedAssessments),
       color: '#F59E0B',
@@ -325,6 +333,7 @@ export default function AdminDashboard() {
     },
     {
       key: 'completionRate',
+      to: '/admin/reports',
       label: t('admin.completionRate'),
       value: `${statsData.completionRate}%`,
       color: '#6366F1',
@@ -414,6 +423,7 @@ export default function AdminDashboard() {
           {stats.map((stat) => (
             <StatCard
               key={stat.key}
+              to={stat.to}
               label={stat.label}
               value={stat.value}
               icon={stat.icon}
@@ -489,27 +499,78 @@ export default function AdminDashboard() {
           </h2>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {['D', 'I', 'S', 'C'].map((type) => (
-            <Card key={type} variant="default" className="text-center">
+          {['D', 'I', 'S', 'C'].map((type) => {
+            const open = expandedDisc === type;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setExpandedDisc(open ? null : type)}
+                className="text-left h-full focus:outline-none"
+                aria-expanded={open}
+                aria-controls="disc-detalhe"
+              >
+                <Card
+                  variant="default"
+                  className={clsx(
+                    'text-center h-full transition-all duration-200 cursor-pointer hover:border-[#6366F1]/30',
+                    open && 'ring-1'
+                  )}
+                  style={open ? { borderColor: `var(--color-${type})`, boxShadow: `0 0 0 1px var(--color-${type})` } : undefined}
+                >
+                  <div
+                    className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center text-lg font-heading font-black"
+                    style={{
+                      backgroundColor: `var(--color-${type})15`,
+                      border: `1px solid var(--color-${type})30`,
+                      color: `var(--color-${type})`,
+                    }}
+                  >
+                    {type}
+                  </div>
+                  <p className="text-xs font-medium text-[#F7F8FC]">
+                    {t(`profiles.${type}.name`)}
+                  </p>
+                  <p className="text-2xs text-[#A0A3B1] mt-1 leading-tight">
+                    {t(`profiles.${type}.tagline`)}
+                  </p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-2xs font-medium" style={{ color: `var(--color-${type})` }}>
+                    {open ? 'Fechar' : 'Saiba mais'}
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className={clsx('w-3 h-3 transition-transform', open && 'rotate-180')}>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </span>
+                </Card>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Resumo expandido do perfil selecionado */}
+        {expandedDisc && (
+          <Card id="disc-detalhe" variant="default" className="mt-3 animate-fade-in">
+            <div className="flex items-start gap-4">
               <div
-                className="w-10 h-10 rounded-xl mx-auto mb-3 flex items-center justify-center text-lg font-heading font-black"
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-xl font-heading font-black flex-shrink-0"
                 style={{
-                  backgroundColor: `var(--color-${type})15`,
-                  border: `1px solid var(--color-${type})30`,
-                  color: `var(--color-${type})`,
+                  backgroundColor: `var(--color-${expandedDisc})15`,
+                  border: `1px solid var(--color-${expandedDisc})30`,
+                  color: `var(--color-${expandedDisc})`,
                 }}
               >
-                {type}
+                {expandedDisc}
               </div>
-              <p className="text-xs font-medium text-[#F7F8FC]">
-                {t(`profiles.${type}.name`)}
-              </p>
-              <p className="text-2xs text-[#A0A3B1] mt-1 leading-tight">
-                {t(`profiles.${type}.tagline`)}
-              </p>
-            </Card>
-          ))}
-        </div>
+              <div className="min-w-0">
+                <p className="text-sm font-heading font-semibold" style={{ color: `var(--color-${expandedDisc})` }}>
+                  {t(`profiles.${expandedDisc}.name`)}
+                </p>
+                <p className="text-sm text-[#A0A3B1] mt-1 leading-relaxed">
+                  {t(`profiles.${expandedDisc}.description`)}
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
       </section>
     </div>
   );

@@ -6,6 +6,7 @@ import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
 import useProfileStore from '@/store/profileStore.js';
 import useAssessmentStore from '@/store/assessmentStore.js';
+import useThemeStore from '@/store/themeStore.js';
 import { signOut } from '@/firebase/auth.js';
 // FIX: seletor de idioma removido — app é PT-BR exclusivo
 
@@ -13,6 +14,8 @@ export default function TopBar({ role = 'student', onMenuClick }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, clearUser } = useAuthStore();
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggle);
   const resetGroups = useGroupStore((s) => s.reset);
   const resetProfiles = useProfileStore((s) => s.reset);
   const resetAssessment = useAssessmentStore((s) => s.resetAssessment);
@@ -66,9 +69,28 @@ export default function TopBar({ role = 'student', onMenuClick }) {
           )}
         </div>
 
-        {/* Right: Language selector + User info + Logout */}
+        {/* Right: Theme toggle + User info + Logout */}
         <div className="flex items-center gap-2">
-          {/* FIX: seletor PT/ES/EN removido — app é PT-BR exclusivo */}
+          {/* Alternância de tema claro/escuro */}
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Tema claro' : 'Tema escuro'}
+            aria-label={theme === 'dark' ? 'Ativar tema claro' : 'Ativar tema escuro'}
+            className="p-2 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors"
+          >
+            {theme === 'dark' ? (
+              // Sol — clique para tema claro
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
+              </svg>
+            ) : (
+              // Lua — clique para tema escuro
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            )}
+          </button>
 
           {/* User avatar + name */}
           <div className="hidden sm:flex items-center gap-2 px-2 py-1.5 rounded-lg">
