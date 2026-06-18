@@ -817,6 +817,27 @@ export async function criarSessao(adminUid, dados) {
   return row?.id;
 }
 
+// Cria ou reusa uma sessão "avulsa" implícita para o admin (opcionalmente
+// vinculada a um grupo). Usada pelos atalhos de avaliação avulsa em Alunos e
+// Grupos, agora que a aba Sessões foi ocultada — o avaliado precisa de uma
+// sessaoId, mas o facilitador não precisa mais gerenciar sessões manualmente.
+export async function ensureSessaoAvulsa(adminUid, { groupId = null, titulo } = {}) {
+  const tituloFinal = titulo || (groupId ? 'Avaliações do grupo' : 'Avaliações avulsas');
+  const sessoes = await getSessoesByAdmin(adminUid);
+  const existente = sessoes.find(
+    (s) =>
+      (s.groupId || null) === (groupId || null) &&
+      s.status === 'ativa' &&
+      s.titulo === tituloFinal
+  );
+  if (existente) return existente.id;
+  return await criarSessao(adminUid, {
+    groupId,
+    titulo: tituloFinal,
+    descricao: 'Avaliações enviadas por link WhatsApp',
+  });
+}
+
 export async function getSessoesByAdmin(adminUid) {
   const rows = await selectRows(COLLECTIONS.SESSOES, {
     filters: [{ field: 'adminUid', op: 'eq', value: adminUid }],
@@ -908,6 +929,59 @@ export async function getAvaliadoByEmail(email) {
 
 export async function deleteAvaliado(avaliadoId) {
   await deleteRows(COLLECTIONS.AVALIADOS, [{ field: 'id', op: 'eq', value: avaliadoId }]);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// REPORT META (DELTA 13) — análise de IA + observação do facilitador por relatório
+// ═══════════════════════════════════════════════════════════════════════════════
+// Tabela própria do admin (app_report_meta), chaveada por adminuid + ref.
+//   ref = token (avaliado de sessão) OU uid (conta de aluno).
+// Evita a policy profiles_update (só o dono atualiza app_profiles) e funciona
+// nos dois modos de relatório. Degrada graciosamente se a DELTA 13 ainda não
+// foi aplicada (select retorna null; saves lançam erro tratado na UI).
+const REPORT_META = import.meta.env.VITE_SB_TABLE_REPORT_META || 'app_report_meta';
+
+export async function getReportMeta(adminUid, ref) {
+  if (!adminUid || !ref) return null;
+  try {
+    return await selectRows(REPORT_META, {
+      filters: [
+        { field: 'adminUid', op: 'eq', value: adminUid },
+        { field: 'ref', op: 'eq', value: ref },
+      ],
+      single: true,
+    });
+  } catch {
+    // DELTA 13 ainda não aplicada — sem metadados persistidos.
+    return null;
+  }
+}
+
+async function salvarReportMeta(adminUid, ref, patch) {
+  if (!adminUid || !ref) throw new Error('Relatório sem identificador para salvar.');
+  const existente = await getReportMeta(adminUid, ref);
+  if (existente?.id) {
+    await updateRows(
+      REPORT_META,
+      [{ field: 'id', op: 'eq', value: existente.id }],
+      { ...patch, atualizadoEm: nowIso() },
+      { returning: false }
+    );
+  } else {
+    await insertRow(
+      REPORT_META,
+      { adminUid, ref, ...patch, criadoEm: nowIso(), atualizadoEm: nowIso() },
+      { returning: false }
+    );
+  }
+}
+
+export function salvarReportInsight(adminUid, ref, insight) {
+  return salvarReportMeta(adminUid, ref, { insight });
+}
+
+export function salvarReportObservacao(adminUid, ref, observacao) {
+  return salvarReportMeta(adminUid, ref, { observacao });
 }
 
 // Disparo em massa: registra quando o convite WhatsApp foi enviado ao avaliado

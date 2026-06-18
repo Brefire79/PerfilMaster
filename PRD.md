@@ -178,9 +178,10 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - Resultado salvo em `app_assessments`
 - Visualização em `/student/profile`
 
-### 6.4 Sessões Públicas (Sem Login)
-- Admin cria sessão em `/admin/sessoes`
-- Adiciona avaliados (nome + telefone obrigatórios, e-mail opcional)
+### 6.4 Avaliação Avulsa Pública (Sem Login)
+> **Atualização jun/2026:** as abas dedicadas **Sessões** e **Pessoas** foram ocultadas. O ponto de entrada agora é o botão **"Avaliação avulsa"** na aba **Alunos** e em **Grupos › Membros** (`NovoAvaliadoTrigger`). A sessão é criada/reusada implicitamente (`ensureSessaoAvulsa`) — o admin não gerencia sessões manualmente. O restante do fluxo (token, link WhatsApp, status, resultado) permanece idêntico.
+- Admin clica em "Avaliação avulsa" (em Alunos ou num grupo)
+- Adiciona avaliados (nome + telefone obrigatórios, e-mail/CPF opcionais)
 - Sistema gera token único por avaliado
 - Admin envia link: `https://dominio.com/avaliacao/:token`
 - Avaliado responde sem criar conta
@@ -218,10 +219,10 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - Protegido: requer role admin
 - **§ 1 — Identificação**: nome, telefone, sessão, documento ID, data
 - **§ 2 — Perfil DISC**: barras animadas, tabela com valores e percentuais, interpretação
-- **§ 3 — Análise IA**: insight, forças, desafios, carreiras, estilo de comunicação
+- **§ 3 — Análise IA**: insight, forças, desafios, carreiras, estilo de comunicação. **Persistida (DELTA 13):** a análise é salva em `app_report_meta` ao ser gerada — ao reabrir o relatório ela já aparece (botão "↻ Regerar IA" para atualizar). Não precisa regerar toda vez.
 - **§ 3.1 — Padrões Sabotadores e Riscos de Derailment** *(só contas de aluno)*: renderizada apenas quando há dados em `app_profiles` (alunos respondem as 78 questões — 28 DISC + 50 sabotadores). Avaliados de sessão respondem só as 28 DISC, então a seção não aparece. Fonte: `getAvaliadoLikeFromUid` (campos `saboteurPatterns`/`derailmentRisks`). Paridade com o "Ver perfil" (`ProfileDetail`).
 - **§ 4 — Indicadores Clínicos** *(admin only — não impresso para o avaliado)*: nível de atenção, nota interna, disclaimer ético
-- **§ 5 — Observações do Instrutor**: textarea livre, incluída na impressão
+- **§ 5 — Observações do Instrutor**: textarea livre, incluída na impressão. **Persistida (DELTA 13):** botão "Salvar observação" grava em `app_report_meta` (acompanhamento do facilitador por relatório); recarrega ao reabrir.
 - **Barra de controles** (não impressa):
   - 🤖 Gerar Análise IA
   - 🚩 Verificar Indicadores Clínicos
@@ -234,6 +235,12 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - Distribuição DISC da equipe
 - Médias por dimensão
 - Análise de complementaridade de perfis
+- **Relatórios individuais**: lista de pessoas (Central de Pessoas) com **contagem de quantas vezes foram avaliadas**. Pessoas com 2+ avaliações **expandem o histórico** com data, perfil e a **anotação de acompanhamento** salva por relatório (DELTA 13). Componente: `components/admin/PessoaRelatorioRow.jsx`.
+
+### 6.9.1 Gestão de Alunos (`/admin/students`)
+- Lista unificada (contas de aluno + avaliados de sessão), busca e filtros por grupo/perfil
+- **Mover aluno para outro grupo**: ação por linha (só contas de aluno) — reatribui `app_users.groupid` + `memberids` dos grupos de origem/destino. Avaliados de sessão pertencem a um grupo pela sessão, não por aqui.
+- Atribuir/reavaliar, lembrete por e-mail, avaliação avulsa por WhatsApp (ver §6.4), exclusão
 
 ### 6.10 Módulos Personalizados
 - Admin cria módulos com perguntas customizadas
@@ -354,7 +361,8 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 | `/admin/students` | Admin | Students |
 | `/admin/modules` | Admin | Modules |
 | `/admin/modules/:id` | Admin | ModuleBuilder |
-| `/admin/sessoes` | Admin | Sessoes |
+| ~~`/admin/sessoes`~~ | — | _Rota removida (jun/2026); função em Alunos/Grupos_ |
+| ~~`/admin/pessoas`~~ | — | _Rota removida (jun/2026); Central de Pessoas ocultada_ |
 | `/admin/relatorio/:token` | Admin | RelatorioOficial |
 | `/admin/reports` | Admin | Reports |
 | `/admin/settings` | Admin | Settings |

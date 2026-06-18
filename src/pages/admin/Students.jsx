@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin, deleteStudent, deleteAvaliado } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin, deleteStudent, deleteAvaliado, addMemberToGroup, removeMemberFromGroup, updateUser } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
@@ -13,6 +13,7 @@ import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
 import IdentityLinkPanel from '@/components/admin/IdentityLinkPanel.jsx';
+import NovoAvaliadoTrigger from '@/components/sessao/NovoAvaliadoTrigger.jsx';
 
 const PROFILE_COLORS = { D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1' };
 const PAGE_SIZE = 10;
@@ -354,6 +355,49 @@ export default function Students() {
     }
   };
 
+  // Mover aluno para outro grupo (#1) — só contas de aluno (têm uid/groupId);
+  // avaliados de sessão pertencem a um grupo via sessão, não via app_users.
+  const [moveTarget, setMoveTarget] = useState(null);
+  const [moveGroupId, setMoveGroupId] = useState('');
+  const [moving, setMoving] = useState(false);
+  const [moveError, setMoveError] = useState('');
+
+  const handleOpenMove = (student) => {
+    setMoveError('');
+    setMoveGroupId(student.groupId || '');
+    setMoveTarget(student);
+  };
+
+  const handleConfirmMove = async () => {
+    if (!moveTarget) return;
+    const uid = moveTarget.uid || moveTarget.id;
+    const novoGrupo = moveGroupId || null;       // '' → avulso (sem grupo)
+    const antigoGrupo = moveTarget.groupId || null;
+    if (novoGrupo === antigoGrupo) { setMoveTarget(null); return; }
+    setMoving(true);
+    setMoveError('');
+    try {
+      if (antigoGrupo) await removeMemberFromGroup(antigoGrupo, uid);
+      if (novoGrupo) await addMemberToGroup(novoGrupo, uid);
+      // app_users.groupid é a fonte de verdade da listagem de membros
+      await updateUser(uid, { groupId: novoGrupo });
+      const g = groups.find((x) => x.id === novoGrupo);
+      setAllStudents((prev) =>
+        prev.map((s) =>
+          s.id === moveTarget.id
+            ? { ...s, groupId: novoGrupo, groupName: g?.name || null, groupColor: g?.color || '#A0A3B1' }
+            : s
+        )
+      );
+      setMoveTarget(null);
+    } catch (err) {
+      console.error('Erro ao mover aluno:', err);
+      setMoveError(err?.message || 'Não foi possível mover o aluno. Tente novamente.');
+    } finally {
+      setMoving(false);
+    }
+  };
+
   // Exclusão de aluno/avaliado (limpeza de testes e registros com erro)
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -457,6 +501,11 @@ export default function Students() {
           >
             {t('app.export', 'Exportar')}
           </Button>
+          {/* Avaliação avulsa por WhatsApp (sem conta) — função migrada da antiga aba Sessões */}
+          <NovoAvaliadoTrigger
+            label="Avaliação avulsa"
+            onClosed={handleRefresh}
+          />
           <Button
             variant="primary"
             size="md"
@@ -683,6 +732,21 @@ export default function Students() {
                       </button>
                     );
                   })()}
+                  {!student.isAvaliado && student.role !== 'admin' && (
+                    <button
+                      className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
+                      aria-label="Mover para outro grupo"
+                      title="Mover para outro grupo"
+                      onClick={() => handleOpenMove(student)}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                        <polyline points="13 11 16 14 13 17" />
+                        <line x1="8" y1="14" x2="16" y2="14" />
+                      </svg>
+                      <span className="hidden sm:inline">Mover</span>
+                    </button>
+                  )}
                   <button
                     className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                     aria-label={t('students.sendReminder', 'Enviar lembrete')}
@@ -861,6 +925,57 @@ export default function Students() {
                 </Button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal mover aluno para outro grupo (#1) ─────────────────── */}
+      {moveTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-move">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047]">
+              <div>
+                <h2 id="dlg-move" className="text-base font-heading font-semibold text-[#F7F8FC]">
+                  Mover para outro grupo
+                </h2>
+                <p className="text-xs text-[#A0A3B1] mt-0.5">
+                  {moveTarget.displayName || moveTarget.name}
+                  {moveTarget.groupName ? ` · atualmente em ${moveTarget.groupName}` : ' · sem grupo'}
+                </p>
+              </div>
+              <button
+                onClick={() => setMoveTarget(null)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#2D3047] transition-colors"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              <label className="block text-xs font-medium text-[#A0A3B1]">Grupo de destino</label>
+              <select
+                value={moveGroupId}
+                onChange={(e) => setMoveGroupId(e.target.value)}
+                className="w-full h-11 px-3 rounded-lg bg-[#242736] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
+              >
+                <option value="">Sem grupo (avulso)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+              {moveError && (
+                <p className="text-xs text-[#EF4444] px-3 py-2 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30">{moveError}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">
+              <Button variant="secondary" size="sm" onClick={() => setMoveTarget(null)} disabled={moving}>
+                {t('app.cancel', 'Cancelar')}
+              </Button>
+              <Button variant="primary" size="sm" onClick={handleConfirmMove} loading={moving}>
+                {moving ? 'Movendo...' : 'Mover'}
+              </Button>
+            </div>
           </div>
         </div>
       )}

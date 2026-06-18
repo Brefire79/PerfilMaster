@@ -23,8 +23,9 @@ const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'
 // ─── Lazy-loaded Admin Pages ──────────────────────────────────────────────────
 // FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
 const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard.jsx'));
-const AdminSessoes = lazy(() => import('@/pages/admin/Sessoes.jsx'));
-const AdminPessoas = lazy(() => import('@/pages/admin/Pessoas.jsx'));
+// Abas Sessões e Pessoas ocultadas — função migrada para Alunos/Grupos.
+// Arquivos preservados (Sessoes.jsx, Pessoas.jsx); rotas removidas abaixo.
+// Para reativar: re-importe e restaure os <Route> correspondentes.
 const RelatorioOficial = lazy(() => import('@/pages/admin/RelatorioOficial.jsx'));
 
 // ─── Lazy-loaded Student Pages ────────────────────────────────────────────────
@@ -210,10 +211,9 @@ export default function AppRoutes() {
           <Route path="groups" element={<SafeAdminGroups />} />
           <Route path="groups/:id" element={<SafeAdminGroupDetail />} />
           <Route path="students" element={<SafeAdminStudents />} />
-          <Route path="pessoas" element={<AdminPessoas />} />
           <Route path="modules" element={<SafeAdminModules />} />
           <Route path="modules/:id" element={<SafeAdminModuleBuilder />} />
-          <Route path="sessoes" element={<AdminSessoes />} />
+          {/* Rotas /admin/pessoas e /admin/sessoes removidas (abas ocultadas) */}
           <Route path="relatorio/aluno/:uid" element={<RelatorioOficial />} />
           <Route path="relatorio/:token" element={<RelatorioOficial />} />
           <Route path="reports" element={<SafeAdminReports />} />

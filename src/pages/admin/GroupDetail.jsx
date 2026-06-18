@@ -45,6 +45,7 @@ import InviteLink from '@/components/group/InviteLink.jsx';
 import ProgressRing from '@/components/ui/ProgressRing.jsx';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
 import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
+import NovoAvaliadoTrigger from '@/components/sessao/NovoAvaliadoTrigger.jsx';
 
 const COLOR_PRESETS = [
   '#6366F1', '#F43F5E', '#F59E0B', '#10B981', '#0EA5E9', '#8B5CF6',
@@ -802,6 +803,21 @@ export default function GroupDetail() {
         {activeTab === 'members' && (
           <Card variant="default">
             <AddMemberForm groupId={id} onAdded={loadGroup} onSwitchToInvite={() => setActiveTab('invite')} />
+
+            {/* Avaliação avulsa por WhatsApp vinculada a este grupo (sem exigir conta).
+                Função migrada da antiga aba Sessões. */}
+            <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-xs text-[#A0A3B1]">
+                Quer avaliar alguém sem conta? Envie um link de avaliação por WhatsApp.
+              </p>
+              <NovoAvaliadoTrigger
+                groupId={id}
+                titulo={group.name}
+                label="Avaliação avulsa (WhatsApp)"
+                onClosed={loadGroup}
+                className="flex-shrink-0"
+              />
+            </div>
 
             {/* Disparo para o grupo: cobra os pendentes (modal WhatsApp/e-mail) */}
             {membrosPendentes.length > 0 && (

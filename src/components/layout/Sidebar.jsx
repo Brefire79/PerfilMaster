@@ -44,17 +44,8 @@ const adminNavItems = [
       </svg>
     ),
   },
-  {
-    key: 'pessoas',
-    to: '/admin/pessoas',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
-        <circle cx="12" cy="8" r="4" />
-        <path d="M4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1" />
-        <path d="M8 8a4 4 0 0 1 8 0" />
-      </svg>
-    ),
-  },
+  // ── Aba "Pessoas" (Central de Pessoas) ocultada — a função foi integrada a
+  //    Alunos/Grupos. Para reativar, restaure este item e a rota em routes/index.jsx.
   {
     key: 'modules',
     to: '/admin/modules',
@@ -65,17 +56,9 @@ const adminNavItems = [
       </svg>
     ),
   },
-  {
-    key: 'sessoes',
-    to: '/admin/sessoes',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.78a16 16 0 0 0 6 6l.85-.85a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.5 16.92z" />
-        <path d="M14.05 2a9 9 0 0 1 8 7.94" />
-        <path d="M14.05 6A5 5 0 0 1 18 10" />
-      </svg>
-    ),
-  },
+  // ── Aba "Sessões" ocultada — criar avaliação avulsa + enviar link WhatsApp
+  //    agora vive em Alunos (botão "Avaliação avulsa") e em Grupos › Membros.
+  //    Para reativar, restaure este item e a rota em routes/index.jsx.
   {
     key: 'reports',
     to: '/admin/reports',

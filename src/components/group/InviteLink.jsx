@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
@@ -36,6 +37,10 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
   const [token, setToken] = useState(inviteToken || null);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
+  // QR ampliado (tela cheia para leitura) + envio do QR por WhatsApp
+  const [qrZoom, setQrZoom] = useState(false);
+  const [sharingQr, setSharingQr] = useState(false);
+  const qrRef = useRef(null);
 
   useEffect(() => {
     if (token || !groupId) return;
@@ -77,6 +82,73 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
     );
     // Sem número: o WhatsApp abre e o admin escolhe o contato
     window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
+  };
+
+  // Fecha o QR ampliado com a tecla Esc + trava o scroll do fundo
+  useEffect(() => {
+    if (!qrZoom) return;
+    const onKey = (e) => { if (e.key === 'Escape') setQrZoom(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [qrZoom]);
+
+  // Converte o SVG do QR (react-qr-code) em PNG para compartilhamento/download.
+  const qrSvgParaPngBlob = async () => {
+    const svg = qrRef.current?.querySelector('svg');
+    if (!svg) return null;
+    const svgData = new XMLSerializer().serializeToString(svg);
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(svgBlob);
+    try {
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+      const tamanho = 600;
+      const canvas = document.createElement('canvas');
+      canvas.width = tamanho; canvas.height = tamanho;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, tamanho, tamanho);
+      const pad = 32; // moldura branca para leitura confiável
+      ctx.drawImage(img, pad, pad, tamanho - pad * 2, tamanho - pad * 2);
+      return await new Promise((res) => canvas.toBlob(res, 'image/png'));
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+
+  // Envia o QR por WhatsApp. No celular (Web Share API) compartilha a IMAGEM
+  // direto pro WhatsApp; no desktop baixa o PNG e abre o WhatsApp com o link.
+  const handleEnviarQrWhatsApp = async () => {
+    if (!inviteUrl || sharingQr) return;
+    setSharingQr(true);
+    try {
+      const blob = await qrSvgParaPngBlob();
+      const texto = `📲 QR Code de convite — grupo no Perfil Master.\nEscaneie ou acesse: ${inviteUrl}`;
+      if (blob) {
+        const file = new File([blob], 'qrcode-convite.png', { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({ files: [file], text: texto, title: 'Convite Perfil Master' });
+            return;
+          } catch (e) {
+            if (e?.name === 'AbortError') return; // usuário cancelou
+            // demais erros → cai no fallback abaixo
+          }
+        }
+        // Fallback desktop: baixa o PNG para anexar e abre o WhatsApp Web com o link
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'qrcode-convite.png';
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      // Abre o WhatsApp Web (web.whatsapp.com) com a mensagem pronta — o PNG
+      // baixado é anexado manualmente na conversa escolhida.
+      window.open(`https://web.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank', 'noopener,noreferrer');
+    } finally {
+      setSharingQr(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -218,7 +290,15 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
         {inviteUrl && (
           <Card variant="default">
             <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div className="p-3 bg-white rounded-xl flex-shrink-0">
+              {/* Clicar amplia o QR em tela cheia para leitura coletiva */}
+              <button
+                ref={qrRef}
+                type="button"
+                onClick={() => setQrZoom(true)}
+                className="group relative p-3 bg-white rounded-xl flex-shrink-0 cursor-zoom-in transition-transform hover:scale-[1.03] focus:outline-none focus:ring-2 focus:ring-[#6366F1]"
+                title="Clique para ampliar e exibir na tela"
+                aria-label="Ampliar QR Code"
+              >
                 <QRCode
                   value={inviteUrl}
                   size={140}
@@ -226,17 +306,31 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
                   fgColor="#0F1117"
                   level="M"
                 />
-              </div>
+                <span className="absolute bottom-1 right-1 flex items-center justify-center w-6 h-6 rounded-md bg-[#0F1117]/80 text-white opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-3.5 h-3.5">
+                    <polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                </span>
+              </button>
               <div className="flex-1 text-center sm:text-left">
                 <p className="text-sm font-medium text-[#F7F8FC] mb-1">
                   {t('group.scanQR', 'Escaneie o QR Code')}
                 </p>
                 <p className="text-xs text-[#A0A3B1] leading-relaxed">
-                  {t(
-                    'group.qrDescription',
-                    'Compartilhe este QR Code com os alunos para que possam entrar no grupo diretamente.'
-                  )}
+                  Toque no QR para <strong className="text-[#F7F8FC]">ampliar na tela</strong> e deixar que os alunos escaneiem com o celular — ou envie por WhatsApp.
                 </p>
+                <button
+                  onClick={handleEnviarQrWhatsApp}
+                  disabled={sharingQr}
+                  className="mt-3 inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold transition-colors disabled:opacity-60"
+                  style={{ background: '#25D36620', border: '1px solid #25D36660', color: '#25D366' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                  </svg>
+                  {sharingQr ? 'Preparando...' : 'Enviar QR por WhatsApp'}
+                </button>
               </div>
             </div>
           </Card>
@@ -280,6 +374,58 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
           </div>
         </Card>
       </div>
+
+      {/* ── QR ampliado em tela cheia (para leitura coletiva) ───────────── */}
+      {qrZoom && inviteUrl && createPortal(
+        <div
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center p-6 bg-black/90 backdrop-blur-sm animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-label="QR Code ampliado"
+          onClick={() => setQrZoom(false)}
+        >
+          <button
+            onClick={() => setQrZoom(false)}
+            className="absolute top-5 right-5 w-10 h-10 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Fechar"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-6 h-6">
+              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+
+          {/* QR grande — o clique aqui não fecha (stopPropagation) */}
+          <div
+            className="bg-white rounded-2xl p-5 shadow-2xl"
+            style={{ width: 'min(82vw, 70vh)', height: 'min(82vw, 70vh)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <QRCode
+              value={inviteUrl}
+              level="M"
+              bgColor="#FFFFFF"
+              fgColor="#0F1117"
+              style={{ width: '100%', height: '100%' }}
+            />
+          </div>
+
+          <p className="mt-6 text-sm text-white/90 font-medium text-center max-w-sm">
+            Aproxime a câmera do celular para entrar no grupo
+          </p>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleEnviarQrWhatsApp(); }}
+            disabled={sharingQr}
+            className="mt-4 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+            style={{ background: '#25D366', color: '#FFFFFF' }}
+          >
+            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+            </svg>
+            {sharingQr ? 'Preparando...' : 'Enviar QR por WhatsApp'}
+          </button>
+        </div>,
+        document.body
+      )}
 
       <ConfirmModal
         isOpen={confirmRegenerate}

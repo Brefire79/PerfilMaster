@@ -6,6 +6,7 @@ import clsx from 'clsx';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import ProgressRing from '@/components/ui/ProgressRing.jsx';
+import PessoaRelatorioRow from '@/components/admin/PessoaRelatorioRow.jsx';
 
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
@@ -554,10 +555,15 @@ export default function Reports() {
       {pessoas.length > 0 && (
         <section aria-label="Relatórios individuais">
           <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
-              Relatórios individuais
-              <span className="text-[#A0A3B1] font-normal text-sm ml-2">({pessoas.length})</span>
-            </h2>
+            <div>
+              <h2 className="text-base font-heading font-semibold text-[#F7F8FC]">
+                Relatórios individuais
+                <span className="text-[#A0A3B1] font-normal text-sm ml-2">({pessoas.length})</span>
+              </h2>
+              <p className="text-xs text-[#A0A3B1] mt-0.5">
+                O número ao lado de cada pessoa indica quantas vezes ela foi avaliada. Pessoas com 2+ avaliações expandem o histórico com data e anotação.
+              </p>
+            </div>
             <div className="relative max-w-xs w-full sm:w-auto">
               <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-[#A0A3B1]" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4">
@@ -578,38 +584,14 @@ export default function Reports() {
             <div className="divide-y divide-[#2D3047]">
               {pessoas
                 .filter((p) => !pessoasQuery.trim() || (p.nome || '').toLowerCase().includes(pessoasQuery.toLowerCase().trim()))
-                .map((p) => {
-                  const diag = p.diagnostico;
-                  const cor = PROFILE_CONFIG[diag.perfilPrimario]?.hex || '#A0A3B1';
-                  // Rota: avaliação de sessão concluída (token) tem prioridade; senão a conta (uid).
-                  const av = [...p.avaliacoes]
-                    .filter((a) => a.diagnostico && a.token)
-                    .sort((x, y) => new Date(y.concluidoEm || 0) - new Date(x.concluidoEm || 0))[0];
-                  const rota = av ? `/admin/relatorio/${av.token}` : (p.conta?.uid ? `/admin/relatorio/aluno/${p.conta.uid}` : null);
-                  if (!rota) return null;
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => navigate(rota)}
-                      className="w-full text-left flex items-center gap-3 px-4 py-3 hover:bg-[#1A1D2E]/50 transition-colors group"
-                    >
-                      <span
-                        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                        style={{ backgroundColor: `${cor}20`, color: cor }}
-                        aria-hidden="true"
-                      >
-                        {(p.nome || '?').split(' ').filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')}
-                      </span>
-                      <span className="flex-1 min-w-0">
-                        <span className="block text-sm text-[#F7F8FC] font-medium truncate">{p.nome}</span>
-                        <span className="block text-xs" style={{ color: cor }}>
-                          {diag.perfilPrimarioNome}{diag.pqScore != null && ` · PQ ${diag.pqScore}`}
-                        </span>
-                      </span>
-                      <span className="text-xs font-medium text-[#A0A3B1] group-hover:text-[#6366F1]">Ver relatório →</span>
-                    </button>
-                  );
-                })}
+                .map((p) => (
+                  <PessoaRelatorioRow
+                    key={p.id}
+                    pessoa={p}
+                    adminUid={user?.uid}
+                    onNavigate={navigate}
+                  />
+                ))}
             </div>
           </Card>
         </section>

@@ -6,7 +6,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { insightPerfil, therapyFlag, buscarPorToken } from '@/firebase/functions.js';
-import { getAvaliadoByToken, getHistoricoEvolucao, getAvaliadoLikeFromUid } from '@/firebase/firestore.js';
+import { getAvaliadoByToken, getHistoricoEvolucao, getAvaliadoLikeFromUid, getReportMeta, salvarReportInsight, salvarReportObservacao } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import { formatCpf } from '@/lib/cpf.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
@@ -114,6 +114,14 @@ export default function RelatorioOficial() {
   const [printMode,   setPrintMode]   = useState(false);
   const [liberado,    setLiberado]    = useState(false);
 
+  // Persistência (DELTA 13): análise de IA + observação salvas por relatório
+  const [insightSalvo, setInsightSalvo] = useState(false);
+  const [savingObs,    setSavingObs]    = useState(false);
+  const [obsSalvo,     setObsSalvo]     = useState(false);
+  const [persistErro,  setPersistErro]  = useState('');
+  // ref do relatório: token (sessão) ou uid (conta) — chave em app_report_meta
+  const ref = token || uid;
+
   // Histórico de evolução (Fase 3)
   const [historico, setHistorico] = useState({ pontos: [], temOutrasNaoVinculadas: false, cpf: null });
 
@@ -173,6 +181,19 @@ export default function RelatorioOficial() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, uid, user?.uid]);
 
+  // ── DELTA 13: carrega IA + observação salvas (não precisa regerar a IA) ──────
+  useEffect(() => {
+    if (!user?.uid || !ref) return;
+    let cancel = false;
+    (async () => {
+      const meta = await getReportMeta(user.uid, ref);
+      if (cancel || !meta) return;
+      if (meta.insight) { setInsight(meta.insight); setInsightSalvo(true); }
+      if (typeof meta.observacao === 'string') setObs(meta.observacao);
+    })();
+    return () => { cancel = true; };
+  }, [ref, user?.uid]);
+
   const perfil   = avaliado?.perfil;
   const nome     = avaliado?.nome || '';
   const telefone = avaliado?.telefone || '';
@@ -202,13 +223,35 @@ export default function RelatorioOficial() {
     // ── IA: gerar insight ──────────────────────────────────────────────────────
   const handleRefinarIA = async () => {
     if (!perfil) return;
-    setLoadingIA(true); setErroIA('');
+    setLoadingIA(true); setErroIA(''); setPersistErro('');
     try {
       const res = await insightPerfil({ perfil, nome });
       setInsight(res);
+      // DELTA 13: salva a análise para não precisar regerar ao reabrir o relatório
+      try {
+        await salvarReportInsight(user.uid, ref, res);
+        setInsightSalvo(true);
+      } catch {
+        setPersistErro('Análise gerada, mas não foi possível salvá-la. Rode a DELTA 13 no Supabase para persistir.');
+      }
     } catch (err) {
       setErroIA(err.message || 'Erro ao gerar análise');
     } finally { setLoadingIA(false); }
+  };
+
+  // ── DELTA 13: salva a observação de acompanhamento do facilitador ────────────
+  const handleSalvarObs = async () => {
+    if (!user?.uid || !ref) return;
+    setSavingObs(true); setPersistErro('');
+    try {
+      await salvarReportObservacao(user.uid, ref, obs);
+      setObsSalvo(true);
+      setTimeout(() => setObsSalvo(false), 2500);
+    } catch {
+      setPersistErro('Não foi possível salvar a observação. Rode a DELTA 13 no Supabase para persistir.');
+    } finally {
+      setSavingObs(false);
+    }
   };
 
   // ── Flags clínicas ─────────────────────────────────────────────────────────
@@ -303,13 +346,28 @@ export default function RelatorioOficial() {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {!insight && (
+            {!insight ? (
               <button onClick={handleRefinarIA} disabled={loadingIA}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#6366F1] hover:bg-[#5558E3] text-white text-xs font-semibold transition-colors disabled:opacity-60">
                 {loadingIA
                   ? <><div className="w-3 h-3 rounded-full border border-white/40 border-t-white animate-spin"/>Analisando...</>
                   : '✨ Gerar análise IA'}
               </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {insightSalvo && (
+                  <span className="text-xs text-[#22C55E] flex items-center gap-1" title="Análise salva neste relatório">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Análise IA salva
+                  </span>
+                )}
+                <button onClick={handleRefinarIA} disabled={loadingIA}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-[#6366F1]/40 text-[#818CF8] hover:bg-[#6366F1]/10 text-xs font-semibold transition-colors disabled:opacity-60">
+                  {loadingIA
+                    ? <><div className="w-3 h-3 rounded-full border border-[#818CF8]/40 border-t-[#818CF8] animate-spin"/>Analisando...</>
+                    : '↻ Regerar IA'}
+                </button>
+              </div>
             )}
             {insight && !flagClinica && (
               <button onClick={handleVerificarFlag} disabled={loadingFlag}
@@ -343,6 +401,11 @@ export default function RelatorioOficial() {
             <p className="text-xs text-[#A0A3B1] mt-0.5">
               Serviço de IA temporariamente indisponível — tente novamente em instantes.
             </p>
+          </div>
+        )}
+        {persistErro && (
+          <div className="max-w-4xl mx-auto mt-2 px-3 py-2 bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-lg">
+            <p className="text-xs text-[#F59E0B]">⚠️ {persistErro}</p>
           </div>
         )}
       </div>
@@ -589,7 +652,24 @@ export default function RelatorioOficial() {
                   rows={4}
                   style={{ fontFamily: 'Arial, sans-serif', lineHeight: '1.6' }}
                 />
-                <p className="text-xs text-gray-400 mt-1">Texto incluído na impressão/PDF. Não é enviado ao avaliado.</p>
+                <div className="flex items-center justify-between gap-3 mt-1.5 flex-wrap">
+                  <p className="text-xs text-gray-400">Salvo no acompanhamento do facilitador e incluído na impressão/PDF. Não é enviado ao avaliado.</p>
+                  <div className="flex items-center gap-2">
+                    {obsSalvo && (
+                      <span className="text-xs text-green-600 flex items-center gap-1">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-3.5 h-3.5"><polyline points="20 6 9 17 4 12"/></svg>
+                        Observação salva
+                      </span>
+                    )}
+                    <button
+                      onClick={handleSalvarObs}
+                      disabled={savingObs}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors disabled:opacity-60"
+                    >
+                      {savingObs ? 'Salvando...' : 'Salvar observação'}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
