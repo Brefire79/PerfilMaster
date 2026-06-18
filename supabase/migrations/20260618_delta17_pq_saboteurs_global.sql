@@ -20,6 +20,10 @@ ALTER TABLE public.app_profiles
   ADD COLUMN IF NOT EXISTS saboteur_scores jsonb;
 
 -- ── 2) central_group_insights v2 (DISC + PQ + Sabotadores) ──────────────────
+-- DROP necessário: a assinatura de RETORNO mudou (novas colunas pq_score_avg /
+-- saboteurs_avg) e o Postgres não permite trocar o tipo de retorno via REPLACE.
+DROP FUNCTION IF EXISTS public.central_group_insights(int);
+
 CREATE OR REPLACE FUNCTION public.central_group_insights(min_n int DEFAULT 5)
 RETURNS TABLE (
   group_id          uuid,
