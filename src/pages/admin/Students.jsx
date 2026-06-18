@@ -11,6 +11,7 @@ import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
+import { generateRecoveryLink } from '@/firebase/functions.js';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
 import IdentityLinkPanel from '@/components/admin/IdentityLinkPanel.jsx';
 import NovoAvaliadoTrigger from '@/components/sessao/NovoAvaliadoTrigger.jsx';
@@ -455,6 +456,48 @@ export default function Students() {
     window.open(`mailto:${student.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`);
   };
 
+  // ─── Reset de senha via WhatsApp (Caminho B) ───────────────────────────────
+  // Gera link de recuperação (Edge Function) e abre um modal p/ enviar/copiar.
+  const [resetTarget, setResetTarget] = useState(null);     // aluno selecionado
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetLink, setResetLink] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetCopied, setResetCopied] = useState(false);
+
+  const handleResetSenha = async (student) => {
+    setResetTarget(student);
+    setResetLink('');
+    setResetError('');
+    setResetCopied(false);
+    setResetLoading(true);
+    try {
+      const res = await generateRecoveryLink({
+        targetUid: student.uid || student.id,
+        baseUrl: getPublicBaseUrl(),
+      });
+      setResetLink(res?.actionLink || '');
+    } catch (e) {
+      setResetError(e?.message || 'Não foi possível gerar o link.');
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const resetWhatsappMsg = (student) => {
+    const nome = student?.displayName || student?.name || '';
+    return encodeURIComponent(
+      `Olá${nome ? `, ${nome}` : ''}! Para redefinir sua senha no Perfil Master, acesse o link abaixo (válido por tempo limitado):\n\n${resetLink}\n\nDepois é só definir uma nova senha. Qualquer dúvida, me chama.`
+    );
+  };
+
+  const copiarResetLink = async () => {
+    try {
+      await navigator.clipboard.writeText(resetLink);
+      setResetCopied(true);
+      setTimeout(() => setResetCopied(false), 2000);
+    } catch { /* clipboard indisponível */ }
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -760,6 +803,23 @@ export default function Students() {
                     </svg>
                     <span className="hidden sm:inline">Lembrete</span>
                   </button>
+                  {/* Resetar senha (Caminho B): só contas de aluno (têm uid e
+                      e-mail), nunca avaliados de sessão nem a própria conta. */}
+                  {!student.isAvaliado && (student.uid || student.id) !== user?.uid && (
+                    <button
+                      className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                      aria-label="Resetar senha"
+                      title="Gerar link de redefinição de senha (enviar por WhatsApp)"
+                      onClick={() => handleResetSenha(student)}
+                      disabled={!student.email}
+                    >
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                      </svg>
+                      <span className="hidden sm:inline">Senha</span>
+                    </button>
+                  )}
                   {/* Lixeira: nunca para a própria conta nem para outros admins
                       (evita auto-exclusão e perda de acesso). Avaliados de sessão
                       e alunos comuns podem ser excluídos. */}
@@ -1020,6 +1080,62 @@ export default function Students() {
               >
                 {deleting ? 'Excluindo...' : 'Excluir'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal reset de senha (link por WhatsApp) ─────────────────── */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="dlg-reset">
+          <div className="w-full max-w-md bg-[#1A1D2E] border border-[#2D3047] rounded-2xl shadow-2xl">
+            <div className="px-5 py-4 border-b border-[#2D3047]">
+              <h2 id="dlg-reset" className="text-base font-heading font-semibold text-[#F7F8FC]">
+                Resetar senha
+              </h2>
+              <p className="text-xs text-[#A0A3B1] mt-0.5">
+                {resetTarget.displayName || resetTarget.name || resetTarget.email}
+              </p>
+            </div>
+            <div className="px-5 py-4">
+              {resetLoading ? (
+                <p className="text-sm text-[#A0A3B1] py-4 text-center">Gerando link…</p>
+              ) : resetError ? (
+                <p className="text-sm text-[#EF4444] px-3 py-2 rounded-lg bg-[#EF4444]/10 border border-[#EF4444]/30">{resetError}</p>
+              ) : (
+                <>
+                  <p className="text-sm text-[#A0A3B1] mb-3">
+                    Link de redefinição gerado. Envie para o aluno — ao abrir, ele define a nova senha.
+                  </p>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-[#242736] border border-[#2D3047]">
+                    <span className="flex-1 text-xs text-[#A0A3B1] truncate">{resetLink}</span>
+                    <button
+                      onClick={copiarResetLink}
+                      className="text-xs font-medium text-[#6366F1] hover:text-[#A5B4FC] shrink-0"
+                    >
+                      {resetCopied ? 'Copiado!' : 'Copiar'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 px-5 py-4 border-t border-[#2D3047]">
+              <button
+                onClick={() => setResetTarget(null)}
+                className="px-4 py-2 text-sm font-medium text-[#A0A3B1] hover:text-[#F7F8FC] rounded-lg transition-colors"
+              >
+                Fechar
+              </button>
+              {resetLink && (
+                <a
+                  href={`https://wa.me/?text=${resetWhatsappMsg(resetTarget)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-4 py-2 text-sm font-semibold rounded-lg bg-[#22C55E] hover:bg-[#16A34A] text-white transition-colors"
+                >
+                  Enviar no WhatsApp
+                </a>
+              )}
             </div>
           </div>
         </div>

@@ -99,3 +99,9 @@ export async function logAudit(payload) {
 export async function assistenteCentral(payload) {
   return callFunction('assistenteCentral', payload);
 }
+
+// Caminho B — gera link de recuperação de senha de um aluno (admin), para o
+// facilitador enviar por WhatsApp. Sem SMTP/e-mail.
+export async function generateRecoveryLink(payload) {
+  return callFunction('generateRecoveryLink', payload);
+}
