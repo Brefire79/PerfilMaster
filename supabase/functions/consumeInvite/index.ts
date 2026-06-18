@@ -14,6 +14,7 @@
 //   5. Marca o convite como usado (used/usedat/usedby)
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { getAuthenticatedUser, serviceClient } from '../_shared/auth.ts';
+import { logAuditEvent } from '../_shared/audit.ts';
 
 function cpfDigitsOnly(v: unknown): string {
   return String(v ?? '').replace(/\D/g, '');
@@ -135,6 +136,20 @@ Deno.serve(async (req) => {
         .from('app_invites')
         .update({ used: true, usedat: agora, usedby: user.id })
         .eq('token', token);
+    }
+
+    // Trilha de auditoria (DELTA 14): convite consumido. Dono do evento = quem
+    // convidou (invite.adminuid); ator = a conta recém-criada/atualizada.
+    if (invite.adminuid) {
+      await logAuditEvent({
+        adminuid: invite.adminuid,
+        action: 'invite_used',
+        actor_id: user.id,
+        actor_role: row.role as string,
+        target_type: 'invite',
+        target_id: token,
+        metadata: { groupid: invite.groupid || null, isAdminInvite },
+      });
     }
 
     return jsonResponse(

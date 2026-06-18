@@ -28,6 +28,13 @@ const AdminDashboard = lazy(() => import('@/pages/admin/Dashboard.jsx'));
 // Para reativar: re-importe e restaure os <Route> correspondentes.
 const RelatorioOficial = lazy(() => import('@/pages/admin/RelatorioOficial.jsx'));
 
+// ─── Central de Gestão (DELTA 14) — admin/superadmin ─────────────────────────
+const CentralLayout = lazy(() => import('@/pages/admin/central/CentralLayout.jsx'));
+const CentralVisaoGeral = lazy(() => import('@/pages/admin/central/VisaoGeral.jsx'));
+const CentralPessoas = lazy(() => import('@/pages/admin/central/PessoasHistorico.jsx'));
+const CentralGrupos = lazy(() => import('@/pages/admin/central/InteligenciaGrupos.jsx'));
+const CentralAssistente = lazy(() => import('@/pages/admin/central/AssistenteIA.jsx'));
+
 // ─── Lazy-loaded Student Pages ────────────────────────────────────────────────
 // FIX A2: removidos StudentDashboard, Assessment, MyProfile — usam versão Safe* abaixo
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard.jsx'));
@@ -208,6 +215,14 @@ export default function AppRoutes() {
         >
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          {/* Central de Gestão (DELTA 14) — 4 sub-abas */}
+          <Route path="central" element={<CentralLayout />}>
+            <Route index element={<Navigate to="/admin/central/visao-geral" replace />} />
+            <Route path="visao-geral" element={<CentralVisaoGeral />} />
+            <Route path="pessoas" element={<CentralPessoas />} />
+            <Route path="grupos" element={<CentralGrupos />} />
+            <Route path="assistente" element={<CentralAssistente />} />
+          </Route>
           <Route path="groups" element={<SafeAdminGroups />} />
           <Route path="groups/:id" element={<SafeAdminGroupDetail />} />
           <Route path="students" element={<SafeAdminStudents />} />

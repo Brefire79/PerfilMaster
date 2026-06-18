@@ -82,3 +82,20 @@ export async function buscarPorToken(payload) {
 export async function atualizarStatus(payload) {
   return callFunction('atualizarStatus', payload);
 }
+
+// Central de Gestão (DELTA 14) — registra evento de auditoria originado no
+// frontend do admin (best-effort; nunca deve quebrar o fluxo do chamador).
+export async function logAudit(payload) {
+  try {
+    return await callFunction('logAudit', payload);
+  } catch (e) {
+    console.warn('[audit] logAudit falhou:', e?.message || e);
+    return null;
+  }
+}
+
+// Central de Gestão (DELTA 16) — Assistente IA: mapeia a pergunta para uma
+// consulta agregada permitida e devolve narrativa + dados anonimizados.
+export async function assistenteCentral(payload) {
+  return callFunction('assistenteCentral', payload);
+}

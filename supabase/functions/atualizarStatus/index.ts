@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // P1-3: usa CORS centralizado de _shared/response.ts (alinhado com PRD §4.4)
 import { handleCors, jsonResponse } from '../_shared/response.ts';
+import { logAuditEvent } from '../_shared/audit.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -112,6 +113,24 @@ Deno.serve(async (req) => {
       });
     }
     await supabase.from('app_avaliados').update(payload).eq('token', token);
+
+    // Trilha de auditoria (DELTA 14): registra a conclusão explicitamente.
+    // best-effort — não bloqueia a resposta ao avaliado.
+    if (novoStatus === 'concluido' && avaliado.adminuid) {
+      await logAuditEvent({
+        adminuid: avaliado.adminuid,
+        action: 'assessment_completed',
+        actor_id: null,            // fluxo público (avaliado anônimo via token)
+        actor_role: 'anon',
+        target_type: 'avaliado',
+        target_id: token,
+        metadata: {
+          sessaoid: avaliado.sessaoid ?? null,
+          perfilPrimario: (perfil as Record<string, unknown>)?.perfilPrimario ?? null,
+        },
+      });
+    }
+
     return jsonResponse({ success: true, ...(perfil ? { perfil } : {}) }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'atualizarStatus failed' }, 500, req);

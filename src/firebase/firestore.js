@@ -20,6 +20,7 @@ export const COLLECTIONS = {
   AVALIADOS: import.meta.env.VITE_SB_TABLE_AVALIADOS || 'app_avaliados',
   SESSAO_RESPOSTAS: import.meta.env.VITE_SB_TABLE_SESSAO_RESPOSTAS || 'app_sessao_respostas',
   IDENTITY_LINKS: import.meta.env.VITE_SB_TABLE_IDENTITY_LINKS || 'app_identity_links',
+  AUDIT_LOG: import.meta.env.VITE_SB_TABLE_AUDIT_LOG || 'audit_log',
 };
 
 const GROUP_REPORTS = import.meta.env.VITE_SB_TABLE_GROUP_REPORTS || 'app_group_reports';
@@ -76,6 +77,9 @@ const CAMEL_TO_DB = {
   conflictStyle: 'conflictstyle',
   therapyIndicator: 'therapyindicator',
   adminStrategy: 'adminstrategy',
+  // DELTA 17: PQ Score + scores numéricos dos sabotadores (Módulo 3)
+  pqScore: 'pq_score',
+  saboteurScores: 'saboteur_scores',
   // DELTA 7: CPF / convergência de identidade (cpf é tudo-minúsculo, mapeia 1:1;
   // consentimento precisa de snake_case explícito)
   cpfConsent: 'cpf_consent',
@@ -200,6 +204,14 @@ async function sbRequest(path, { method = 'GET', query = '', body, prefer } = {}
   }
 
   return json;
+}
+
+/**
+ * callRpc — invoca uma função RPC do Postgres via PostgREST (/rest/v1/rpc/:name).
+ * Usa o JWT do usuário (mesmo escopo de RLS dos demais requests).
+ */
+async function callRpc(name, params = {}) {
+  return sbRequest(`rpc/${name}`, { method: 'POST', body: params });
 }
 
 async function selectRows(table, {
@@ -1467,6 +1479,72 @@ export async function autoVincularPorCpf(adminUid) {
 
   if (tarefas.length) await Promise.all(tarefas);
   return { criados: tarefas.length };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CENTRAL DE GESTÃO (DELTA 14) — superadmin, observabilidade e auditoria
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * getIsSuperadmin — consulta o RPC is_superadmin() (allowlist app_superadmins).
+ * Retorna boolean. Em qualquer erro, assume false (fail-safe).
+ */
+export async function getIsSuperadmin() {
+  try {
+    const res = await callRpc('is_superadmin', {});
+    return res === true || res === 'true';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * getObservabilidadeData — Módulo 1: registros normalizados das DUAS fontes de
+ * avaliação (avaliados de sessão + contas de aluno), via RPC central_observabilidade
+ * (DELTA 17). O escopo é resolvido no servidor:
+ *   - admin → seus avaliados/alunos (por adminuid OU grupo);
+ *   - superadmin → TUDO (visão global), salvo apenasMeu=true.
+ * Sem PII — só origem/status/datas. Conclusão de conta = perfil DISC gerado.
+ * @param {{ apenasMeu?: boolean }} [opts]
+ */
+export async function getObservabilidadeData(opts = {}) {
+  const rows = await callRpc('central_observabilidade', { apenas_meu: !!opts.apenasMeu });
+  if (!Array.isArray(rows)) return [];
+  // Normaliza nomes (snake → camel) para o computeObservabilidade.
+  return rows.map((r) => ({
+    origem: r.origem,
+    status: r.status,
+    criadoEm: r.criadoem,
+    iniciadoEm: r.iniciadoem,
+    concluidoEm: r.concluidoem,
+  }));
+}
+
+/**
+ * getGroupInsights — Módulo 3: agregados anonimizados por grupo (RPC DELTA 15).
+ * k-anonimato aplicado no servidor: grupos abaixo de minN vêm com suppressed=true
+ * e agregados nulos. Escopo (admin/superadmin) também é resolvido no servidor.
+ */
+export async function getGroupInsights(minN = 5) {
+  const rows = await callRpc('central_group_insights', { min_n: minN });
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * getAuditLog — lê a trilha de auditoria (append-only). RLS já escopa:
+ * admin vê o próprio adminuid; superadmin vê tudo. INSERT só via Edge Functions.
+ */
+export async function getAuditLog({ adminUid = null, action = null, limit = 200 } = {}) {
+  const filters = [];
+  if (adminUid) filters.push({ field: 'adminuid', op: 'eq', value: adminUid });
+  if (action) filters.push({ field: 'action', op: 'eq', value: action });
+  const rows = await selectRows(COLLECTIONS.AUDIT_LOG, {
+    filters,
+    orderBy: 'created_at',
+    ascending: false,
+    limit,
+  });
+  return rows.map((row) => ({ id: row.id, ...row }));
 }
 
 // Keep named export compatibility.

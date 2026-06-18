@@ -97,6 +97,7 @@
   },
   "navigation": {
     "dashboard": "Dashboard",
+    "central": "Management Hub",
     "groups": "Groups",
     "students": "Students",
     "modules": "Modules",

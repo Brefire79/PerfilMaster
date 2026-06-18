@@ -7,6 +7,7 @@ import useGroupStore from '@/store/groupStore.js';
 import useProfileStore from '@/store/profileStore.js';
 import useAssessmentStore from '@/store/assessmentStore.js';
 import { signOut } from '@/firebase/auth.js';
+import { resetSuperadminCache } from '@/hooks/useSuperadmin.js';
 
 // ─── Nav Items ────────────────────────────────────────────────────────────────
 const adminNavItems = [
@@ -19,6 +20,16 @@ const adminNavItems = [
         <rect x="14" y="3" width="7" height="7" rx="1.5" />
         <rect x="3" y="14" width="7" height="7" rx="1.5" />
         <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </svg>
+    ),
+  },
+  {
+    key: 'central',
+    to: '/admin/central',
+    icon: (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} className="w-5 h-5">
+        <path d="M3 3v18h18" />
+        <path d="M7 16l4-6 4 3 5-7" />
       </svg>
     ),
   },
@@ -98,6 +109,7 @@ export default function Sidebar({ role = 'admin', mobile = false, onClose }) {
     try {
       await signOut();
       clearUser();
+      resetSuperadminCache();
       resetGroups();
       resetProfiles();
       resetAssessment();

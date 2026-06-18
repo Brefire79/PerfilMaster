@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser } from '@/firebase/firestore.js';
+import { computeSaboteurs } from '@/lib/saboteurScoring.js';
 import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
 import Button from '@/components/ui/Button.jsx';
 import useAuthStore from '@/store/authStore.js';
@@ -544,11 +545,16 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       const todasPerguntas = [...perguntasDisc, ...perguntasSaboteurs];
       const perfilLocal = calcularPerfilDisc(respostas, todasPerguntas);
 
+      // 3.1 Calcula Sabotadores + PQ Score (persistidos p/ destravar o Módulo 3)
+      const sab = computeSaboteurs(respostas, perguntasSaboteurs);
+
       // 4. Salva perfil base em app_profiles
       await createProfile(user.uid, {
         dominantProfile: perfilLocal.dominantProfile,
         secondaryProfile: perfilLocal.secondaryProfile,
         scores: perfilLocal.scores,
+        pqScore: sab?.pqScore ?? null,
+        saboteurScores: sab?.scores ?? null,
         assessmentId: assessmentDocId,
         groupId,
         summary: '',

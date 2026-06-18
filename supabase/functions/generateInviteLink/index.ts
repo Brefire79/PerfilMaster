@@ -7,6 +7,7 @@
 // expiresat) — o insert antigo usava camelCase e falhava no PostgREST.
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { getAuthenticatedUser, serviceClient, isGroupAdmin } from '../_shared/auth.ts';
+import { logAuditEvent } from '../_shared/audit.ts';
 
 Deno.serve(async (req) => {
   const cors = handleCors(req);
@@ -54,6 +55,17 @@ Deno.serve(async (req) => {
 
     const { error } = await sb.from('app_invites').insert(inviteRow);
     if (error) return jsonResponse({ error: error.message }, 500, req);
+
+    // Trilha de auditoria (DELTA 14): convite criado pelo admin.
+    await logAuditEvent({
+      adminuid: user.id,
+      action: 'invite_created',
+      actor_id: user.id,
+      actor_role: 'admin',
+      target_type: 'invite',
+      target_id: token,
+      metadata: { groupid: inviteRow.groupid, role: isAdminInvite ? 'admin' : 'student' },
+    });
 
     const root = (baseUrl || '').replace(/\/$/, '');
     const inviteUrl = root ? `${root}/join/${token}` : `/join/${token}`;

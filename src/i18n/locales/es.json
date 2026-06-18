@@ -97,6 +97,7 @@
   },
   "navigation": {
     "dashboard": "Panel",
+    "central": "Central de Gestión",
     "groups": "Grupos",
     "students": "Estudiantes",
     "modules": "Módulos",
