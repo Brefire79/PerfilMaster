@@ -283,10 +283,16 @@ function CreateModuleModal({ isOpen, onClose, onCreated }) {
             onChange={(e) => setForm((f) => ({ ...f, profileModel: e.target.value }))}
             className="h-11 px-4 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
           >
-            {['DiSC', 'Social Style', 'OCAI', 'Custom'].map((m) => (
-              <option key={m} value={m}>{m}</option>
+            {/* Só DiSC tem motor de cálculo/relatório. Os demais ficam visíveis
+                porém desabilitados ("em breve") até serem implementados. */}
+            <option value="DiSC">DiSC</option>
+            {['Social Style', 'OCAI', 'Custom'].map((m) => (
+              <option key={m} value={m} disabled>{m} (em breve)</option>
             ))}
           </select>
+          <p className="text-[#6B6F80] text-xs">
+            Por enquanto só o modelo <strong>DiSC</strong> está disponível. Outros modelos chegam em breve.
+          </p>
         </div>
       </form>
     </Modal>

@@ -165,10 +165,31 @@ export function onAuthStateChange(callback) {
 }
 
 export async function resetPassword(email) {
-  await authRequest('recover', {
+  // redirect_to: para onde o link do e-mail leva. Precisa estar na allowlist de
+  // "Redirect URLs" do Supabase (Auth → URL Configuration). A página /reset-password
+  // trata o token de recuperação e deixa o usuário definir a nova senha.
+  const redirectTo = `${window.location.origin}/reset-password`;
+  await authRequest(`recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
     method: 'POST',
     body: { email },
   });
+}
+
+/**
+ * applyRecoverySession — estabelece a sessão a partir dos tokens vindos no hash
+ * do link de recuperação (#access_token=...&refresh_token=...&type=recovery),
+ * para então permitir definir uma nova senha via changePassword().
+ */
+export async function applyRecoverySession(accessToken, refreshToken) {
+  if (!accessToken) throw buildAuthError('auth/invalid-token', 'Token de recuperação ausente.');
+  const user = await authRequest('user', { accessToken });
+  saveSession({
+    access_token: accessToken,
+    refresh_token: refreshToken || null,
+    token_type: 'bearer',
+    user,
+  });
+  return toUserShape(user);
 }
 
 export async function sendVerificationEmail() {

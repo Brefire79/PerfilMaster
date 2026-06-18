@@ -671,8 +671,11 @@ export default function ModuleBuilder() {
                   onChange={(e) => setProfileModel(e.target.value)}
                   className="h-9 w-full px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none transition-colors"
                 >
+                  {/* Só DiSC tem motor real; os demais ficam "em breve" (desabilitados). */}
                   {PROFILE_MODELS.map((m) => (
-                    <option key={m} value={m}>{m}</option>
+                    <option key={m} value={m} disabled={m !== 'DiSC'}>
+                      {m === 'DiSC' ? m : `${m} (em breve)`}
+                    </option>
                   ))}
                 </select>
               </div>

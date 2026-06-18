@@ -12,6 +12,7 @@ const AuthLayout = lazy(() => import('@/layouts/AuthLayout.jsx'));
 const Login = lazy(() => import('@/pages/auth/Login.jsx'));
 const Register = lazy(() => import('@/pages/auth/Register.jsx'));
 const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword.jsx'));
+const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword.jsx'));
 
 // ─── Lazy-loaded Shared Pages ─────────────────────────────────────────────────
 const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
@@ -196,6 +197,12 @@ export default function AppRoutes() {
 
         {/* Resultado público para o avaliado ver seu perfil — sem login */}
         <Route path="/resultado/:token" element={<ResultadoPublico />} />
+
+        {/* Recuperação de senha — o link do e-mail traz #type=recovery; a página
+            estabelece a sessão de recuperação e permite definir nova senha.
+            Fora do AlreadyAuthRoute de propósito (a sessão de recuperação não pode
+            redirecionar para o dashboard). */}
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Auth routes — redireciona usuários já logados para seu dashboard (P1-2) */}
         <Route element={<AlreadyAuthRoute><AuthLayout /></AlreadyAuthRoute>}>

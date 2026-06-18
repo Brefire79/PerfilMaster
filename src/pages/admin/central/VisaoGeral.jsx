@@ -213,35 +213,18 @@ export default function VisaoGeral() {
         </Painel>
       </div>
 
-      {/* Abandono + Erros (placeholder) */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Painel
-          titulo="Onde as pessoas param"
-          hint="status do fluxo público"
-        >
-          <div className="grid grid-cols-3 gap-3">
-            <StatusPill cor="#F59E0B" label="Pendentes" valor={abandono.pendentes} />
-            <StatusPill cor="#6366F1" label="Em andamento" valor={abandono.emAndamento} />
-            <StatusPill cor="#22C55E" label="Concluídas" valor={abandono.concluidas} />
-          </div>
-          <p className="text-[#6B6F80] text-xs mt-4">
-            O funil por etapa do wizard (DISC vs. Sabotadores) exige instrumentação por etapa —
-            previsto para uma fase futura. Hoje rastreamos o status macro acima.
-          </p>
-        </Painel>
-
-        <Painel titulo="Erros das Edge Functions" hint="observabilidade de backend">
-          <div className="flex flex-col items-center justify-center h-[160px] text-center">
-            <span className="text-2xl mb-2">🛠️</span>
-            <p className="text-[#A0A3B1] text-sm">
-              Sem coletor de logs de Edge Functions ainda.
-            </p>
-            <p className="text-[#6B6F80] text-xs mt-1">
-              Requer uma tabela de logs (ou integração com o painel do Supabase) — pendência sinalizada.
-            </p>
-          </div>
-        </Painel>
-      </div>
+      {/* Onde as pessoas param (status macro) */}
+      <Painel titulo="Onde as pessoas param" hint="status do fluxo">
+        <div className="grid grid-cols-3 gap-3 max-w-xl">
+          <StatusPill cor="#F59E0B" label="Pendentes" valor={abandono.pendentes} />
+          <StatusPill cor="#6366F1" label="Em andamento" valor={abandono.emAndamento} />
+          <StatusPill cor="#22C55E" label="Concluídas" valor={abandono.concluidas} />
+        </div>
+        <p className="text-[#6B6F80] text-xs mt-4">
+          O funil por etapa do wizard (DISC vs. Sabotadores) exige instrumentação por etapa —
+          previsto para uma fase futura. Hoje rastreamos o status macro acima.
+        </p>
+      </Painel>
     </div>
   );
 }
