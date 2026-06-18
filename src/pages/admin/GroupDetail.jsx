@@ -19,6 +19,7 @@ import {
   deleteGroup,
 } from '@/firebase/firestore.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
+import ResetSenhaButton from '@/components/admin/ResetSenhaButton.jsx';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 
 // Recalcula scores DISC a partir das respostas brutas (fallback quando o perfil
@@ -267,6 +268,8 @@ function MemberRowWithProfile({ member, onViewProfile, onRemove, onReport, t }) 
             Relatório
           </button>
         )}
+        {/* Resetar senha via WhatsApp (Caminho B) — só membros com e-mail */}
+        <ResetSenhaButton student={member} compact />
         <button
           onClick={() => onRemove(member.id)}
           className="opacity-0 group-hover:opacity-100 focus:opacity-100 w-7 h-7 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#EF4444] hover:bg-[#EF4444]/10 transition-all"
