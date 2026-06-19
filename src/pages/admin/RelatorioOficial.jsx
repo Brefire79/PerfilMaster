@@ -11,6 +11,7 @@ import useAuthStore from '@/store/authStore.js';
 import { formatCpf } from '@/lib/cpf.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
+import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -600,6 +601,32 @@ export default function RelatorioOficial() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ══ SEÇÃO 3.2: PQ SCORE + SABOTADORES (numérico) ══ */}
+          {/* Avaliação avulsa Completa (78 questões) grava saboteurScores no perfil. */}
+          {perfil?.saboteurScores && Object.keys(perfil.saboteurScores).length > 0 && (
+            <div style={{ marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
+                § 3.2. Sabotadores (PQ){typeof perfil.pqScore === 'number' ? ` — PQ Score ${perfil.pqScore}` : ''}
+              </h2>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                {Object.entries(perfil.saboteurScores)
+                  .map(([key, valor]) => ({ key, label: SABOTEUR_LABELS[key] || key, valor: Math.round(valor ?? 0), top: (perfil.saboteurTop3 || []).includes(key) }))
+                  .sort((a, b) => b.valor - a.valor)
+                  .map(({ key, label, valor, top }) => (
+                    <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontFamily: 'Arial, sans-serif' }}>
+                        <span style={{ color: '#374151', fontWeight: top ? '700' : '400' }}>{label}{top ? ' ★' : ''}</span>
+                        <span style={{ color: '#6B7280', fontWeight: '700' }}>{valor}%</span>
+                      </div>
+                      <div style={{ height: '6px', background: '#E5E7EB', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: `${valor}%`, height: '100%', background: top ? '#D97706' : '#6366F1' }} />
+                      </div>
+                    </div>
+                  ))}
               </div>
             </div>
           )}

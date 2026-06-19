@@ -84,6 +84,8 @@ const CAMEL_TO_DB = {
   // consentimento precisa de snake_case explícito)
   cpfConsent: 'cpf_consent',
   cpfConsentAt: 'cpf_consent_at',
+  // DELTA 19: avaliado de sessão convertido em conta de aluno (uid da conta)
+  convertedUid: 'converted_uid',
   avaliadoId: 'avaliado_id',
   userUid: 'user_uid',
   linkedBy: 'linked_by',

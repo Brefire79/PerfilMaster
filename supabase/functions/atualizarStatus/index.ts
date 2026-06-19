@@ -48,6 +48,43 @@ function calcularPerfil(respostas: Record<string, number>) {
   const perfilSecundario = ordenado[1] && ordenado[1][1] >= Number(ordenado[0][1]) * 0.8 ? ordenado[1][0] : undefined;
   return { dominante: scores.D, influente: scores.I, estavel: scores.S, analitico: scores.C, perfilPrimario, perfilSecundario };
 }
+// ── Sabotadores (PQ) no fluxo público (avaliação avulsa é sempre Completa/78) ──
+// Espelha src/lib/saboteurScoring.js. As 50 questões q_sab_<slug>_NN (likert 1-5)
+// mapeiam para 10 chaves canônicas. PQ Score = 100 - (média top-3 brutos × 10).
+const SAB_SLUG_TO_KEY: Record<string, string> = {
+  judge: 'judge', avoider: 'avoider', controller: 'controller',
+  hyperach: 'hyperAchiever', hyperrat: 'hyperRational', hypervig: 'hyperVigilant',
+  pleaser: 'pleaser', restless: 'restless', stickler: 'stickler', victim: 'victim',
+};
+const SAB_KEYS = Object.values(SAB_SLUG_TO_KEY);
+
+function calcularSabotadores(respostas: Record<string, number>) {
+  const acc: Record<string, number[]> = {};
+  for (const [id, valor] of Object.entries(respostas || {})) {
+    const m = /^q_sab_([a-z]+)_\d+$/.exec(id);
+    if (!m) continue;
+    const key = SAB_SLUG_TO_KEY[m[1]];
+    if (!key) continue;
+    const v = Number(valor);
+    if (!Number.isNaN(v)) (acc[key] ||= []).push(v);
+  }
+  if (Object.keys(acc).length === 0) return null;
+
+  const raw: Record<string, number> = {};
+  const scores: Record<string, number> = {};
+  for (const key of SAB_KEYS) {
+    const arr = acc[key];
+    if (!arr || arr.length === 0) { raw[key] = 0; scores[key] = 0; continue; }
+    const media = arr.reduce((s, v) => s + v, 0) / arr.length;
+    raw[key] = Math.round(media * 100) / 100;
+    scores[key] = Math.round((media / 5) * 100);
+  }
+  const top3 = Object.entries(raw).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k]) => k);
+  const top3Avg = top3.reduce((s, k) => s + (raw[k] || 0), 0) / (top3.length || 1);
+  const pqScore = Math.max(0, Math.min(100, Math.round(100 - top3Avg * 10)));
+  return { saboteurScores: scores, saboteurTop3: top3, pqScore };
+}
+
 const TRANSICOES_VALIDAS: Record<string, string[]> = {
   pendente: ['em_andamento', 'concluido'],
   em_andamento: ['em_andamento', 'concluido'],
@@ -102,6 +139,11 @@ Deno.serve(async (req) => {
       if (!respostas || typeof respostas !== 'object' || Object.keys(respostas).length === 0)
         return jsonResponse({ error: 'respostas are required to conclude' }, 400, req);
       perfil = calcularPerfil(respostas);
+      // Avaliação avulsa é sempre Completa (78): calcula PQ Score + Sabotadores
+      // a partir das q_sab_* e funde no mesmo objeto perfil. Se as respostas não
+      // trouxerem sabotadores (avaliados antigos), calcularSabotadores retorna null.
+      const sab = calcularSabotadores(respostas);
+      if (sab) perfil = { ...perfil, ...sab };
       payload.respostas = respostas;
       payload.perfil = perfil;
       payload.concluidoem = agora;

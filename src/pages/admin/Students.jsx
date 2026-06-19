@@ -12,6 +12,7 @@ import Input from '@/components/ui/Input.jsx';
 import MemberProfileSlideOver from '@/components/profile/MemberProfileSlideOver.jsx';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import ResetSenhaButton from '@/components/admin/ResetSenhaButton.jsx';
+import ConverterContaButton from '@/components/admin/ConverterContaButton.jsx';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
 import IdentityLinkPanel from '@/components/admin/IdentityLinkPanel.jsx';
 import NovoAvaliadoTrigger from '@/components/sessao/NovoAvaliadoTrigger.jsx';
@@ -218,6 +219,7 @@ export default function Students() {
                 : a.status === 'em_andamento' ? 'in_progress'
                 : 'pending',
               isAvaliado: true, // flag para exibição diferenciada
+              convertedUid: a.convertedUid || null, // DELTA 19: já virou conta?
             }));
 
           setAllStudents([...flat, ...avulsosNorm, ...avaliadosNorm]);
@@ -765,6 +767,15 @@ export default function Students() {
                       e-mail), nunca avaliados de sessão nem a própria conta. */}
                   {!student.isAvaliado && (student.uid || student.id) !== user?.uid && (
                     <ResetSenhaButton student={student} />
+                  )}
+                  {/* Tornar conta (DELTA 19): avaliado de sessão com e-mail e
+                      ainda não convertido → cria conta de aluno com login. */}
+                  {student.isAvaliado && student.email && !student.convertedUid && (
+                    <ConverterContaButton
+                      student={student}
+                      groups={groups}
+                      onConverted={() => setRefreshTick((t) => t + 1)}
+                    />
                   )}
                   {/* Lixeira: nunca para a própria conta nem para outros admins
                       (evita auto-exclusão e perda de acesso). Avaliados de sessão

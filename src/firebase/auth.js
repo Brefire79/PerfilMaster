@@ -192,6 +192,33 @@ export async function applyRecoverySession(accessToken, refreshToken) {
   return toUserShape(user);
 }
 
+/**
+ * verifyRecoveryToken — troca o `token_hash` de um link de recuperação por uma
+ * sessão (POST /auth/v1/verify, type=recovery), estabelecendo-a localmente para
+ * a página /reset-password definir a nova senha.
+ *
+ * Por que existe (e não só o hash #access_token): o `action_link` do Supabase é
+ * de USO ÚNICO e se auto-verifica num GET — o preview de link do WhatsApp/e-mail
+ * "abre" o link e QUEIMA o token antes do usuário clicar. Mandando um link para
+ * a nossa página com `?token_hash=...`, a verificação (POST) só ocorre quando a
+ * PESSOA chega — o robô de preview (GET) não consome o token.
+ */
+export async function verifyRecoveryToken(tokenHash) {
+  if (!tokenHash) throw buildAuthError('auth/invalid-token', 'Token de recuperação ausente.');
+  const data = await authRequest('verify', {
+    method: 'POST',
+    body: { type: 'recovery', token_hash: tokenHash },
+  });
+  if (!data?.access_token) throw buildAuthError('auth/invalid-token', 'Link inválido ou expirado.');
+  saveSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token || null,
+    token_type: data.token_type || 'bearer',
+    user: data.user,
+  });
+  return toUserShape(data.user);
+}
+
 export async function sendVerificationEmail() {
   return null;
 }

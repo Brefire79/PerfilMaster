@@ -208,6 +208,12 @@ export default function AvaliadoForm({ sessaoId, onFechar }) {
               )}
             </div>
 
+            {/* Avaliação avulsa é sempre Completa (78 = DISC + Sabotadores),
+                para manter os mesmos critérios de todos os avaliados. */}
+            <p className="text-xs text-[#4A4D6A] bg-[#1A1C2A] border border-[#2D3047] rounded-lg px-3 py-2">
+              📋 Avaliação completa · 78 perguntas (DISC + Sabotadores)
+            </p>
+
             {mensagemErro && (
               <p className="text-sm text-[#EF4444] bg-[#EF4444]/10 rounded-lg px-3 py-2">{mensagemErro}</p>
             )}

@@ -105,3 +105,9 @@ export async function assistenteCentral(payload) {
 export async function generateRecoveryLink(payload) {
   return callFunction('generateRecoveryLink', payload);
 }
+
+// DELTA 19 — converte um avaliado de sessão (token) em conta de aluno (cria
+// auth user + app_users + app_profiles) e devolve o link de definição de senha.
+export async function convertAvaliado(payload) {
+  return callFunction('convertAvaliado', payload);
+}

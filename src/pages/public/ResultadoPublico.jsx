@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { buscarPorToken, insightPerfil } from '@/firebase/functions.js';
+import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
 
 // ─── Configuração DISC (fonte única de cores — alinhada aos tokens F1) ─────────
 const DISC = {
@@ -187,6 +188,15 @@ export default function ResultadoPublico() {
     primario: k === perfil.perfilPrimario,
   })).sort((a, b) => b.valor - a.valor);
 
+  // Sabotadores (PQ) — presente quando a conclusão gravou saboteurScores no perfil
+  const temSabotadores = perfil.saboteurScores && Object.keys(perfil.saboteurScores).length > 0;
+  const top3Sab = new Set(perfil.saboteurTop3 || []);
+  const barrasSab = temSabotadores
+    ? Object.entries(perfil.saboteurScores)
+        .map(([key, valor]) => ({ key, label: SABOTEUR_LABELS[key] || key, valor: Math.round(valor ?? 0), top: top3Sab.has(key) }))
+        .sort((a, b) => b.valor - a.valor)
+    : [];
+
   return (
     <div className="min-h-[100dvh] bg-[#0F1117] py-6">
       <div className="app-shell space-y-5 animate-fade-in">
@@ -292,6 +302,45 @@ export default function ResultadoPublico() {
             ))}
           </div>
         </Section>
+
+        {/* ── Sabotadores (PQ) — presente nas avaliações com Sabotadores ── */}
+        {temSabotadores && (
+          <Section icon="🧩" title="Sabotadores (PQ)">
+            {typeof perfil.pqScore === 'number' && (
+              <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-xl bg-[#0F1117] border border-[#2D3047]">
+                <span className="text-sm text-[#A0A3B1]">PQ Score</span>
+                <span className="text-lg font-bold tabular-nums text-[#22C55E]">{perfil.pqScore}</span>
+              </div>
+            )}
+            <div className="space-y-3">
+              {barrasSab.map(({ key, label, valor, top }) => (
+                <div key={key} className="score-row">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-sm font-medium text-[#F7F8FC]">
+                      {label}
+                      {top && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[#F59E0B] text-white">
+                          PRINCIPAL
+                        </span>
+                      )}
+                    </span>
+                    <span className="text-sm font-bold tabular-nums text-[#A0A3B1]">{valor}%</span>
+                  </div>
+                  <div className="score-track">
+                    <div
+                      className="score-fill"
+                      style={{ width: `${valor}%`, background: top ? '#F59E0B' : '#6366F1' }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-[#4A4D6A] mt-4 leading-relaxed">
+              Sabotadores são padrões mentais automáticos. Quanto maior o score, mais forte a tendência.
+              O PQ Score reflete seu equilíbrio mental geral (quanto maior, melhor).
+            </p>
+          </Section>
+        )}
 
         {/* ── Forças ── */}
         {(insight?.forcas?.length > 0) && (

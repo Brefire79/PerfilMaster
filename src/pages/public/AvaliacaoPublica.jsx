@@ -3,13 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 
-// DELTA 8: a avaliação pública é DISC-only (28 questões). SAMPLE_QUESTIONS
-// inclui também as 50 de sabotadores (etapa 2 do fluxo logado), que aqui eram
-// exibidas mas IGNORADAS pelo cálculo no servidor — e estouravam os
-// "10–15 minutos" prometidos. O Edge atualizarStatus pontua exatamente estes ids.
-const QUESTOES_PUBLICAS = SAMPLE_QUESTIONS.filter((q) =>
+// A avaliação avulsa é sempre Completa (78) — mesmos critérios para todos os
+// avaliados: 28 DISC + 50 Sabotadores (q_sab_*), na ordem DISC→Sabotadores.
+// O Edge atualizarStatus pontua DISC e Sabotadores a partir destes ids.
+const QUESTOES_DISC = SAMPLE_QUESTIONS.filter((q) =>
   ['D', 'I', 'S', 'C'].includes(q.dimension)
 );
+const QUESTOES_SAB = SAMPLE_QUESTIONS.filter((q) =>
+  typeof q.dimension === 'string' && q.dimension.startsWith('SAB_')
+);
+const QUESTOES_PUBLICAS = [...QUESTOES_DISC, ...QUESTOES_SAB];
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
@@ -224,7 +227,7 @@ function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentCh
       {/* Instruções */}
       <div className="flex flex-col gap-2.5">
         {[
-          { icon: '⏱️', texto: '10 a 15 minutos para concluir' },
+          { icon: '⏱️', texto: '15 a 20 minutos para concluir' },
           { icon: '📱', texto: 'Pode responder pelo celular' },
           { icon: '🔒', texto: 'Respostas confidenciais' },
           { icon: '💡', texto: 'Responda com honestidade — sem certo ou errado' },

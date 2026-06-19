@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { applyRecoverySession, changePassword, signOut } from '@/firebase/auth.js';
+import { applyRecoverySession, verifyRecoveryToken, changePassword, signOut } from '@/firebase/auth.js';
 import Button from '@/components/ui/Button.jsx';
 
 // Lê os tokens do hash do link de recuperação (#access_token=...&type=recovery).
@@ -29,22 +29,32 @@ export default function ResetPassword() {
   }, []);
 
   useEffect(() => {
+    const limparUrl = () => window.history.replaceState(null, '', window.location.pathname);
     const { accessToken, refreshToken, type, errorDescription } = lerHashRecuperacao();
     if (errorDescription) {
       setErro(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
       setFase('invalido');
       return;
     }
+
+    // Fluxo robusto (não consumido por preview do WhatsApp): link traz
+    // ?token_hash=...&type=recovery e a troca por sessão acontece só agora.
+    const query = new URLSearchParams(window.location.search);
+    const tokenHash = query.get('token_hash');
+    if (tokenHash && query.get('type') === 'recovery') {
+      verifyRecoveryToken(tokenHash)
+        .then(() => { limparUrl(); setFase('pronto'); })
+        .catch(() => setFase('invalido'));
+      return;
+    }
+
+    // Fluxo legado: tokens vêm no hash (#access_token=...&type=recovery).
     if (!accessToken || type !== 'recovery') {
       setFase('invalido');
       return;
     }
     applyRecoverySession(accessToken, refreshToken)
-      .then(() => {
-        // Limpa o hash da URL (evita reprocessar/expor o token).
-        window.history.replaceState(null, '', window.location.pathname);
-        setFase('pronto');
-      })
+      .then(() => { limparUrl(); setFase('pronto'); })
       .catch(() => setFase('invalido'));
   }, []);
 
