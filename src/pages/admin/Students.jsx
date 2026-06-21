@@ -688,21 +688,23 @@ export default function Students() {
                 <div className="flex flex-wrap items-center gap-1.5 pl-12 md:pl-0">
                   <button
                     className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
-                    aria-label={t('app.view', 'Ver perfil')}
-                    title={t('app.view', 'Ver perfil')}
+                    aria-label="Painel do facilitador"
+                    title="Painel do facilitador: perfil completo e estratégia de condução (uso interno)"
                     onClick={() => { setSelectedStudent(student); setProfilePanelOpen(true); }}
                   >
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
                     </svg>
-                    <span className="hidden sm:inline">Ver perfil</span>
+                    <span className="hidden sm:inline">Painel</span>
                   </button>
                   {podeVerRelatorio(student) && (
                     <button
                       className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
                       aria-label="Relatório oficial"
-                      title="Relatório oficial DISC"
+                      title="Relatório oficial DISC: documento para imprimir/PDF e enviar ao aluno"
                       onClick={() => abrirRelatorio(student)}
                     >
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4 shrink-0" aria-hidden="true">

@@ -2,13 +2,14 @@ import React from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import clsx from 'clsx';
 import { useSuperadmin } from '@/hooks/useSuperadmin.js';
+import DiscMark from '@/components/brand/DiscMark.jsx';
 
 // ─── Sub-abas da Central de Gestão ──────────────────────────────────────────────
 const SUBTABS = [
   { to: '/admin/central/visao-geral',    label: 'Visão Geral' },
   { to: '/admin/central/pessoas',        label: 'Pessoas & Histórico' },
   { to: '/admin/central/grupos',         label: 'Inteligência de Grupos' },
-  { to: '/admin/central/assistente',     label: 'Assistente IA' },
+  { to: '/admin/central/assistente',     label: 'Mestre (IA)' },
 ];
 
 /**
@@ -23,6 +24,7 @@ export default function CentralLayout() {
       {/* Cabeçalho */}
       <header className="mb-6">
         <div className="flex items-center gap-3 flex-wrap">
+          <DiscMark size={32} glow={false} />
           <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
             Central de Gestão
           </h1>
@@ -34,7 +36,7 @@ export default function CentralLayout() {
           )}
         </div>
         <p className="text-[#A0A3B1] text-sm mt-1">
-          Observabilidade, histórico, inteligência de grupos e assistente — Vianexx AI.
+          Observabilidade, histórico, inteligência de grupos e o Mestre. Vianexx AI.
         </p>
       </header>
 

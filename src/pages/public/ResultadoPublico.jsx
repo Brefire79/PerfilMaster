@@ -41,7 +41,7 @@ function BarraDisc({ letra, valor, primario }) {
             </span>
           )}
         </span>
-        <span className="text-sm font-bold tabular-nums" style={{ color: cfg.cor }}>
+        <span className="text-sm font-bold tabular-nums" style={{ color: cfg.cor, fontFamily: "'JetBrains Mono', monospace" }}>
           {valor}%
         </span>
       </div>
@@ -68,6 +68,84 @@ function Section({ icon, title, children }) {
       </div>
       {children}
     </section>
+  );
+}
+
+// ─── Radar DISC: retrato dos 4 eixos em SVG (sem biblioteca) ───────────────────
+function DiscRadar({ perfil, accent = '#6366F1', size = 188 }) {
+  const C = 60, R = 46;
+  const vals = {
+    D: Math.max(0, Math.min(100, Math.round(perfil.dominante ?? 0))),
+    I: Math.max(0, Math.min(100, Math.round(perfil.influente ?? 0))),
+    S: Math.max(0, Math.min(100, Math.round(perfil.estavel ?? 0))),
+    C: Math.max(0, Math.min(100, Math.round(perfil.analitico ?? 0))),
+  };
+  const ang = { D: -Math.PI / 2, I: 0, S: Math.PI / 2, C: Math.PI };
+  const pt = (k) => {
+    const r = (R * vals[k]) / 100;
+    return [C + r * Math.cos(ang[k]), C + r * Math.sin(ang[k])];
+  };
+  const axisEnd = (k) => [C + R * Math.cos(ang[k]), C + R * Math.sin(ang[k])];
+  const lbl = (k, off) => [C + (R + off) * Math.cos(ang[k]), C + (R + off) * Math.sin(ang[k])];
+  const poly = ['D', 'I', 'S', 'C'].map((k) => pt(k).map((n) => n.toFixed(1)).join(',')).join(' ');
+
+  return (
+    <svg viewBox="0 0 120 120" width={size} height={size} className="disc-radar" aria-hidden="true">
+      {[0.33, 0.66, 1].map((f) => (
+        <circle key={f} cx={C} cy={C} r={R * f} fill="none" stroke="#2D3047" strokeWidth="1" />
+      ))}
+      {['D', 'I', 'S', 'C'].map((k) => {
+        const [x, y] = axisEnd(k);
+        return <line key={k} x1={C} y1={C} x2={x} y2={y} stroke="#2D3047" strokeWidth="1" />;
+      })}
+      <polygon className="disc-radar__shape" points={poly} fill={accent} fillOpacity="0.22" stroke={accent} strokeWidth="2" strokeLinejoin="round" />
+      {['D', 'I', 'S', 'C'].map((k) => {
+        const [x, y] = pt(k);
+        return <circle key={k} cx={x} cy={y} r="3" fill={DISC[k].cor} stroke="#0F1117" strokeWidth="1.5" />;
+      })}
+      {['D', 'I', 'S', 'C'].map((k) => {
+        const [x, y] = lbl(k, 11);
+        return (
+          <text key={k} x={x} y={y} fill={DISC[k].cor} fontSize="11" fontWeight="700"
+            textAnchor="middle" dominantBaseline="central" fontFamily="'JetBrains Mono', monospace">{k}</text>
+        );
+      })}
+    </svg>
+  );
+}
+
+function ResultStyles() {
+  return (
+    <style>{`
+      .result-hero {
+        position: relative; overflow: hidden; border-radius: 26px; padding: 26px 22px 24px;
+        text-align: center; border: 1px solid #2D3047;
+        background:
+          radial-gradient(120% 80% at 50% -10%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 60%),
+          linear-gradient(180deg, #1C1F30, #15172150);
+        animation: scaleIn .4s ease both;
+      }
+      .result-hero__glow { position: absolute; top: -70px; right: -40px; width: 200px; height: 200px; border-radius: 50%; filter: blur(60px); opacity: .35; pointer-events: none; }
+      .result-hero__sessao { font-family: "JetBrains Mono", monospace; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: #8A8DA0; margin: 0 0 8px; }
+      .result-hero__hello { font-size: 13.5px; color: #A0A3B1; margin: 0; }
+      .result-hero__title { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 800; font-size: 24px; letter-spacing: -0.02em; color: #F7F8FC; margin: 2px 0 6px; }
+      .result-hero__radar { display: flex; justify-content: center; margin: 6px 0 14px; }
+      .disc-radar__shape { transform-origin: 60px 60px; animation: radarGrow .7s cubic-bezier(.2,.8,.2,1) both; }
+      @keyframes radarGrow { from { transform: scale(.2); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+      .result-hero__badge {
+        display: inline-flex; align-items: center; gap: 12px; padding: 10px 16px 10px 12px; border-radius: 16px;
+        background: #0F1117a0; border: 1px solid #2D3047; backdrop-filter: blur(6px);
+      }
+      .result-hero__letter { display: grid; place-items: center; width: 46px; height: 46px; border-radius: 13px; font-family: "Plus Jakarta Sans", sans-serif; font-size: 24px; font-weight: 800; color: #fff; }
+      .result-hero__pname { font-family: "Plus Jakarta Sans", sans-serif; font-weight: 700; font-size: 16px; color: #F7F8FC; margin: 0; text-align: left; line-height: 1.1; }
+      .result-hero__sec { font-size: 12px; color: #A0A3B1; margin: 2px 0 0; text-align: left; }
+      .result-hero__kw { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 16px; }
+      .result-hero__kw span {
+        font-size: 11.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+        color: color-mix(in srgb, var(--accent) 70%, #fff); background: color-mix(in srgb, var(--accent) 14%, transparent);
+        border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+      }
+    `}</style>
   );
 }
 
@@ -172,8 +250,8 @@ export default function ResultadoPublico() {
     return (
       <EstadoCentral
         emoji="⏳"
-        titulo="Resultado em processamento"
-        texto={`Olá, ${dados.nome}! Seu resultado ainda está sendo processado. Por favor, aguarde o seu facilitador liberar o acesso.`}
+        titulo="Resultado quase pronto"
+        texto={`Olá, ${dados.nome}! Ainda estamos gerando seu resultado. Assim que seu facilitador liberar, ele aparece aqui.`}
       />
     );
   }
@@ -199,6 +277,7 @@ export default function ResultadoPublico() {
 
   return (
     <div className="min-h-[100dvh] bg-[#0F1117] py-6">
+      <ResultStyles />
       <div className="app-shell space-y-5 animate-fade-in">
 
         {/* ── Marca ── */}
@@ -213,56 +292,31 @@ export default function ResultadoPublico() {
           </span>
         </div>
 
-        {/* ── Hero do perfil ── */}
-        <header
-          className="relative overflow-hidden rounded-3xl p-6 text-center surface-brand animate-scale-in"
-        >
-          {/* brilho sutil de fundo */}
-          <div
-            className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full blur-3xl opacity-40"
-            style={{ background: primCfg.cor }}
-            aria-hidden="true"
-          />
+        {/* ── Hero do perfil: radar DISC ancorado na cor do perfil dominante ── */}
+        <header className="result-hero" style={{ '--accent': primCfg.cor }}>
+          <div className="result-hero__glow" style={{ background: primCfg.cor }} aria-hidden="true" />
           <div className="relative">
-            {sessaoTitulo && (
-              <p className="text-xs text-white/70 mb-1">{sessaoTitulo}</p>
-            )}
-            <h1 className="text-2xl font-bold text-white text-balance">
-              Olá, {nome.split(' ')[0]}! 🎉
-            </h1>
-            <p className="text-sm text-white/80 mt-1 mb-5">
-              Seu perfil comportamental DISC
-            </p>
+            {sessaoTitulo && <p className="result-hero__sessao">{sessaoTitulo}</p>}
+            <p className="result-hero__hello">Olá, {nome.split(' ')[0]}</p>
+            <h1 className="result-hero__title">Seu retrato comportamental</h1>
 
-            {/* Avatar/letra do perfil primário */}
-            <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-white/12 backdrop-blur-sm border border-white/20">
-              <span
-                className="grid place-items-center w-12 h-12 rounded-xl text-2xl font-black text-white"
-                style={{ background: primCfg.cor }}
-              >
+            <div className="result-hero__radar">
+              <DiscRadar perfil={perfil} accent={primCfg.cor} size={190} />
+            </div>
+
+            <div className="result-hero__badge">
+              <span className="result-hero__letter" style={{ background: primCfg.cor }}>
                 {perfil.perfilPrimario}
               </span>
-              <div className="text-left">
-                <p className="text-base font-bold text-white leading-tight">
-                  Perfil {primCfg.nome}
-                </p>
-                {secCfg && (
-                  <p className="text-xs text-white/80">+ tendência {secCfg.nome}</p>
-                )}
+              <div>
+                <p className="result-hero__pname">Perfil {primCfg.nome}</p>
+                {secCfg && <p className="result-hero__sec">com tendência {secCfg.nome}</p>}
               </div>
             </div>
 
-            {/* Palavras-chave da IA */}
             {insight?.palavrasChave?.length > 0 && (
-              <div className="flex flex-wrap gap-2 justify-center mt-4">
-                {insight.palavrasChave.map((p, i) => (
-                  <span
-                    key={i}
-                    className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-white/15 text-white"
-                  >
-                    {p}
-                  </span>
-                ))}
+              <div className="result-hero__kw">
+                {insight.palavrasChave.map((p, i) => <span key={i}>{p}</span>)}
               </div>
             )}
           </div>
@@ -309,7 +363,7 @@ export default function ResultadoPublico() {
             {typeof perfil.pqScore === 'number' && (
               <div className="flex items-center justify-between mb-4 px-3 py-2.5 rounded-xl bg-[#0F1117] border border-[#2D3047]">
                 <span className="text-sm text-[#A0A3B1]">PQ Score</span>
-                <span className="text-lg font-bold tabular-nums text-[#22C55E]">{perfil.pqScore}</span>
+                <span className="text-lg font-bold tabular-nums text-[#22C55E]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{perfil.pqScore}</span>
               </div>
             )}
             <div className="space-y-3">
@@ -324,7 +378,7 @@ export default function ResultadoPublico() {
                         </span>
                       )}
                     </span>
-                    <span className="text-sm font-bold tabular-nums text-[#A0A3B1]">{valor}%</span>
+                    <span className="text-sm font-bold tabular-nums text-[#A0A3B1]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{valor}%</span>
                   </div>
                   <div className="score-track">
                     <div

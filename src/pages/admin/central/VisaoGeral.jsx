@@ -23,11 +23,12 @@ const PERIODOS = [
 ];
 
 // ─── UI atoms ────────────────────────────────────────────────────────────────────
-function KpiCard({ titulo, valor, sub }) {
+function KpiCard({ titulo, valor, sub, accent = '#6366F1' }) {
   return (
-    <div className="rounded-2xl bg-[#1A1D2E] border border-[#2D3047] p-5">
+    <div className="relative overflow-hidden rounded-2xl bg-[#1A1D2E] border border-[#2D3047] p-5">
+      <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: accent }} aria-hidden="true" />
       <p className="text-[#A0A3B1] text-xs uppercase tracking-wide">{titulo}</p>
-      <p className="text-3xl font-heading font-bold text-[#F7F8FC] mt-2">{valor}</p>
+      <p className="text-3xl font-bold text-[#F7F8FC] mt-2 tabular-nums" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{valor}</p>
       {sub && <p className="text-[#A0A3B1] text-xs mt-1">{sub}</p>}
     </div>
   );
@@ -155,13 +156,14 @@ export default function VisaoGeral() {
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard titulo="Avaliações iniciadas" valor={totais.iniciadas} sub={`${totais.total} criadas no período`} />
-        <KpiCard titulo="Concluídas" valor={totais.concluidas} />
-        <KpiCard titulo="Taxa de conclusão" valor={`${totais.taxaConclusao}%`} sub="concluídas ÷ iniciadas" />
+        <KpiCard titulo="Avaliações iniciadas" valor={totais.iniciadas} sub={`${totais.total} criadas no período`} accent="#6366F1" />
+        <KpiCard titulo="Concluídas" valor={totais.concluidas} accent="#22C55E" />
+        <KpiCard titulo="Taxa de conclusão" valor={`${totais.taxaConclusao}%`} sub="concluídas ÷ iniciadas" accent="#F59E0B" />
         <KpiCard
           titulo="Tempo médio até concluir"
           valor={formatMinutos(tempoMedioMin)}
           sub={amostraTempo > 0 ? `amostra de ${amostraTempo}` : 'sem dados de tempo'}
+          accent="#A78BFA"
         />
       </div>
 
@@ -221,8 +223,8 @@ export default function VisaoGeral() {
           <StatusPill cor="#22C55E" label="Concluídas" valor={abandono.concluidas} />
         </div>
         <p className="text-[#6B6F80] text-xs mt-4">
-          O funil por etapa do wizard (DISC vs. Sabotadores) exige instrumentação por etapa —
-          previsto para uma fase futura. Hoje rastreamos o status macro acima.
+          O funil por etapa do wizard (DISC vs. Sabotadores) precisa de instrumentação própria,
+          prevista para uma fase futura. Por enquanto, rastreamos o status macro acima.
         </p>
       </Painel>
     </div>
@@ -232,7 +234,7 @@ export default function VisaoGeral() {
 function StatusPill({ cor, label, valor }) {
   return (
     <div className="rounded-xl bg-[#242736] p-4 text-center">
-      <p className="text-2xl font-heading font-bold" style={{ color: cor }}>{valor}</p>
+      <p className="text-2xl font-bold tabular-nums" style={{ color: cor, fontFamily: "'JetBrains Mono', monospace" }}>{valor}</p>
       <p className="text-[#A0A3B1] text-xs mt-1">{label}</p>
     </div>
   );

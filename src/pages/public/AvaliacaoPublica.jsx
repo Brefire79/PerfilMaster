@@ -135,6 +135,37 @@ function CentralLayout({ children }) {
   );
 }
 
+// ─── Bússola DISC: marca de 4 eixos (mesma linguagem do radar/Mestre) ──────────
+function DiscMark({ size = 56, spin = false }) {
+  return (
+    <span className={`disc-mark${spin ? ' is-spin' : ''}`} style={{ width: size, height: size }} aria-hidden="true">
+      <svg viewBox="0 0 100 100" width={size} height={size}>
+        <circle cx="50" cy="50" r="46" fill="none" stroke="#2D3047" strokeWidth="1.5" />
+        <g className="disc-mark__star">
+          <polygon points="50,10 57,50 43,50" fill="#EF4444" />
+          <polygon points="90,50 50,43 50,57" fill="#F59E0B" />
+          <polygon points="50,90 43,50 57,50" fill="#22C55E" />
+          <polygon points="10,50 50,57 50,43" fill="#6366F1" />
+        </g>
+        <circle cx="50" cy="50" r="9" fill="#0F1117" stroke="#2D3047" strokeWidth="1.5" />
+      </svg>
+    </span>
+  );
+}
+
+function AvaliacaoStyles() {
+  return (
+    <style>{`
+      .disc-mark { display: inline-flex; filter: drop-shadow(0 0 8px rgba(99,102,241,0.3)); }
+      .disc-mark__star { transform-origin: 50px 50px; }
+      .disc-mark.is-spin { filter: drop-shadow(0 0 14px rgba(99,102,241,0.55)); }
+      .disc-mark.is-spin .disc-mark__star { animation: discMarkSpin 3.2s linear infinite; }
+      @keyframes discMarkSpin { to { transform: rotate(360deg); } }
+      .av-num { font-family: "JetBrains Mono", monospace; }
+    `}</style>
+  );
+}
+
 // ─── Componentes de tela ──────────────────────────────────────────────────────
 
 function TelaCarregando() {
@@ -185,10 +216,10 @@ function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentCh
     <div className="flex flex-col gap-6 w-full animate-slide-up">
       {/* Saudação */}
       <div className="text-center">
-        <div className="w-16 h-16 rounded-2xl surface-brand flex items-center justify-center text-3xl mx-auto mb-4 shadow-card">
-          🧭
+        <div className="flex justify-center mx-auto mb-4">
+          <DiscMark size={64} />
         </div>
-        <h2 className="text-2xl font-bold text-[#F7F8FC] mb-1 text-balance">
+        <h2 className="text-2xl font-heading font-bold text-[#F7F8FC] mb-1 text-balance">
           Olá, {avaliado.nome.split(' ')[0]}!
         </h2>
         <p className="text-sm text-[#A0A3B1]">
@@ -230,7 +261,7 @@ function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentCh
           { icon: '⏱️', texto: '15 a 20 minutos para concluir' },
           { icon: '📱', texto: 'Pode responder pelo celular' },
           { icon: '🔒', texto: 'Respostas confidenciais' },
-          { icon: '💡', texto: 'Responda com honestidade — sem certo ou errado' },
+          { icon: '💡', texto: 'Responda com honestidade. Não existe certo ou errado' },
         ].map(({ icon, texto }) => (
           <div key={texto} className="flex items-center gap-3 text-sm text-[#A0A3B1]">
             <span aria-hidden="true">{icon}</span>
@@ -288,8 +319,8 @@ function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar })
       {/* Barra de progresso */}
       <div>
         <div className="flex justify-between text-xs text-[#A0A3B1] mb-1.5">
-          <span>Pergunta {questaoAtual + 1} de {total}</span>
-          <span className="tabular-nums">{progresso}%</span>
+          <span>Pergunta <span className="av-num">{questaoAtual + 1}</span> de <span className="av-num">{total}</span></span>
+          <span className="av-num tabular-nums">{progresso}%</span>
         </div>
         <div className="progress-track">
           <div className="progress-fill" style={{ width: `${progresso}%` }} />
@@ -367,13 +398,9 @@ function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar })
 function TelaAnalisando() {
   return (
     <div className="flex flex-col items-center gap-5 text-center animate-fade-in">
-      <div className="relative w-20 h-20">
-        <div className="absolute inset-0 rounded-full border-4 border-[#6366F1]/20" />
-        <div className="absolute inset-0 rounded-full border-4 border-[#6366F1] border-t-transparent animate-spin" />
-        <div className="absolute inset-0 flex items-center justify-center text-2xl">🧠</div>
-      </div>
+      <DiscMark size={84} spin />
       <div>
-        <h2 className="text-lg font-bold text-[#F7F8FC] mb-1">Analisando suas respostas...</h2>
+        <h2 className="text-lg font-heading font-bold text-[#F7F8FC] mb-1">Analisando suas respostas...</h2>
         <p className="text-sm text-[#A0A3B1]">
           Calculando seu perfil <SiglaComSignificado id="DISC" />. Aguarde alguns instantes.
         </p>
@@ -390,7 +417,7 @@ function TelaErroSubmit({ onTentarNovamente }) {
       <div className="w-full">
         <h2 className="text-lg font-bold text-[#F7F8FC] mb-2">Não foi possível salvar</h2>
         <p className="text-sm text-[#A0A3B1] mb-4">
-          Suas respostas estão salvas localmente. Tente novamente — se o problema persistir, verifique sua conexão.
+          Suas respostas estão salvas localmente. Tente de novo. Se o problema continuar, verifique sua conexão.
         </p>
         <button
           onClick={onTentarNovamente}
@@ -537,6 +564,7 @@ export default function AvaliacaoPublica() {
     <ErrorBoundary>
     <SiglaProvider>
       <div className="min-h-[100dvh] bg-[#0F1117] flex flex-col">
+        <AvaliacaoStyles />
         {/* Topo */}
         <header className="py-4 px-5 border-b border-[#1E2030] flex items-center justify-center">
           {/* h1 visualmente estilizado como marca; conteúdo semântico de nível de página */}

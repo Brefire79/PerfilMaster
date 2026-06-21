@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input.jsx';
 import Modal from '@/components/ui/Modal.jsx';
 import ApiKeySection from '@/components/ApiKeySection.jsx';
 import TeamAdminsSection from '@/components/TeamAdminsSection.jsx';
+import { notificationPermission, requestNotificationPermission, playBeep, showOsNotification } from '@/lib/notify.js';
 
 const LANGUAGES = [
   { value: 'pt-BR', label: 'Português (Brasil)' },
@@ -154,9 +155,21 @@ export default function Settings() {
     assessmentComplete: true,
     weeklyDigest: false,
     systemUpdates: true,
+    sound: true,
+    aiReply: true,
   });
   const [notifStatus, setNotifStatus] = useState('idle');
   const [notifError, setNotifError] = useState('');
+  const [permissao, setPermissao] = useState(notificationPermission());
+
+  const pedirPermissao = async () => {
+    const r = await requestNotificationPermission();
+    setPermissao(r);
+    if (r === 'granted') {
+      if (notifications.sound) playBeep();
+      showOsNotification({ title: 'Notificações ativadas', body: 'O Perfil Master vai te avisar por aqui.', tag: 'pm-test' });
+    }
+  };
 
   const saveNotifications = async () => {
     setNotifStatus('saving');
@@ -436,10 +449,44 @@ export default function Settings() {
               label={t('settings.notif.systemUpdates', 'Atualizações do sistema')}
               description={t('settings.notif.systemUpdatesDesc', 'Novidades sobre a plataforma Perfil Master.')}
             />
+            <Toggle
+              checked={notifications.aiReply}
+              onChange={(v) => setNotifications((n) => ({ ...n, aiReply: v }))}
+              label={t('settings.notif.aiReply', 'Resposta do Mestre (IA)')}
+              description={t('settings.notif.aiReplyDesc', 'Som curto quando o Mestre termina de responder no chat.')}
+            />
+            <Toggle
+              checked={notifications.sound}
+              onChange={(v) => setNotifications((n) => ({ ...n, sound: v }))}
+              label={t('settings.notif.sound', 'Som dos avisos')}
+              description={t('settings.notif.soundDesc', 'Toca um som curto ao receber um aviso (com o app aberto).')}
+            />
           </div>
+
+          {/* Permissão do navegador (notificações com o app aberto) */}
+          <div className="mt-4 pt-4 border-t border-[#2D3047] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-medium text-[#F7F8FC]">Notificações do navegador</p>
+              <p className="text-xs text-[#A0A3B1] mt-0.5">
+                {permissao === 'granted'
+                  ? 'Ativadas — você recebe avisos mesmo com a aba em segundo plano.'
+                  : permissao === 'denied'
+                  ? 'Bloqueadas. Reative nas permissões do site (cadeado na barra de endereço).'
+                  : permissao === 'unsupported'
+                  ? 'Este navegador não suporta notificações.'
+                  : 'Permita para receber avisos com o app aberto em segundo plano.'}
+              </p>
+            </div>
+            {permissao !== 'granted' && permissao !== 'unsupported' && (
+              <Button variant="secondary" size="sm" onClick={pedirPermissao} className="flex-shrink-0">
+                Ativar notificações
+              </Button>
+            )}
+          </div>
+
           <div className="mt-4 pt-4 border-t border-[#2D3047] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <p className="text-xs text-[#A0A3B1]">
-              Suas preferências são salvas. O envio por e-mail será ativado em breve.
+              Som e notificação funcionam com o app aberto. O envio por e-mail/push será ativado em breve.
             </p>
             <div className="flex items-center gap-3 flex-shrink-0">
               <SaveFeedback status={notifStatus} />

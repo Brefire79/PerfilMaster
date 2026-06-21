@@ -3,9 +3,12 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from '@/components/layout/Sidebar.jsx';
 import TopBar from '@/components/layout/TopBar.jsx';
 import BottomNav from '@/components/layout/BottomNav.jsx';
+import useActivityNotifications from '@/hooks/useActivityNotifications.js';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Avisos proativos (som + notificação) com o app aberto — só-admin.
+  useActivityNotifications();
 
   return (
     <div className="h-screen bg-[#0F1117] flex overflow-hidden min-h-0">

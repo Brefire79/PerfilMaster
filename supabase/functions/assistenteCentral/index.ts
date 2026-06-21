@@ -28,6 +28,10 @@ const CONSULTAS = {
     descricao: 'Observabilidade do período: avaliações iniciadas, concluídas, taxa de conclusão e tempo médio. Use para perguntas sobre volume, engajamento, conclusão ao longo do tempo.',
     params: { dias: 'inteiro, janela em dias (ex.: 7, 30, 90); ausente = tudo' },
   },
+  saude_status: {
+    descricao: 'Saúde e status operacional do app para este facilitador: versão atual, se há atualização disponível, nº de grupos e alunos, avaliações pendentes/em andamento/concluídas, última atividade, itens parados e ALERTAS de anomalia (avaliações travadas, queda de conclusão, inatividade). Use para "como está o app", "está tudo certo?", "tem algo anormal?", "qual a versão", monitoramento e diagnóstico. NÃO cobre erros de código/runtime.',
+    params: {},
+  },
 } as const;
 
 async function sha256(s: string): Promise<string> {
@@ -73,11 +77,19 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Apenas administradores.' }, 403, req);
     }
 
-    const { pergunta } = await req.json();
+    const { pergunta, contexto } = await req.json();
     if (!pergunta || typeof pergunta !== 'string' || pergunta.trim().length < 2) {
       return jsonResponse({ error: 'Pergunta inválida.' }, 400, req);
     }
     const perguntaLimpa = pergunta.trim().slice(0, 500);
+
+    // Contexto da sessão (consciência de contexto) — sem PII, campos curtos.
+    const ctx = contexto && typeof contexto === 'object' ? contexto as Record<string, unknown> : {};
+    const contextoSeguro = {
+      tela: typeof ctx.tela === 'string' ? ctx.tela.slice(0, 60) : null,
+      appVersion: typeof ctx.appVersion === 'string' ? ctx.appVersion.slice(0, 20) : null,
+      atualizacaoDisponivel: !!ctx.atualizacaoDisponivel,
+    };
 
     // ── Rate limit por admin (janela móvel) ──────────────────────────────────
     const desde = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
@@ -104,7 +116,7 @@ Se a pergunta NÃO puder ser respondida por nenhuma consulta, use "query": null 
     if (!queryName || !(queryName in CONSULTAS)) {
       return jsonResponse({
         modo: 'conversa',
-        narrativa: intent?.motivo || 'Não há um recorte de dados disponível para essa pergunta. Posso responder sobre inteligência de grupos (DISC/conclusão) ou visão geral do período.',
+        narrativa: intent?.motivo || 'Não há um recorte de dados disponível para essa pergunta. Posso responder sobre inteligência de grupos (DISC/conclusão), visão geral do período ou a saúde e o status do app.',
         queryUsada: null,
       }, 200, req);
     }
@@ -112,20 +124,23 @@ Se a pergunta NÃO puder ser respondida por nenhuma consulta, use "query": null 
     const params = intent?.params && typeof intent.params === 'object' ? intent.params : {};
 
     // ── Cache por (consulta + params) ────────────────────────────────────────
+    // saude_status é tempo-sensível (status operacional) → sempre fresco.
     const cacheKey = await sha256(`${queryName}:${JSON.stringify(params)}`);
-    const { data: cached } = await sb
-      .from('app_central_ai')
-      .select('dados, narrativa, criadoem')
-      .eq('adminuid', user.id)
-      .eq('cache_key', cacheKey)
-      .order('criadoem', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (cached && Date.now() - new Date(cached.criadoem).getTime() < CACHE_TTL_MS) {
-      return jsonResponse({
-        modo: 'dado', queryUsada: queryName, dados: cached.dados,
-        narrativa: cached.narrativa, cacheHit: true,
-      }, 200, req);
+    if (queryName !== 'saude_status') {
+      const { data: cached } = await sb
+        .from('app_central_ai')
+        .select('dados, narrativa, criadoem')
+        .eq('adminuid', user.id)
+        .eq('cache_key', cacheKey)
+        .order('criadoem', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cached && Date.now() - new Date(cached.criadoem).getTime() < CACHE_TTL_MS) {
+        return jsonResponse({
+          modo: 'dado', queryUsada: queryName, dados: cached.dados,
+          narrativa: cached.narrativa, cacheHit: true,
+        }, 200, req);
+      }
     }
 
     // ── 2) Roda a consulta permitida (escopo do caller) ──────────────────────
@@ -180,13 +195,71 @@ Se a pergunta NÃO puder ser respondida por nenhuma consulta, use "query": null 
         taxa_conclusao: iniciadas > 0 ? Math.round((concluidas / iniciadas) * 100) : 0,
         tempo_medio_min: nTempo > 0 ? Math.round(somaMin / nTempo) : null,
       };
+    } else if (queryName === 'saude_status') {
+      const agora = Date.now();
+      const D7 = 7 * 864e5, D14 = 14 * 864e5;
+
+      // Avaliações de sessão do facilitador (RLS: escopo do caller).
+      const { data: avRows } = await cc.from('app_avaliados').select('status, criadoem, iniciadoem, concluidoem');
+      const av = (avRows || []) as Record<string, string>[];
+      const pendentes = av.filter((r) => r.status === 'pendente').length;
+      const emAndamento = av.filter((r) => r.status === 'em_andamento').length;
+      const concluidas = av.filter((r) => r.status === 'concluido').length;
+      const concluidas7d = av.filter((r) => r.status === 'concluido' && r.concluidoem && agora - new Date(r.concluidoem).getTime() < D7).length;
+      const iniciadas = av.filter((r) => r.status === 'em_andamento' || r.status === 'concluido' || r.iniciadoem).length;
+      const paradas = av.filter((r) => r.status === 'em_andamento' && (r.iniciadoem || r.criadoem) && agora - new Date(r.iniciadoem || r.criadoem).getTime() > D7).length;
+
+      // Última atividade (qualquer timestamp relevante).
+      let ultima = 0;
+      for (const r of av) {
+        for (const ts of [r.concluidoem, r.iniciadoem, r.criadoem]) {
+          if (ts) { const t = new Date(ts).getTime(); if (t > ultima) ultima = t; }
+        }
+      }
+
+      // Grupos e alunos do facilitador (tolerante a erro de RLS).
+      const { count: nGrupos } = await cc.from('app_groups').select('id', { count: 'exact', head: true });
+      const { data: alunosRows } = await cc.from('app_users').select('createdat').eq('role', 'student');
+      const alunos = (alunosRows || []) as Record<string, string>[];
+      const alunos7d = alunos.filter((u) => u.createdat && agora - new Date(u.createdat).getTime() < D7).length;
+
+      const taxa = iniciadas > 0 ? Math.round((concluidas / iniciadas) * 100) : 0;
+      const diasSemAtividade = ultima ? Math.floor((agora - ultima) / 864e5) : null;
+
+      // ── Detecção de anomalias (sinais derivados dos dados) ──
+      const alertas: string[] = [];
+      if (paradas > 0) alertas.push(`${paradas} avaliação(ões) iniciada(s) há mais de 7 dias sem conclusão.`);
+      if (iniciadas >= 5 && taxa < 30) alertas.push(`Taxa de conclusão baixa (${taxa}%).`);
+      if ((pendentes + emAndamento) > 0 && concluidas7d === 0) alertas.push('Nenhuma conclusão nos últimos 7 dias, mas há avaliações em aberto.');
+      if (ultima && agora - ultima > D14) alertas.push(`Sem atividade há ${diasSemAtividade} dias.`);
+      if (contextoSeguro.atualizacaoDisponivel) alertas.push('Há uma atualização do app disponível — recarregue para aplicar.');
+
+      dados = {
+        consulta: 'saude_status',
+        app_version: contextoSeguro.appVersion,
+        atualizacao_disponivel: contextoSeguro.atualizacaoDisponivel,
+        grupos: nGrupos ?? 0,
+        alunos: alunos.length,
+        alunos_novos_7d: alunos7d,
+        avaliacoes: { pendentes, em_andamento: emAndamento, concluidas, concluidas_7d: concluidas7d },
+        taxa_conclusao: taxa,
+        avaliacoes_paradas: paradas,
+        dias_sem_atividade: diasSemAtividade,
+        alertas,
+        status_geral: alertas.length === 0 ? 'saudavel' : (paradas > 0 || (iniciadas >= 5 && taxa < 30) ? 'atencao' : 'observar'),
+      };
     }
 
     // ── 3) Narração humana (IA recebe SÓ o JSON agregado anonimizado) ─────────
-    const narraSystem = `Você é o assistente analítico da Central de Gestão (Vianexx AI). Recebe um JSON com NÚMEROS AGREGADOS (sem nomes de pessoas) e a pergunta do facilitador. Escreva uma resposta clara e objetiva em português brasileiro, baseada SOMENTE nesses números — nunca invente dados nem cite indivíduos. Se um grupo foi suprimido por k-anonimato, mencione que houve recortes com amostra insuficiente. Responda SOMENTE JSON: {"narrativa": "<texto>"}.`;
+    const narraSystem = `Você é o Mestre, o assistente do Perfil Master (Vianexx AI), especialista comportamental e de gestão. Recebe um JSON com NÚMEROS AGREGADOS (sem nomes de pessoas), o contexto da sessão e a pergunta do facilitador. Escreva uma resposta clara, objetiva e acolhedora em português brasileiro, baseada SOMENTE nesses números. Nunca invente dados nem cite indivíduos.
+- Fale como uma pessoa: frases de tamanhos variados, sem travessão (—), sem floreio publicitário e sem forçar listas de três. Vá direto ao ponto.
+- Pode dar ORIENTAÇÕES práticas e próximos passos a partir dos números (ex.: cobrar avaliações paradas, reforçar grupos com baixa conclusão).
+- Se a consulta for "saude_status": resuma o status, destaque os "alertas" de anomalia (se houver) e oriente o que fazer; se não houver alertas, tranquilize que está tudo saudável. Lembre que você monitora dados (volume, conclusão, itens parados, versão), não erros internos de código.
+- Se um grupo foi suprimido por k-anonimato, mencione que houve recortes com amostra insuficiente.
+Responda SOMENTE JSON: {"narrativa": "<texto>"}.`;
     const narra = await callAnthropic(
       narraSystem,
-      JSON.stringify({ pergunta: perguntaLimpa, dados }),
+      JSON.stringify({ pergunta: perguntaLimpa, contexto: contextoSeguro, dados }),
       1200,
     );
     const narrativa = typeof narra?.narrativa === 'string' ? narra.narrativa : 'Não foi possível gerar a análise.';

@@ -5,6 +5,7 @@ import { signInWithEmail } from '@/firebase/auth.js';
 import { getUser } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
+import DiscMark from '@/components/brand/DiscMark.jsx';
 import clsx from 'clsx';
 
 export default function Login() {
@@ -70,10 +71,13 @@ export default function Login() {
     <div className="w-full max-w-md animate-slide-up">
       {/* Logo + heading */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#6366F1] shadow-[0_0_32px_rgba(99,102,241,0.4)] mb-5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} className="w-7 h-7">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+        <div className="flex justify-center mb-5">
+          <DiscMark size={60} />
+        </div>
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <span className="text-lg font-heading font-bold text-[#F7F8FC]">
+            Perfil <span className="text-[#6366F1]">Master</span>
+          </span>
         </div>
         <h1 className="text-2xl font-heading font-bold text-[#F7F8FC]">
           {t('auth.loginTitle')}

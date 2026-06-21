@@ -91,7 +91,11 @@ const PRINT_STYLE = `
     .avoid-break { break-inside: avoid; page-break-inside: avoid; }
   }
   @media screen {
-    .print-page { max-width: 820px; margin: 0 auto; background: white; }
+    .print-page {
+      max-width: 820px; margin: 28px auto 56px; background: white;
+      border-radius: 12px; box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
   }
 `;
 
@@ -400,7 +404,7 @@ export default function RelatorioOficial() {
           <div className="max-w-4xl mx-auto mt-2 px-3 py-2 bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-lg">
             <p className="text-xs text-[#EF4444]">⚠️ {erroIA}</p>
             <p className="text-xs text-[#A0A3B1] mt-0.5">
-              Serviço de IA temporariamente indisponível — tente novamente em instantes.
+              A análise por IA está indisponível agora. Tente de novo em instantes.
             </p>
           </div>
         )}

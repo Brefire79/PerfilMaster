@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
+import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAvaliadoByToken, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
 import { generateAnalysis } from '@/lib/apiKeyManager.js';
 import useAuthStore from '@/store/authStore.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
@@ -27,6 +28,25 @@ function calcularScoresFromAnswers(answers) {
     scores[dim] = arr.length === 0 ? 0 : Math.round((arr.reduce((s, v) => s + v, 0) / arr.length / 5) * 100);
   }
   return scores;
+}
+
+// Mapeia o perfil de um avaliado de sessão (app_avaliados.perfil) para o formato
+// esperado pelo ProfileDetail. Sem isto, o Painel ficava vazio para avaliados de
+// WhatsApp (que não têm linha em app_profiles) — só o Relatório Oficial abria.
+function avaliadoToProfileShape(av) {
+  const p = av?.perfil;
+  if (!p || !p.perfilPrimario) return null;
+  return {
+    dominantProfile: p.perfilPrimario,
+    secondaryProfile: p.perfilSecundario || null,
+    scores: {
+      D: Math.round(Number(p.dominante ?? p.D ?? 0)),
+      I: Math.round(Number(p.influente ?? p.I ?? 0)),
+      S: Math.round(Number(p.estavel ?? p.S ?? 0)),
+      C: Math.round(Number(p.analitico ?? p.C ?? 0)),
+    },
+    userName: av.nome || '',
+  };
 }
 
 /**
@@ -95,6 +115,7 @@ function buildAdminStrategy(analysis) {
 
 export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -118,6 +139,15 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
 
     (async () => {
       try {
+        // Avaliado de sessão (token, sem app_profiles): lê o perfil calculado em
+        // app_avaliados e mapeia para o ProfileDetail.
+        if (member?.isAvaliado && member?.token) {
+          const av = await getAvaliadoByToken(member.token);
+          setProfileData(avaliadoToProfileShape(av));
+          setLoadingProfile(false);
+          return;
+        }
+
         const p = await getProfile(memberUid);
         // Fallback: se o profile não tem scores válidos (ex.: buildProfile IA
         // sobrescreveu com vazio), recalcula a partir das respostas do assessment.
@@ -181,7 +211,18 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
   } : null);
 
   const hasProfile = !!(profileObj?.dominantProfile);
-  const needsAiEnrichment = hasProfile && !profileObj?.adminStrategy;
+  // Avaliado de sessão não tem app_profiles/app_admin_strategies, então o
+  // enriquecimento estratégico (que persiste por uid) não se aplica a ele.
+  const needsAiEnrichment = hasProfile && !profileObj?.adminStrategy && !member?.isAvaliado;
+
+  // Cross-link para o Relatório Oficial (documento entregável). Avaliado de
+  // sessão abre por token; conta de aluno abre por uid.
+  const concluido = member?.assessmentStatus === 'completed' || member?.assessmentStatus === 'analyzed';
+  const abrirRelatorio = () => {
+    if (member.isAvaliado && member.token) navigate(`/admin/relatorio/${member.token}`);
+    else navigate(`/admin/relatorio/aluno/${member.uid || member.id}`);
+    onClose();
+  };
 
   async function handleRegenerate() {
     if (!memberUid || regenerating) return;
@@ -277,10 +318,17 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
         aria-hidden="true"
       />
 
-      {/* Panel */}
-      <div className="relative w-full max-w-lg h-full bg-[#1A1D2E] border-l border-[#2D3047] flex flex-col shadow-2xl animate-slide-in-right overflow-hidden">
+      {/* Panel — usa 100dvh (viewport dinâmico do mobile) e respeita a safe-area
+          do topo (notch/barra de status) para o botão Fechar nunca ficar coberto. */}
+      <div
+        className="relative w-full max-w-lg bg-[#1A1D2E] border-l border-[#2D3047] flex flex-col shadow-2xl animate-slide-in-right overflow-hidden"
+        style={{ height: '100dvh' }}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047] flex-shrink-0">
+        <div
+          className="flex items-center justify-between px-5 py-4 border-b border-[#2D3047] flex-shrink-0"
+          style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}
+        >
           <div className="flex items-center gap-3 min-w-0">
             {hasProfile && (
               <ProfileBadge profile={profileObj.dominantProfile} size="sm" showLabel={false} />
@@ -290,22 +338,29 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
                 {member.displayName || member.name || t('app.noData', '—')}
               </h2>
               <p className="text-xs text-[#A0A3B1] truncate">{member.email || ''}</p>
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold uppercase tracking-wide text-[#A5B4FC] bg-[#6366F1]/12 border border-[#6366F1]/25 rounded-full px-2 py-0.5">
+                Painel do facilitador · uso interno
+              </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="ml-3 p-1.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] transition-colors flex-shrink-0"
+            className="ml-3 inline-flex items-center gap-1.5 p-2.5 rounded-lg text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#242736] active:bg-[#2D3047] transition-colors flex-shrink-0"
             aria-label={t('app.back', 'Fechar')}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-5 h-5" aria-hidden="true">
               <line x1="18" y1="6" x2="6" y2="18" />
               <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
+            <span className="text-sm font-medium sm:hidden">Fechar</span>
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto p-5">
+        <div
+          className="flex-1 overflow-y-auto p-5"
+          style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        >
           {loadingProfile ? (
             <div className="flex flex-col items-center justify-center py-20 gap-3 animate-pulse">
               <div className="w-16 h-16 rounded-2xl bg-[#242736]" />
@@ -366,6 +421,28 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
             </div>
           )}
         </div>
+
+        {/* Rodapé: cross-link para o documento entregável (Relatório Oficial) */}
+        {concluido && (
+          <div
+            className="flex-shrink-0 border-t border-[#2D3047] p-4"
+            style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          >
+            <button
+              onClick={abrirRelatorio}
+              className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-[#6366F1] hover:bg-[#5558E3] text-white text-sm font-semibold transition-colors"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="w-4 h-4" aria-hidden="true">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+              </svg>
+              Abrir relatório oficial (PDF)
+            </button>
+            <p className="text-[11px] text-[#6B6F80] text-center mt-2">
+              Documento para imprimir ou enviar ao aluno.
+            </p>
+          </div>
+        )}
       </div>
     </div>,
     document.body
