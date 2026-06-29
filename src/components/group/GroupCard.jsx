@@ -67,7 +67,7 @@ function AvatarStack({ members = [], maxVisible = 3, groupColor }) {
  * @param {() => void} onEdit - callback to open edit modal
  * @param {() => void} onDeleted - callback after successful delete
  */
-export default function GroupCard({ group, onEdit, onDeleted }) {
+export default function GroupCard({ group, onEdit, onDeleted, memberCount: memberCountProp }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { removeGroup } = useGroupStore();
@@ -77,7 +77,11 @@ export default function GroupCard({ group, onEdit, onDeleted }) {
   const menuRef = useRef(null);
 
   const color = group.color || '#6366F1';
-  const memberCount = group.memberIds?.length ?? group.members?.length ?? 0;
+  // Prefere a contagem REAL (app_users por groupId) passada pelo pai; cai no
+  // array memberIds só como fallback quando a contagem real não foi fornecida.
+  const memberCount = typeof memberCountProp === 'number'
+    ? memberCountProp
+    : (group.memberIds?.length ?? group.members?.length ?? 0);
 
   // Close menu on outside click
   useEffect(() => {

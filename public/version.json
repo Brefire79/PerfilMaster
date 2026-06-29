@@ -1,5 +1,5 @@
 {
-  "version": "1.0.49",
-  "buildDate": "2026-06-21T11:33:48.406Z",
-  "notes": "Botoes de acao com label de texto (Sessoes + Students) — mais intuitivo no mobile"
+  "version": "1.0.51",
+  "buildDate": "2026-06-29T19:25:37.093Z",
+  "notes": "Alunos: nome destacado em verde quando concluido + colunas ADM/Aluno/Acoes alinhadas (e-mail/perfil ocultos). Grupos: contagem real de membros no card."
 }

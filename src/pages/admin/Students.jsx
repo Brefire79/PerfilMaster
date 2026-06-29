@@ -576,13 +576,13 @@ export default function Students() {
       {/* Table / list */}
       <Card variant="default" bodyClassName="p-0">
         {/* Column headers — desktop only */}
-        <div className="hidden md:grid md:grid-cols-[2fr_2fr_1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-[#2D3047] text-xs font-medium text-[#A0A3B1] uppercase tracking-wider">
+        <div className="hidden md:grid md:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_130px_96px_116px_minmax(0,1.4fr)] gap-4 px-5 py-3 border-b border-[#2D3047] text-xs font-medium text-[#A0A3B1] uppercase tracking-wider">
           <span>{t('admin.students.name', 'Nome')}</span>
-          <span>{t('admin.students.email', 'E-mail')}</span>
           <span>{t('admin.students.group', 'Grupo')}</span>
-          <span>{t('admin.students.profileType', 'Perfil')}</span>
           <span>{t('admin.students.status', 'Avaliação')}</span>
-          <span></span>
+          <span title="Painel do facilitador (uso interno)">ADM</span>
+          <span title="Relatório oficial entregue ao aluno">Aluno</span>
+          <span>Ações</span>
         </div>
 
         {/* Loading */}
@@ -620,10 +620,12 @@ export default function Students() {
         {/* Rows */}
         {!loading && paginated.length > 0 && (
           <div className="divide-y divide-[#2D3047]">
-            {paginated.map((student) => (
+            {paginated.map((student) => {
+              const concluido = student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed';
+              return (
               <div
                 key={student.id}
-                className="group flex flex-col md:grid md:grid-cols-[2fr_2fr_1fr_auto_auto_auto] items-start md:items-center gap-2 md:gap-4 px-5 py-3.5 hover:bg-[#1A1D2E]/50 transition-colors"
+                className="group flex flex-col md:grid md:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)_130px_96px_116px_minmax(0,1.4fr)] items-start md:items-center gap-2 md:gap-4 px-5 py-3.5 hover:bg-[#1A1D2E]/50 transition-colors"
               >
                 {/* Avatar + Name */}
                 <div className="flex items-center gap-3 min-w-0">
@@ -637,15 +639,18 @@ export default function Students() {
                   >
                     {getInitials(student.displayName || student.name)}
                   </div>
-                  <span className="text-sm text-[#F7F8FC] font-medium truncate">
+                  <span
+                    className={clsx(
+                      'text-sm font-medium truncate transition-colors rounded-lg px-2.5 py-1 ring-1',
+                      concluido
+                        ? 'text-[#22C55E] bg-[#22C55E]/10 ring-[#22C55E]/50'
+                        : 'text-[#F7F8FC] bg-transparent ring-transparent'
+                    )}
+                    title={concluido ? 'Avaliação concluída' : undefined}
+                  >
                     {student.displayName || student.name || '—'}
                   </span>
                 </div>
-
-                {/* Email */}
-                <span className="text-sm text-[#A0A3B1] truncate pl-12 md:pl-0">
-                  {student.email || '—'}
-                </span>
 
                 {/* Group */}
                 <div className="pl-12 md:pl-0">
@@ -666,16 +671,7 @@ export default function Students() {
                   )}
                 </div>
 
-                {/* Profile */}
-                <div className="pl-12 md:pl-0">
-                  {student.profile ? (
-                    <ProfileBadge type={student.profile} size="sm" />
-                  ) : (
-                    <Badge variant="neutral" size="sm">{t('group.noProfile', 'Sem perfil')}</Badge>
-                  )}
-                </div>
-
-                {/* Status */}
+                {/* AVALIAÇÃO — status */}
                 <div className="pl-12 md:pl-0">
                   <StatusBadge
                     status={getStatusVariant(student.assessmentStatus)}
@@ -684,8 +680,8 @@ export default function Students() {
                   />
                 </div>
 
-                {/* Actions — sempre visíveis (no celular não há hover) com label de texto */}
-                <div className="flex flex-wrap items-center gap-1.5 pl-12 md:pl-0">
+                {/* ADM — Painel do facilitador (uso interno) */}
+                <div className="pl-12 md:pl-0">
                   <button
                     className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
                     aria-label="Painel do facilitador"
@@ -700,7 +696,11 @@ export default function Students() {
                     </svg>
                     <span className="hidden sm:inline">Painel</span>
                   </button>
-                  {podeVerRelatorio(student) && (
+                </div>
+
+                {/* ALUNO — Relatório oficial (entregue ao aluno) */}
+                <div className="pl-12 md:pl-0">
+                  {podeVerRelatorio(student) ? (
                     <button
                       className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs font-medium text-[#A0A3B1] hover:text-[#6366F1] hover:bg-[#6366F1]/10 transition-colors"
                       aria-label="Relatório oficial"
@@ -715,7 +715,13 @@ export default function Students() {
                       </svg>
                       <span className="hidden sm:inline">Relatório</span>
                     </button>
+                  ) : (
+                    <span className="text-xs text-[#A0A3B1]/40 md:pl-2" title="Disponível após a conclusão da avaliação">—</span>
                   )}
+                </div>
+
+                {/* AÇÕES — gestão do aluno */}
+                <div className="flex flex-wrap items-center gap-1.5 pl-12 md:pl-0">
                   {(() => {
                     const concluido = student.assessmentStatus === 'completed' || student.assessmentStatus === 'analyzed';
                     const label = concluido ? 'Reavaliar' : t('students.assignAssessment', 'Atribuir avaliação');
@@ -800,7 +806,8 @@ export default function Students() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

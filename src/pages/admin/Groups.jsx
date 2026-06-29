@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, createGroup, updateGroup as updateGroupFirestore, getModules, createInvite } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, createGroup, updateGroup as updateGroupFirestore, getModules, createInvite, getStudentsByAdmin } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Modal from '@/components/ui/Modal.jsx';
@@ -353,8 +353,9 @@ export default function Groups() {
   const [inviteOpen, setInviteOpen] = useState(false); // FIX: modal convidar aluno
   const [editGroup, setEditGroup] = useState(null);
   const [modules, setModules] = useState([]);
+  const [students, setStudents] = useState([]);
 
-  // Fetch groups and modules on mount
+  // Fetch groups, modules and students on mount
   useEffect(() => {
     if (!user?.uid) return;
     let cancelled = false;
@@ -362,13 +363,15 @@ export default function Groups() {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [fetchedGroups, fetchedModules] = await Promise.all([
+        const [fetchedGroups, fetchedModules, fetchedStudents] = await Promise.all([
           getGroupsByAdmin(user.uid),
           getModules(null).catch(() => []),
+          getStudentsByAdmin(user.uid).catch(() => []),
         ]);
         if (!cancelled) {
           setGroups(fetchedGroups);
           setModules(Array.isArray(fetchedModules) ? fetchedModules : []);
+          setStudents(Array.isArray(fetchedStudents) ? fetchedStudents : []);
         }
       } catch (err) {
         console.error('Error fetching groups:', err);
@@ -380,6 +383,17 @@ export default function Groups() {
     loadData();
     return () => { cancelled = true; };
   }, [user?.uid, setGroups]);
+
+  // Contagem REAL de membros por grupo: número de app_users com groupId === id
+  // (mesma fonte da tela de detalhe, getUsersByGroup). Evita confiar no array
+  // app_groups.memberids, que pode ficar dessincronizado e inflar o número.
+  const memberCounts = useMemo(() => {
+    const counts = {};
+    for (const s of students) {
+      if (s.groupId) counts[s.groupId] = (counts[s.groupId] || 0) + 1;
+    }
+    return counts;
+  }, [students]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -529,6 +543,7 @@ export default function Groups() {
             <GroupCard
               key={group.id}
               group={group}
+              memberCount={memberCounts[group.id]}
               onEdit={(g) => setEditGroup(g)}
               onDeleted={() => {}}
             />
