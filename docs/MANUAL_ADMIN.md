@@ -41,6 +41,15 @@ Feed em tempo real com até 8 eventos:
 
 Click em qualquer evento → navega ao grupo relacionado.
 
+### Mestre — seu assistente no Painel
+No topo do Painel, ao lado do selo Admin, fica o botão **"Perguntar ao Mestre"**. Ele abre um **chat flutuante** no canto da tela que responde com os números do seu escopo, sem enviar nada para fora do app:
+
+- **O que perguntar**: distribuição DISC e sabotadores dos seus grupos, taxa de conclusão de um período ("últimos 30 dias", "na semana"), saúde do app ("está tudo certo?"), e dúvidas de uso (avaliação avulsa, convites, redefinir senha, converter avaliado em conta).
+- **Contexto preservado**: a conversa continua onde parou, mesmo trocando de tela ou recarregando o app. Ela só é apagada quando você **sai da conta** (ou pelo botão de lixeira no próprio chat).
+- **Privacidade**: o Mestre trabalha só com números agregados — nunca vê nome, e-mail ou CPF. A inteligência artificial (análise interpretativa) é usada apenas no **Relatório Oficial**.
+- **Exportar**: respostas com dados têm o botão **Exportar PDF**.
+- **Não entendeu sua pergunta?** Ele avisa e anota a pergunta para aprender o assunto numa próxima atualização do app.
+
 ---
 
 ## 3. Gestão de Grupos

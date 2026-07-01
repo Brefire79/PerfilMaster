@@ -264,9 +264,22 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 - **Aparência**: alternância de **tema claro/escuro** (botão sol/lua no TopBar), persistida por dispositivo (`localStorage`). App é dark-first; o tema claro reaplica as variáveis e sobrepõe as classes estruturais (`html.light` em `index.css`).
 - **Zona de Perigo**: excluir conta — reapresenta o risco e **exige a senha** (validada no servidor) antes de prosseguir. Exclusão completa de dados (Edge `deleteAccount`) ainda pendente.
 
+### 6.12 Mestre — chatbot local (chat flutuante)
+Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no chat. A API de IA (DeepSeek) fica reservada à análise nos relatórios (`insightPerfil`) e ao pipeline de avaliação.
+
+- **Acesso**: botão "Perguntar ao Mestre" no cabeçalho do **Painel** (`/admin/dashboard`). Abre um **chat flutuante** (canto inferior direito) montado no `AdminLayout` — permanece disponível ao navegar entre telas. A antiga sub-aba Central › "Mestre (IA)" foi removida (rota redireciona ao Painel).
+- **Motor** (`src/lib/mestreLocal.js`): roteia a pergunta por palavras-chave para uma de 4 consultas fixas — `inteligencia_grupos` (RPC `central_group_insights`, k-anonimato), `visao_geral` (RPC `central_observabilidade` + `computeObservabilidade`; janelas: "últimos N dias", "semana", "mês", "24 horas"/"hoje"), `saude_status` (alertas derivados: avaliações paradas, taxa baixa, inatividade, versão/atualização) e `contagem` ("quantos alunos/grupos tenho" — **replica o cálculo do card "Total de Alunos" do Painel**, incluindo a deduplicação de avaliados convertidos em conta do DELTA 19, para chat e Painel mostrarem o mesmo número). A narrativa é montada por templates PT-BR a partir dos números, com plural correto. Perguntas de data/hora ("que dia é hoje") são respondidas localmente pelo relógio do dispositivo.
+- **Base de conhecimento** (modo conversa): explica DISC, Sabotadores/PQ, avaliação avulsa, convites, redefinição de senha, conversão de avaliado em conta, relatórios, privacidade/k-anonimato, Central, módulos e notificações.
+- **Persistência do contexto**: a conversa fica no `mestreStore` (Zustand + `localStorage`, chave `profileai.mestre.chat`) — sobrevive a navegação e reload e é **apagada apenas no logout** (`authStore.clearUser`).
+- **Miss-log (evolução do vocabulário)**: perguntas sem resposta e erros de execução são registrados em `localStorage` (`profileai.mestre.misslog`, máx. 200, com contador de repetição). Serve de insumo para enriquecer palavras-chave e respostas em atualizações. Ler no console do navegador: `JSON.parse(localStorage.getItem('profileai.mestre.misslog'))`. O miss-log **não** é apagado no logout (não contém PII de conversa além da pergunta digitada).
+- **Privacidade**: só números agregados do escopo do facilitador; nomes/e-mails/CPF nunca entram nas respostas; nada sai do app pelo chat.
+- **Exportação**: respostas com dados podem ser exportadas em PDF local (`centralPdf.js`, import dinâmico), com evento `report_exported` na trilha de auditoria.
+
 ---
 
 ## 7. Fluxo de IA — Edge Functions
+
+> **Escopo da IA (desde jul/2026):** a API DeepSeek é consumida **apenas** na avaliação/relatório (`insightPerfil`, `therapyFlag`, `analyzeResponse`, `buildProfile`). O chat do Mestre **não** usa IA externa (ver § 6.12); a Edge Function `assistenteCentral` segue deployada, mas não é mais chamada pelo frontend.
 
 ### 7.1 `insightPerfil`
 **Input:** `{ perfil: { dominantProfile, secondaryProfile, scores }, nome, geminiKey? }`  

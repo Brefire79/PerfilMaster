@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge.jsx';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
 import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup, getAvaliadosByAdmin } from '@/firebase/firestore.js';
+import { MestreTrigger } from '@/components/mestre/MestreChat.jsx';
 
 const ACTIVITY_PROFILE_COLORS = {
   D: '#EF4444', I: '#F59E0B', S: '#22C55E', C: '#6366F1',
@@ -258,6 +259,9 @@ export default function AdminDashboard() {
           try {
             const avaliados = await getAvaliadosByAdmin(user.uid);
             avaliados.forEach((a) => {
+              // DELTA 19: avaliado convertido em conta que já é membro de grupo
+              // não pode contar 2× (como conta E como avaliado de sessão).
+              if (a.convertedUid && seenStudentUids.has(a.convertedUid)) return;
               if (!seenStudentUids.has(a.id)) {
                 avaliadosCount++;
                 if (a.status === 'concluido') avaliadosConcluidos++;
@@ -412,9 +416,13 @@ export default function AdminDashboard() {
           </h1>
           <p className="text-[#A0A3B1] text-sm mt-1">{t('admin.overview')}</p>
         </div>
-        <Badge variant="accent" size="md" dot>
-          Admin
-        </Badge>
+        <div className="flex items-center gap-3 flex-wrap justify-end">
+          {/* Mestre — abre o chat flutuante (motor local, sem IA externa) */}
+          <MestreTrigger />
+          <Badge variant="accent" size="md" dot>
+            Admin
+          </Badge>
+        </div>
       </div>
 
       {/* Stats grid */}

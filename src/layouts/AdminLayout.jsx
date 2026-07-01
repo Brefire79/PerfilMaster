@@ -4,6 +4,7 @@ import Sidebar from '@/components/layout/Sidebar.jsx';
 import TopBar from '@/components/layout/TopBar.jsx';
 import BottomNav from '@/components/layout/BottomNav.jsx';
 import useActivityNotifications from '@/hooks/useActivityNotifications.js';
+import MestreChatFlutuante from '@/components/mestre/MestreChat.jsx';
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -68,6 +69,10 @@ export default function AdminLayout() {
       <div className="lg:hidden">
         <BottomNav role="admin" />
       </div>
+
+      {/* Mestre — chat flutuante (abre pelo gatilho no Painel; a conversa
+          persiste em navegação/reload e só é limpa no logout) */}
+      <MestreChatFlutuante />
     </div>
   );
 }

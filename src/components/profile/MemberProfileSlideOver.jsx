@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAvaliadoByToken, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
-import { generateAnalysis } from '@/lib/apiKeyManager.js';
+import { generateLocalAnalysis } from '@/lib/localEngine.js';
 import useAuthStore from '@/store/authStore.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
@@ -281,14 +281,15 @@ export default function MemberProfileSlideOver({ member, isOpen, onClose }) {
         await updateUser(memberUid, { assessmentStatus: 'completed' });
       }
 
-      // 3. Gera análise com motor local
+      // 3. Gera análise com motor local (determinístico — a IA externa fica
+      //    reservada à análise do Relatório Oficial).
       const emptySabScores = {
         judge: 0, stickler: 0, pleaser: 0, hyperAchiever: 0, victim: 0,
         hyperRational: 0, hyperVigilant: 0, restless: 0, controller: 0, avoider: 0,
       };
-      const analysis = await generateAnalysis(discScores, emptySabScores);
+      const analysis = generateLocalAnalysis(discScores, emptySabScores);
 
-      // 4. Constrói o adminStrategy (determinístico + enriquecimento da IA)
+      // 4. Constrói o adminStrategy (determinístico)
       const adminStrategy = buildAdminStrategy(analysis);
 
       // 5. Mostra imediatamente a partir do estado local.

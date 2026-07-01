@@ -5,11 +5,12 @@ import { useSuperadmin } from '@/hooks/useSuperadmin.js';
 import DiscMark from '@/components/brand/DiscMark.jsx';
 
 // ─── Sub-abas da Central de Gestão ──────────────────────────────────────────────
+// Aba "Mestre (IA)" removida (jul/2026): o chat virou flutuante — gatilho no
+// Painel (Dashboard) + painel montado no AdminLayout (components/mestre/).
 const SUBTABS = [
   { to: '/admin/central/visao-geral',    label: 'Visão Geral' },
   { to: '/admin/central/pessoas',        label: 'Pessoas & Histórico' },
   { to: '/admin/central/grupos',         label: 'Inteligência de Grupos' },
-  { to: '/admin/central/assistente',     label: 'Mestre (IA)' },
 ];
 
 /**
@@ -36,7 +37,7 @@ export default function CentralLayout() {
           )}
         </div>
         <p className="text-[#A0A3B1] text-sm mt-1">
-          Observabilidade, histórico, inteligência de grupos e o Mestre. Vianexx AI.
+          Observabilidade, histórico e inteligência de grupos. O Mestre atende pelo botão no Painel. Vianexx AI.
         </p>
       </header>
 

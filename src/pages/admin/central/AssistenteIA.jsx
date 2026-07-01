@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { assistenteCentral, logAudit } from '@/firebase/functions.js';
-import { gerarPdfCentral } from '@/lib/centralPdf.js';
+import { logAudit } from '@/firebase/functions.js';
+import { responderMestre } from '@/lib/mestreLocal.js';
 import { getUser } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import usePwaUpdate from '@/hooks/usePwaUpdate.js';
@@ -173,8 +173,11 @@ export default function AssistenteIA() {
     setMensagens((m) => [...m, { autor: 'user', texto: pergunta }]);
     setEnviando(true);
     try {
-      const res = await assistenteCentral({
+      // Motor LOCAL (sem IA externa): roteia por palavras-chave e consulta os
+      // RPCs escopados. A API de IA fica só na análise do Relatório Oficial.
+      const res = await responderMestre({
         pergunta,
+        adminUid: uid,
         contexto: {
           tela: 'central/assistente',
           appVersion: currentVersion,
@@ -206,7 +209,9 @@ export default function AssistenteIA() {
     }
   };
 
-  const baixarPdf = (msg) => {
+  const baixarPdf = async (msg) => {
+    // Import dinâmico: mantém o jsPDF fora do chunk inicial do chat.
+    const { gerarPdfCentral } = await import('@/lib/centralPdf.js');
     gerarPdfCentral({
       pergunta: msg.pergunta,
       narrativa: msg.texto,
@@ -229,9 +234,9 @@ export default function AssistenteIA() {
           <h2 className="mestre-name">Mestre</h2>
           <span className="mestre-sub">Inteligência do Perfil Master</span>
         </div>
-        <span className="mestre-live" title="Só números agregados. O Mestre nunca vê nome, e-mail ou CPF.">
+        <span className="mestre-live" title="Respostas geradas localmente com os números agregados do seu escopo. Nenhum dado sai do app; a IA externa é usada só na análise do Relatório Oficial.">
           <span className="mestre-live__dot" />
-          sem PII
+          local · sem PII
         </span>
       </header>
 
@@ -242,8 +247,8 @@ export default function AssistenteIA() {
             <div className="mestre-hero__sigil"><MestreSigil size={92} /></div>
             <h1 className="mestre-hero__title">Pergunte ao Mestre</h1>
             <p className="mestre-hero__lead">
-              O Mestre lê o comportamento dos seus grupos e o ritmo do período em números.
-              Ninguém é identificado.
+              O Mestre lê o comportamento dos seus grupos e o ritmo do período em números,
+              direto dos seus dados — sem IA externa. Ninguém é identificado.
             </p>
             <div className="mestre-sugs">
               {SUGESTOES.map((s) => (

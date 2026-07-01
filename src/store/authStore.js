@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
+import useMestreStore from './mestreStore.js';
 
 const useAuthStore = create(
   devtools(
@@ -46,6 +47,14 @@ const useAuthStore = create(
         clearUser: () => {
           // Also wipe persisted role so stale 'student'/'admin' doesn't bleed into next session
           try { localStorage.removeItem('profileai-auth'); } catch (_) {}
+          // Conversa do Mestre persiste só até o logout (o miss-log fica —
+          // é insumo de evolução do vocabulário, sem PII de conversa).
+          // Reseta memória E storage: logout em SPA não recarrega a página.
+          try {
+            useMestreStore.getState().limparConversa();
+            useMestreStore.getState().fechar();
+            localStorage.removeItem('profileai.mestre.chat');
+          } catch (_) {}
           set(
             {
               user: null,
