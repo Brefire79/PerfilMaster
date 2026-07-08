@@ -1,9 +1,13 @@
 /**
- * sampleQuestions.js
+ * sampleQuestions.js — FONTE ÚNICA das 78 questões da avaliação Completa.
  *
- * 24 sample DISC assessment questions used as fallback when no Firestore data exists.
- * Distribution: 6 per dimension (D/I/S/C), 2 per difficulty level (1/2/3).
- * Types mixed across: likert5, forced_choice, scenario.
+ * 28 DISC (7 por dimensão D/I/S/C, ids q_<dim>_01..07) + 50 Sabotadores
+ * (5 por tipo, ids q_sab_<slug>_01..05). Todas do tipo likert5 (1-5).
+ *
+ * ATENÇÃO — espelhos que precisam ficar em sincronia ao mudar qualquer questão:
+ *   - supabase/functions/atualizarStatus/index.ts (ids/pesos DISC + slugs sab)
+ *   - src/lib/discScoring.js (lê pesos daqui em runtime — sincroniza sozinho)
+ *   - src/lib/saboteurScoring.js (mapeia por `dimension` SAB_*)
  */
 
 export const SAMPLE_QUESTIONS = [

@@ -67,6 +67,16 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: error?.message || 'Falha ao gerar link de recuperação.' }, 500, req);
     }
 
+    // FIX (DELTA 19 §4, completado): o action_link cru do Supabase é de USO
+    // ÚNICO e se auto-verifica num GET — o robô de preview do WhatsApp "abre"
+    // o link e QUEIMA o token antes da pessoa clicar. Enviamos, em vez dele,
+    // um link para a NOSSA página com ?token_hash= — a troca por sessão só
+    // acontece via POST quando a pessoa realmente chega (verifyRecoveryToken).
+    const hashedToken = data.properties?.hashed_token ?? null;
+    const actionLink = root && hashedToken
+      ? `${root}/reset-password?token_hash=${encodeURIComponent(hashedToken)}&type=recovery`
+      : data.properties.action_link; // fallback: sem baseUrl, mantém o link cru
+
     // Trilha de auditoria (sem expor o link).
     await logAuditEvent({
       adminuid: user.id,
@@ -78,7 +88,7 @@ Deno.serve(async (req) => {
       metadata: {},
     });
 
-    return jsonResponse({ actionLink: data.properties.action_link, email: alvo.email }, 200, req);
+    return jsonResponse({ actionLink, email: alvo.email }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'generateRecoveryLink failed' }, 500, req);
   }

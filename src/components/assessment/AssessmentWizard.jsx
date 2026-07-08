@@ -3,41 +3,14 @@ import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser } from '@/firebase/firestore.js';
 import { computeSaboteurs } from '@/lib/saboteurScoring.js';
+// FIX (auditoria 07/07/2026): motor DISC canônico compartilhado — mesma
+// fórmula ponderada do Edge atualizarStatus (antes o wizard usava média
+// simples, sem pesos, e divergia do fluxo público).
+import { calcularPerfilDisc } from '@/lib/discScoring.js';
 import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
 import Button from '@/components/ui/Button.jsx';
 import useAuthStore from '@/store/authStore.js';
 import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
-
-const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
-
-function calcularPerfilDisc(respostas, perguntas) {
-  const acc = { D: [], I: [], S: [], C: [] };
-  for (const q of perguntas) {
-    const dim = q.dimension;
-    if (!dim || !acc[dim]) continue;
-    const valor = respostas[q.id];
-    if (valor != null) acc[dim].push(Number(valor));
-  }
-  const scores = {};
-  for (const dim of ['D', 'I', 'S', 'C']) {
-    const arr = acc[dim];
-    if (arr.length === 0) {
-      scores[dim] = 0;
-    } else {
-      const media = arr.reduce((s, v) => s + v, 0) / arr.length;
-      scores[dim] = Math.round((media / 5) * 100);
-    }
-  }
-  const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
-  const [dominant, secondary] = sorted;
-  return {
-    scores,
-    dominantProfile: dominant[0],
-    dominantProfileName: PROFILE_NAMES[dominant[0]],
-    secondaryProfile: secondary[0],
-    secondaryProfileName: PROFILE_NAMES[secondary[0]],
-  };
-}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -541,9 +514,8 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
 
       await submitAssessment(assessmentDocId, { ...respostas });
 
-      // 3. Calcula perfil DISC localmente
-      const todasPerguntas = [...perguntasDisc, ...perguntasSaboteurs];
-      const perfilLocal = calcularPerfilDisc(respostas, todasPerguntas);
+      // 3. Calcula perfil DISC localmente (motor canônico — src/lib/discScoring.js)
+      const perfilLocal = calcularPerfilDisc(respostas);
 
       // 3.1 Calcula Sabotadores + PQ Score (persistidos p/ destravar o Módulo 3)
       const sab = computeSaboteurs(respostas, perguntasSaboteurs);

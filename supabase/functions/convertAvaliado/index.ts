@@ -87,6 +87,18 @@ Deno.serve(async (req) => {
     const root = (baseUrl || '').replace(/\/$/, '');
     const redirectTo = root ? `${root}/reset-password` : undefined;
 
+    // FIX (DELTA 19 §4, completado): nunca enviar o action_link cru do Supabase
+    // por WhatsApp — o preview (GET) queima o token de uso único. Monta o link
+    // robusto para a nossa página (?token_hash= → POST verify só quando a
+    // pessoa chega). Fallback: sem baseUrl/hashed_token, mantém o link cru.
+    const buildRecoveryLink = (props: { action_link?: string | null; hashed_token?: string | null } | null | undefined): string | null => {
+      const hashed = props?.hashed_token ?? null;
+      if (root && hashed) {
+        return `${root}/reset-password?token_hash=${encodeURIComponent(hashed)}&type=recovery`;
+      }
+      return props?.action_link ?? null;
+    };
+
     // 1) Usuário de auth. Como já garantimos que NÃO há app_users com este e-mail,
     //    duas situações são tratadas:
     //    (a) e-mail novo → cria o usuário de auth;
@@ -118,7 +130,7 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: 'Existe um usuário de auth com este e-mail, mas não foi possível reaproveitá-lo. Verifique a conta no Supabase.' }, 409, req);
       }
       uid = linkData.user.id;
-      actionLink = linkData.properties?.action_link ?? null;
+      actionLink = buildRecoveryLink(linkData.properties);
       adotado = true;
 
       // Defesa extra: o uid resolvido não pode já ter app_users (conta real).
@@ -197,7 +209,7 @@ Deno.serve(async (req) => {
         email,
         options: redirectTo ? { redirectTo } : undefined,
       });
-      actionLink = linkData?.properties?.action_link ?? null;
+      actionLink = buildRecoveryLink(linkData?.properties);
     }
 
     await logAuditEvent({

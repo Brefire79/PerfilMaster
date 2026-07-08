@@ -7,19 +7,23 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
 );
+// FIX (auditoria 07/07/2026): TODAS as 28 questões DISC são likert5 em
+// sampleQuestions.js — os types antigos forced_choice/scenario (range 3)
+// distorciam _03/_05 (respostas 4 e 5 normalizavam ambas para 1.0).
+// Espelho de src/lib/discScoring.js — mudou lá, mude aqui (e vice-versa).
 const QUESTIONS = [
   { id: 'q_d_01', dimension: 'D', type: 'likert5', weight: 1.0 }, { id: 'q_d_02', dimension: 'D', type: 'likert5', weight: 1.0 },
-  { id: 'q_d_03', dimension: 'D', type: 'forced_choice', weight: 1.2 }, { id: 'q_d_04', dimension: 'D', type: 'likert5', weight: 1.1 },
-  { id: 'q_d_05', dimension: 'D', type: 'scenario', weight: 1.5 }, { id: 'q_d_06', dimension: 'D', type: 'likert5', weight: 1.5 },
+  { id: 'q_d_03', dimension: 'D', type: 'likert5', weight: 1.2 }, { id: 'q_d_04', dimension: 'D', type: 'likert5', weight: 1.1 },
+  { id: 'q_d_05', dimension: 'D', type: 'likert5', weight: 1.5 }, { id: 'q_d_06', dimension: 'D', type: 'likert5', weight: 1.5 },
   { id: 'q_i_01', dimension: 'I', type: 'likert5', weight: 1.0 }, { id: 'q_i_02', dimension: 'I', type: 'likert5', weight: 1.0 },
-  { id: 'q_i_03', dimension: 'I', type: 'forced_choice', weight: 1.2 }, { id: 'q_i_04', dimension: 'I', type: 'likert5', weight: 1.1 },
-  { id: 'q_i_05', dimension: 'I', type: 'scenario', weight: 1.5 }, { id: 'q_i_06', dimension: 'I', type: 'likert5', weight: 1.5 },
+  { id: 'q_i_03', dimension: 'I', type: 'likert5', weight: 1.2 }, { id: 'q_i_04', dimension: 'I', type: 'likert5', weight: 1.1 },
+  { id: 'q_i_05', dimension: 'I', type: 'likert5', weight: 1.5 }, { id: 'q_i_06', dimension: 'I', type: 'likert5', weight: 1.5 },
   { id: 'q_s_01', dimension: 'S', type: 'likert5', weight: 1.0 }, { id: 'q_s_02', dimension: 'S', type: 'likert5', weight: 1.0 },
-  { id: 'q_s_03', dimension: 'S', type: 'forced_choice', weight: 1.2 }, { id: 'q_s_04', dimension: 'S', type: 'likert5', weight: 1.1 },
-  { id: 'q_s_05', dimension: 'S', type: 'scenario', weight: 1.5 }, { id: 'q_s_06', dimension: 'S', type: 'likert5', weight: 1.5 },
+  { id: 'q_s_03', dimension: 'S', type: 'likert5', weight: 1.2 }, { id: 'q_s_04', dimension: 'S', type: 'likert5', weight: 1.1 },
+  { id: 'q_s_05', dimension: 'S', type: 'likert5', weight: 1.5 }, { id: 'q_s_06', dimension: 'S', type: 'likert5', weight: 1.5 },
   { id: 'q_c_01', dimension: 'C', type: 'likert5', weight: 1.0 }, { id: 'q_c_02', dimension: 'C', type: 'likert5', weight: 1.0 },
-  { id: 'q_c_03', dimension: 'C', type: 'forced_choice', weight: 1.2 }, { id: 'q_c_04', dimension: 'C', type: 'likert5', weight: 1.1 },
-  { id: 'q_c_05', dimension: 'C', type: 'scenario', weight: 1.5 }, { id: 'q_c_06', dimension: 'C', type: 'likert5', weight: 1.5 },
+  { id: 'q_c_03', dimension: 'C', type: 'likert5', weight: 1.2 }, { id: 'q_c_04', dimension: 'C', type: 'likert5', weight: 1.1 },
+  { id: 'q_c_05', dimension: 'C', type: 'likert5', weight: 1.5 }, { id: 'q_c_06', dimension: 'C', type: 'likert5', weight: 1.5 },
   // DELTA 8: questões *_07 existem em sampleQuestions.js e eram respondidas
   // mas IGNORADAS no cálculo — agora pontuam com o mesmo peso do front (1.1)
   { id: 'q_d_07', dimension: 'D', type: 'likert5', weight: 1.1 }, { id: 'q_i_07', dimension: 'I', type: 'likert5', weight: 1.1 },

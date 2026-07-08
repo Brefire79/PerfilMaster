@@ -4,30 +4,16 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAvaliadoByToken, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
 import { generateLocalAnalysis } from '@/lib/localEngine.js';
+// FIX (auditoria 07/07/2026): usa o motor DISC canônico (fórmula ponderada,
+// espelho do Edge atualizarStatus) em vez da média simples duplicada aqui.
+import { calcularPerfilDisc } from '@/lib/discScoring.js';
 import useAuthStore from '@/store/authStore.js';
-import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
 import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
 
-const TOTAL_DISC = 28;
-const TOTAL_QUESTIONS = 78; // 28 DISC + 50 sabotadores
-
 // Recalcula scores DISC a partir das respostas brutas armazenadas na avaliação
 function calcularScoresFromAnswers(answers) {
-  const questions = Array.isArray(SAMPLE_QUESTIONS) ? SAMPLE_QUESTIONS.slice(0, TOTAL_QUESTIONS) : [];
-  const acc = { D: [], I: [], S: [], C: [] };
-  for (const q of questions) {
-    const dim = q.dimension;
-    if (!dim || !acc[dim]) continue;
-    const valor = answers?.[q.id];
-    if (valor != null) acc[dim].push(Number(valor));
-  }
-  const scores = {};
-  for (const dim of ['D', 'I', 'S', 'C']) {
-    const arr = acc[dim];
-    scores[dim] = arr.length === 0 ? 0 : Math.round((arr.reduce((s, v) => s + v, 0) / arr.length / 5) * 100);
-  }
-  return scores;
+  return calcularPerfilDisc(answers || {}).scores;
 }
 
 // Mapeia o perfil de um avaliado de sessão (app_avaliados.perfil) para o formato

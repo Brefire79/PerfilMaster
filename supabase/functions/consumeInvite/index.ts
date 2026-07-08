@@ -96,10 +96,21 @@ Deno.serve(async (req) => {
 
     const { data: existing } = await sb
       .from('app_users')
-      .select('uid')
+      .select('uid, role')
       .eq('uid', user.id)
       .maybeSingle();
     if (!existing) row.createdat = agora;
+
+    // FIX (auditoria 07/07/2026): um ADMIN existente que consome convite de
+    // ALUNO não pode ser rebaixado a student (o upsert sobrescreveria role,
+    // groupid e adminuid, quebrando o workspace dele). Bloqueia com erro claro.
+    if (existing?.role === 'admin' && !isAdminInvite) {
+      return jsonResponse(
+        { error: 'Esta conta é de administrador — não é possível usá-la para entrar como aluno. Use outra conta ou peça um convite de admin.' },
+        409,
+        req
+      );
+    }
 
     const { error: upsertError } = await sb
       .from('app_users')

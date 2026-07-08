@@ -287,11 +287,20 @@ export function generateLocalAnalysis(discScores, sabotadorScores) {
   const secondary = DISC_PROFILES[secondaryKey];
   const subtype = `${primaryKey}${secondaryKey}`;
 
-  // Sabotadores
-  const sabSorted = sortDesc(sabotadorScores);
+  // Sabotadores — a fórmula do PQ espera scores BRUTOS na escala 1-5.
+  // FIX (auditoria 07/07/2026): se vierem na escala 0-100 (ex.: os
+  // `saboteur_scores` persistidos em app_profiles), normaliza para 0-5
+  // antes de calcular, e aplica clamp [0,100] (sincronizado com
+  // saboteurScoring.js e calculate-assessment).
+  const maxSab = Math.max(0, ...Object.values(sabotadorScores || {}).map(Number).filter((v) => !Number.isNaN(v)));
+  const escala = maxSab > 5 ? 20 : 1; // 0-100 → ÷20 = 0-5
+  const sabNormalizado = Object.fromEntries(
+    Object.entries(sabotadorScores || {}).map(([k, v]) => [k, (Number(v) || 0) / escala])
+  );
+  const sabSorted = sortDesc(sabNormalizado);
   const top3 = sabSorted.slice(0, 3).map(([k]) => k);
-  const top3Avg = top3.reduce((sum, k) => sum + (sabotadorScores[k] || 0), 0) / 3;
-  const pqScore = Math.round(100 - top3Avg * 10);
+  const top3Avg = top3.reduce((sum, k) => sum + (sabNormalizado[k] || 0), 0) / 3;
+  const pqScore = Math.max(0, Math.min(100, Math.round(100 - top3Avg * 10)));
   const riskLevel = getRiskLevel(pqScore);
 
   const discChartData = ['D', 'I', 'S', 'C'].map(k => ({
@@ -300,9 +309,10 @@ export function generateLocalAnalysis(discScores, sabotadorScores) {
     color: DISC_PROFILES[k].color,
   }));
 
-  const sabChartData = sabSorted.map(([k, v]) => ({
+  // Chart mantém a ESCALA ORIGINAL de entrada (só o PQ usa a normalizada)
+  const sabChartData = sabSorted.map(([k]) => ({
     label: SABOTADORES_DATA[k]?.label || k,
-    value: v,
+    value: sabotadorScores?.[k] || 0,
   }));
 
   // Correlations

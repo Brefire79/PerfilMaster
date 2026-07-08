@@ -57,6 +57,32 @@ const LIKERT_OPCOES = [
   { valor: 5, label: 'Concordo totalmente' },
 ];
 
+// ─── Persistência local das respostas (FIX auditoria 07/07/2026) ──────────────
+// Antes, as respostas viviam só no estado React — um refresh no meio das 78
+// questões perdia tudo (e a tela de erro dizia, incorretamente, que estavam
+// "salvas localmente"). Agora salvamos em localStorage por token e retomamos
+// de onde parou; a chave é limpa quando o envio conclui com sucesso.
+const respostasStorageKey = (token) => `profileai.avaliacao.respostas.${token}`;
+
+function loadRespostasSalvas(token) {
+  if (!token) return {};
+  try {
+    const raw = localStorage.getItem(respostasStorageKey(token));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch { return {}; }
+}
+
+function saveRespostas(token, respostas) {
+  if (!token) return;
+  try { localStorage.setItem(respostasStorageKey(token), JSON.stringify(respostas)); } catch { /* quota/privado */ }
+}
+
+function clearRespostas(token) {
+  if (!token) return;
+  try { localStorage.removeItem(respostasStorageKey(token)); } catch { /* noop */ }
+}
+
 // ─── Estado da máquina de estados ────────────────────────────────────────────
 const TELAS = {
   CARREGANDO:   'carregando',
@@ -90,8 +116,14 @@ function reducer(state, action) {
       };
     case 'ERRO_TOKEN':
       return { ...state, tela: TELAS.INVALIDO, erro: action.mensagem };
-    case 'INICIAR':
-      return { ...state, tela: TELAS.AVALIANDO, questaoAtual: 0, respostas: {} };
+    case 'INICIAR': {
+      // Retoma respostas salvas localmente (refresh no meio da avaliação):
+      // posiciona na primeira questão ainda sem resposta.
+      const salvas = state.respostas || {};
+      let inicio = QUESTOES_PUBLICAS.findIndex((q) => salvas[q.id] == null);
+      if (inicio < 0) inicio = QUESTOES_PUBLICAS.length - 1; // tudo respondido
+      return { ...state, tela: TELAS.AVALIANDO, questaoAtual: inicio };
+    }
     // F2: selecionar não avança sozinho — registra a resposta da questão atual
     case 'SELECIONAR':
       return {
@@ -434,7 +466,11 @@ function TelaErroSubmit({ onTentarNovamente }) {
 export default function AvaliacaoPublica() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const [state, dispatch] = useReducer(reducer, estadoInicial);
+  // Reidrata respostas salvas localmente (retomada após refresh)
+  const [state, dispatch] = useReducer(reducer, estadoInicial, (init) => ({
+    ...init,
+    respostas: loadRespostasSalvas(token),
+  }));
   const submittingRef = useRef(false);
   // DELTA 7: CPF opcional informado pelo avaliado (só quando admin não registrou)
   const [cpf, setCpf] = useState('');
@@ -456,6 +492,7 @@ export default function AvaliacaoPublica() {
 
     buscarPorToken({ token })
       .then((data) => {
+        if (data?.status === 'concluido') clearRespostas(token); // rascunho obsoleto
         dispatch({ type: 'CARREGADO_OK', avaliado: data });
         if (data?.nome) {
           const primeiro = data.nome.split(' ')[0];
@@ -476,6 +513,7 @@ export default function AvaliacaoPublica() {
     atualizarStatus({ token, novoStatus: 'concluido', respostas: state.respostas })
       .then((data) => {
         submittingRef.current = false;
+        clearRespostas(token); // envio concluído — limpa o rascunho local
         dispatch({ type: 'RESULTADO_OK', perfil: data.perfil });
         // PRD §6.5 — redirecionar para /resultado/:token após conclusão
         navigate(`/resultado/${token}`, { replace: true });
@@ -485,6 +523,13 @@ export default function AvaliacaoPublica() {
         dispatch({ type: 'ERRO_SUBMIT', mensagem: err.message });
       });
   }, [state.tela, state.erroSubmit]);
+
+  // Salva as respostas localmente a cada mudança (retomada após refresh)
+  useEffect(() => {
+    if (state.tela === TELAS.AVALIANDO && Object.keys(state.respostas).length > 0) {
+      saveRespostas(token, state.respostas);
+    }
+  }, [state.respostas, state.tela, token]);
 
   // CPF só é oferecido se o avaliado ainda não tiver um registrado pelo admin
   const cpfJaRegistrado = Boolean(state.avaliado?.temCpf);
