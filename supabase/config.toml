@@ -53,3 +53,6 @@ verify_jwt = false
 # insightPerfil é chamado pelo ResultadoPublico (avaliado sem login)
 [functions.insightPerfil]
 verify_jwt = false
+
+[functions.deleteAccount]
+verify_jwt = true

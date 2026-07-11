@@ -139,7 +139,18 @@ export async function verifyPassword(password) {
   const email = getCurrentUser()?.email;
   if (!email) throw buildAuthError('auth/user-not-found', 'Sessão não encontrada. Faça login novamente.');
   if (!password) throw buildAuthError('auth/missing-password', 'Informe sua senha.');
-  await authRequest('token?grant_type=password', { method: 'POST', body: { email, password } });
+  const verificationSession = await authRequest('token?grant_type=password', {
+    method: 'POST',
+    body: { email, password },
+  });
+  // O password grant cria uma sessão temporária. Ela existe apenas para
+  // confirmar a senha e é revogada imediatamente para não deixar sessões órfãs.
+  if (verificationSession?.access_token) {
+    await authRequest('logout', {
+      method: 'POST',
+      accessToken: verificationSession.access_token,
+    }).catch(() => {});
+  }
   return true;
 }
 

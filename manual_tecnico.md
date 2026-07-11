@@ -217,7 +217,7 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 
 ## 5. 🧪 Como rodar os testes
 
-> ⚠️ **Este projeto não possui testes automatizados nem linter configurados** (não há Jest/Vitest/ESLint no `package.json`).
+O projeto possui contratos automatizados sem dependências adicionais: `npm test` valida a equivalência dos motores DISC/PQ, as 78 questões e invariantes de segurança. O GitHub Actions executa testes e build em todo push/PR para `main`. Ainda não há linter de estilo configurado.
 
 A **validação oficial** é:
 

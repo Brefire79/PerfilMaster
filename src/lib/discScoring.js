@@ -12,7 +12,7 @@
 // avaliações novas passam a usar a fórmula canônica.
 // ============================================================================
 
-import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
+import { SAMPLE_QUESTIONS } from '../constants/sampleQuestions.js';
 
 const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
 

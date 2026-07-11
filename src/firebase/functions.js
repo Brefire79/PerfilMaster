@@ -26,7 +26,10 @@ async function callFunction(name, payload) {
   const data = text ? JSON.parse(text) : {};
   if (!res.ok) {
     const msg = data?.error || data?.message || `Function ${name} failed (${res.status})`;
-    throw new Error(msg);
+    const error = new Error(msg);
+    error.code = data?.code || `functions/${name}`;
+    error.details = data;
+    throw error;
   }
   return data?.data ?? data;
 }
@@ -110,4 +113,9 @@ export async function generateRecoveryLink(payload) {
 // auth user + app_users + app_profiles) e devolve o link de definição de senha.
 export async function convertAvaliado(payload) {
   return callFunction('convertAvaliado', payload);
+}
+
+/** Exclusão definitiva da própria conta, validada e executada no servidor. */
+export async function deleteAccount(payload) {
+  return callFunction('deleteAccount', payload);
 }

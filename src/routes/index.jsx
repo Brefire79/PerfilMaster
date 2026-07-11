@@ -2,6 +2,7 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import { useAuth } from '@/hooks/useAuth.js';
+import RouteErrorBoundary from '@/components/ui/RouteErrorBoundary.jsx';
 
 // ─── Lazy-loaded Layouts ──────────────────────────────────────────────────────
 const AdminLayout = lazy(() => import('@/layouts/AdminLayout.jsx'));
@@ -42,53 +43,16 @@ const CentralGrupos = lazy(() => import('@/pages/admin/central/InteligenciaGrupo
 // FIX A2: removidos StudentDashboard, Assessment, MyProfile — usam versão Safe* abaixo
 const StudentDashboard = lazy(() => import('@/pages/student/StudentDashboard.jsx'));
 
-// ─── Placeholder component for unimplemented pages ───────────────────────────
-function Placeholder({ title }) {
-  return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="w-16 h-16 rounded-2xl bg-[#242736] flex items-center justify-center">
-        <span className="text-2xl">🚧</span>
-      </div>
-      <h2 className="text-xl font-heading font-bold text-[#F7F8FC]">{title}</h2>
-      <p className="text-[#A0A3B1] text-sm">Em desenvolvimento — Sprint 2</p>
-    </div>
-  );
-}
-
-// Lazy placeholder factory
-const makePlaceholder = (title) => () => <Placeholder title={title} />;
-
-// Override lazy imports that don't have files yet with placeholders
-const SafeAdminGroups = lazy(() =>
-  import('@/pages/admin/Groups.jsx').catch(() => ({ default: makePlaceholder('Grupos') }))
-);
-const SafeAdminGroupDetail = lazy(() =>
-  import('@/pages/admin/GroupDetail.jsx').catch(() => ({ default: makePlaceholder('Detalhes do Grupo') }))
-);
-const SafeAdminStudents = lazy(() =>
-  import('@/pages/admin/Students.jsx').catch(() => ({ default: makePlaceholder('Alunos') }))
-);
-const SafeAdminModules = lazy(() =>
-  import('@/pages/admin/Modules.jsx').catch(() => ({ default: makePlaceholder('Módulos') }))
-);
-const SafeAdminModuleBuilder = lazy(() =>
-  import('@/pages/admin/ModuleBuilder.jsx').catch(() => ({ default: makePlaceholder('Editor de Módulo') }))
-);
-const SafeAdminReports = lazy(() =>
-  import('@/pages/admin/Reports.jsx').catch(() => ({ default: makePlaceholder('Relatórios') }))
-);
-const SafeAdminSettings = lazy(() =>
-  import('@/pages/admin/Settings.jsx').catch(() => ({ default: makePlaceholder('Configurações') }))
-);
-const SafeAssessment = lazy(() =>
-  import('@/pages/student/Assessment.jsx').catch(() => ({ default: makePlaceholder('Avaliação') }))
-);
-const SafeMyProfile = lazy(() =>
-  import('@/pages/student/MyProfile.jsx').catch(() => ({ default: makePlaceholder('Meu Perfil') }))
-);
-const SafeAssessmentWizard = lazy(() =>
-  import('@/components/assessment/AssessmentWizard.jsx').catch(() => ({ default: makePlaceholder('Avaliação Completa') }))
-);
+const SafeAdminGroups = lazy(() => import('@/pages/admin/Groups.jsx'));
+const SafeAdminGroupDetail = lazy(() => import('@/pages/admin/GroupDetail.jsx'));
+const SafeAdminStudents = lazy(() => import('@/pages/admin/Students.jsx'));
+const SafeAdminModules = lazy(() => import('@/pages/admin/Modules.jsx'));
+const SafeAdminModuleBuilder = lazy(() => import('@/pages/admin/ModuleBuilder.jsx'));
+const SafeAdminReports = lazy(() => import('@/pages/admin/Reports.jsx'));
+const SafeAdminSettings = lazy(() => import('@/pages/admin/Settings.jsx'));
+const SafeAssessment = lazy(() => import('@/pages/student/Assessment.jsx'));
+const SafeMyProfile = lazy(() => import('@/pages/student/MyProfile.jsx'));
+const SafeAssessmentWizard = lazy(() => import('@/components/assessment/AssessmentWizard.jsx'));
 
 // ─── Loading Fallback ─────────────────────────────────────────────────────────
 function PageLoader() {
@@ -185,7 +149,10 @@ export default function AppRoutes() {
   // Initialize auth listener at the router level
   useAuth();
 
+  const location = useLocation();
+
   return (
+    <RouteErrorBoundary resetKey={location.pathname}>
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* Root */}
@@ -265,5 +232,6 @@ export default function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
+    </RouteErrorBoundary>
   );
 }

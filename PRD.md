@@ -6,14 +6,14 @@ Versão 2.0 · Breno Luis (AmbFusi AI / Vianexx AI) · Maio 2026
 
 ## 1. Visão Geral do Produto
 
-**ProfileAI** é uma plataforma SaaS de avaliação comportamental baseada no modelo DISC. Administradores (instrutores, coaches, RH) criam sessões de avaliação, enviam links públicos via WhatsApp sem exigir login dos avaliados, acompanham resultados em tempo real, geram relatórios oficiais com rastreabilidade legal (LGPD / uso pericial) e obtêm análises enriquecidas por IA (Google Gemini).
+**Perfil Master** é uma plataforma SaaS de avaliação comportamental DISC + PQ/Sabotadores. Facilitadores (instrutores, coaches e RH) atendem alunos com conta ou criam avaliações avulsas diretamente pelas áreas Alunos e Grupos, enviam links públicos via WhatsApp, acompanham resultados, geram relatórios oficiais e obtêm análises enriquecidas por IA server-side (DeepSeek).
 
 **Módulo paralelo — Sessões**: avaliações públicas sem login via link/token único, voltadas a workshops, processos seletivos e contextos externos.
 
 **Papéis de usuário:** Admin | Aluno (Student)  
 **Plataforma:** PWA web (mobile-first), build Vite + React, deploy Netlify  
 **Backend:** Supabase (REST API + Edge Functions Deno)  
-**IA:** Google Gemini 2.0 Flash via Supabase Edge Functions (chave configurável pelo admin)  
+**IA:** DeepSeek exclusivamente server-side via Netlify/Supabase Functions, com fallback determinístico local
 **Idioma:** PT-BR (português do Brasil)
 
 ---
@@ -26,7 +26,7 @@ Versão 2.0 · Breno Luis (AmbFusi AI / Vianexx AI) · Maio 2026
 | 2 | Maximizar taxa de resposta dos avaliados | Link público sem cadastro; acesso em 1 clique |
 | 3 | Fornecer insights profissionais acionáveis | Relatório oficial gerado em < 30 s |
 | 4 | Garantir rastreabilidade legal dos dados | Documento com ID único + LGPD compliance |
-| 5 | Reduzir custo de IA | Admin usa própria chave Gemini (zero custo no servidor) |
+| 5 | Proteger e controlar o uso de IA | Provider único server-side, sem chaves no navegador |
 
 ---
 
@@ -38,7 +38,7 @@ Versão 2.0 · Breno Luis (AmbFusi AI / Vianexx AI) · Maio 2026
 - Visualizar status e resultados de todos os avaliados
 - Gerar Relatório Oficial (documento legal com ID rastreável)
 - Enviar link de resultado limpo via WhatsApp para o avaliado
-- Configurar chave de API do Google Gemini
+- Consultar análises geradas com IA sem configurar ou expor chaves
 - Ver indicadores clínicos internos (acesso exclusivo — nunca compartilhado com avaliado)
 
 ### 3.2 Aluno (Student)
@@ -60,7 +60,7 @@ Versão 2.0 · Breno Luis (AmbFusi AI / Vianexx AI) · Maio 2026
 | Backend | Supabase REST API (via fetch em `src/firebase/`) |
 | Auth | Supabase Auth (email/senha) |
 | Edge Functions | Deno (Supabase Functions) — IA e lógica server-side |
-| IA | Google Gemini 2.0 Flash (`generativelanguage.googleapis.com/v1beta`) |
+| IA | DeepSeek server-side; fallback determinístico `localEngine` |
 | Charts | Recharts 2 |
 | Notifications | React Hot Toast |
 
@@ -71,7 +71,7 @@ src/
 ├── firebase/           # Wrappers Supabase (mantém shape de API do Firebase)
 │   ├── auth.js         # signIn/signUp/signOut/onAuthStateChange/getValidAccessToken
 │   ├── firestore.js    # CRUD Supabase REST — tabelas app_*
-│   └── functions.js    # Chamadas Edge Functions + auto-inject da chave Gemini
+│   └── functions.js    # Chamadas Edge Functions autenticadas; sem chave de IA no cliente
 ├── lib/
 │   ├── supabase.js     # Cliente @supabase/supabase-js
 │   ├── apiKeyManager.js# Carrega/salva API key (Supabase settings + localStorage)
@@ -94,7 +94,7 @@ src/
 
 supabase/functions/
 ├── _shared/
-│   ├── anthropic.ts    # callAnthropic() — chama Google Gemini (naming legado)
+│   ├── anthropic.ts    # adapter DeepSeek server-side (naming legado)
 │   ├── response.ts     # handleCors() / jsonResponse() — CORS + helpers
 │   └── auth.ts         # getAuthenticatedUser()
 ├── analyzeResponse/    # Analisa respostas individuais
@@ -118,7 +118,7 @@ localStorage('profileai_api_key') + Supabase settings table
        ↓
 functions.js: callFunction() → injeta { geminiKey } em todas as chamadas de IA
        ↓
-Edge Function recebe geminiKey → usa como Authorization para Gemini API
+Edge/Netlify Function lê `AI_API_KEY` dos Secrets → chama DeepSeek sem expor a chave
        ↓
 Fallback: GEMINI_API_KEY (env var do servidor) se geminiKey não fornecida
 ```
@@ -174,7 +174,7 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 ### 6.3 Avaliação DISC (Alunos com Login)
 - Wizard passo a passo com 28 perguntas DISC em escala Likert 1–5
 - Cálculo automático das dimensões D, I, S, C
-- Análise IA via `buildProfile` (Google Gemini)
+- Análise IA via `buildProfile` (DeepSeek server-side, com fallback local)
 - Resultado salvo em `app_assessments`
 - Visualização em `/student/profile`
 
@@ -262,7 +262,7 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
   - Promoção/revogação via Edge Functions `consumeInvite` / `manageTeamAdmins` (service_role) — o trigger `protect_user_privileges` continua bloqueando o app comum.
   - Escopo: cada admin só gerencia quem ele convidou ou promoveu (`app_users.invitedby`); não promove quem já é admin nem reivindica conta de outra equipe.
 - **Aparência**: alternância de **tema claro/escuro** (botão sol/lua no TopBar), persistida por dispositivo (`localStorage`). App é dark-first; o tema claro reaplica as variáveis e sobrepõe as classes estruturais (`html.light` em `index.css`).
-- **Zona de Perigo**: excluir conta — reapresenta o risco e **exige a senha** (validada no servidor) antes de prosseguir. Exclusão completa de dados (Edge `deleteAccount`) ainda pendente.
+- **Zona de Perigo**: excluir conta — exige senha e confirmação explícita; a Edge `deleteAccount` remove os dados pessoais e a identidade Auth. Administradores com grupos, alunos, sessões, convites ou equipe ativa são bloqueados para evitar perda em massa acidental.
 
 ### 6.12 Mestre — chatbot local (chat flutuante)
 Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no chat. A API de IA (DeepSeek) fica reservada à análise nos relatórios (`insightPerfil`) e ao pipeline de avaliação.
@@ -341,7 +341,7 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 - Assinatura digital do admin (nome/email) no documento
 
 ### 8.3 Chave de API
-- Chave Gemini do admin nunca é enviada ao cliente final (avaliado)
+- Chaves de IA nunca são enviadas ao navegador, avaliados ou facilitadores
 - Armazenada no localStorage do admin e sincronizada no Supabase `settings`
 - Nunca exposta em respostas públicas das Edge Functions
 
@@ -360,7 +360,7 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 | Suporte a dispositivos | Mobile-first; testado em iOS 16+, Android 12+, Chrome/Safari/Edge |
 | Acessibilidade | Contraste WCAG AA nas telas públicas |
 | Tamanho do bundle | < 500 KB gzipped (code splitting por rota) |
-| Tempo de geração IA | < 15 s (Gemini Flash) |
+| Tempo de geração IA | < 20 s (DeepSeek, com fallback local disponível) |
 
 ---
 
@@ -419,7 +419,7 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 
 | Serviço | Finalidade |
 |---------|-----------|
-| **Google Gemini 2.0 Flash** | Análise de perfil DISC, indicadores de bem-estar |
+| **DeepSeek** | Análise de perfil DISC/PQ e indicadores de bem-estar, sempre server-side |
 | **WhatsApp (wa.me)** | Envio de link de resultado e convites |
 | **Supabase Auth** | Autenticação e autorização |
 | **Supabase Postgres** | Banco de dados relacional |
@@ -438,7 +438,7 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 | 1.0.43 | Jun 2026 | Rebrand **Perfil Master**; IA **DeepSeek server-side** (provider único, sem chave do admin); abas Sessões/Pessoas ocultadas; DELTAs 8–13; **tema claro/escuro**; **Dashboard interativo** (stat cards clicáveis + DISC expansível); **Equipe de administradores** com convite, **promoção de conta existente** (`promoteByEmail`) e revogação reversível |
 | 1.1.0 | Jun 2026 | **Central de Gestão** (admin/superadmin) — DELTAs 14–17. 4 módulos: Visão Geral (observabilidade das 2 fontes, com visão global do superadmin), Pessoas & Histórico + **Trilha de Auditoria append-only**, Inteligência de Grupos (agregados anonimizados com **k-anonimato**, DISC + conclusão + **PQ Score/Sabotadores** agora persistidos), Assistente IA (camada semântica fixa, sem PII ao DeepSeek, cache + rate limit, **PDF local**). Superadmin via allowlist `app_superadmins`/`is_superadmin()` |
 
-> **Nota:** as seções 1–5 e 12 deste PRD ainda descrevem o estado v2.0 (Google Gemini, naming "ProfileAI"). A **fonte da verdade atual** da arquitetura é o `CLAUDE.md` na raiz do projeto: IA é **DeepSeek server-side** (provider único), o produto chama-se **Perfil Master** e a camada de dados é Supabase (pasta `src/firebase/` com nomes legados).
+> **Fonte da verdade:** este PRD, `manual_tecnico.md` e o `AGENTS.md` da raiz devem permanecer alinhados. A pasta `src/firebase/` é a camada Supabase com naming legado.
 
 ---
 

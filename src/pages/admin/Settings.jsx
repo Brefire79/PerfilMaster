@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import { updateUser, getUser } from '@/firebase/firestore.js';
 import { signOut, verifyPassword } from '@/firebase/auth.js';
+import { deleteAccount } from '@/firebase/functions.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Input from '@/components/ui/Input.jsx';
@@ -249,17 +250,18 @@ export default function Settings() {
     try {
       // Confirmação de segurança: valida a senha antes de prosseguir.
       await verifyPassword(deletePassword);
-      // FIX A3: exclusão COMPLETA de dados requer Edge Function com service_role.
-      // Por ora encerra a sessão e limpa o estado local — dados ficam no banco.
-      // TODO: chamar Edge Function deleteAccount({ uid: user.uid }) antes do signOut.
+      await deleteAccount({ confirmation: 'EXCLUIR MINHA CONTA' });
       await signOut();
       clearUser();
       // sucesso → o app desmonta esta tela; não precisa resetar estado
     } catch (err) {
+      const blockers = Array.isArray(err?.details?.blockers)
+        ? ` Pendências: ${err.details.blockers.map((item) => `${item.label} (${item.count})`).join(', ')}.`
+        : '';
       setDeleteError(
         err?.code === 'auth/invalid-credential'
           ? 'Senha incorreta. Tente novamente.'
-          : (err?.message || 'Não foi possível concluir. Tente novamente.')
+          : `${err?.message || 'Não foi possível concluir. Tente novamente.'}${blockers}`
       );
       setDeleting(false);
     }
@@ -535,11 +537,10 @@ export default function Settings() {
               <p className="text-xs text-[#A0A3B1] mt-0.5">
                 {t(
                   'settings.deleteAccountWarning',
-                  'Encerrará sua sessão. A exclusão completa dos dados será implementada em breve.'
+                  'Exclui permanentemente sua conta. Contas com grupos, alunos ou avaliações ativas são protegidas contra exclusão acidental.'
                 )}
               </p>
             </div>
-            {/* FIX A3: botão habilitado mas aviso deixa claro que só desloga por ora */}
             <Button
               variant="danger"
               size="sm"
@@ -588,8 +589,9 @@ export default function Settings() {
             <div className="text-sm text-[#F7F8FC]">
               <p className="font-semibold text-[#EF4444]">Esta ação é sensível.</p>
               <p className="text-[#A0A3B1] mt-0.5">
-                Você será desconectado imediatamente. A exclusão completa dos seus dados
-                (grupos, alunos e avaliações) é permanente e não pode ser desfeita.
+                Sua conta e seus dados pessoais serão removidos permanentemente. Para
+                proteger terceiros, contas administrativas com dados ativos não são
+                apagadas automaticamente.
               </p>
             </div>
           </div>
