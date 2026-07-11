@@ -1,177 +1,67 @@
-# Supabase CLI
+# Perfil Master
 
-[![Coverage Status](https://coveralls.io/repos/github/supabase/cli/badge.svg?branch=develop)](https://coveralls.io/github/supabase/cli?branch=develop) [![Bitbucket Pipelines](https://img.shields.io/bitbucket/pipelines/supabase-cli/setup-cli/master?style=flat-square&label=Bitbucket%20Canary)](https://bitbucket.org/supabase-cli/setup-cli/pipelines) [![Gitlab Pipeline Status](https://img.shields.io/gitlab/pipeline-status/sweatybridge%2Fsetup-cli?label=Gitlab%20Canary)
-](https://gitlab.com/sweatybridge/setup-cli/-/pipelines)
+SaaS da Vianexx AI para avaliações comportamentais DISC + PQ/Sabotadores, com atendimento individual, grupos, avaliações avulsas por WhatsApp, relatórios profissionais e inteligência agregada.
 
-[Supabase](https://supabase.io) is an open source Firebase alternative. We're building the features of Firebase using enterprise-grade open source tools.
+- Produção: https://perfilmaster.netlify.app
+- Repositório: https://github.com/Brefire79/PerfilMaster
+- Frontend: React 18 + Vite + Tailwind + Zustand
+- Backend: Supabase Auth, PostgreSQL, RLS e Edge Functions
+- IA: DeepSeek exclusivamente server-side, com fallback determinístico local
+- Distribuição: PWA e preparação Capacitor para Android/iOS
 
-This repository contains all the functionality for Supabase CLI.
-
-- [x] Running Supabase locally
-- [x] Managing database migrations
-- [x] Creating and deploying Supabase Functions
-- [x] Generating types directly from your database schema
-- [x] Making authenticated HTTP requests to [Management API](https://supabase.com/docs/reference/api/introduction)
-
-## Getting started
-
-### Install the CLI
-
-Available via [NPM](https://www.npmjs.com) as dev dependency. To install:
+## Rodar localmente
 
 ```bash
-npm i supabase --save-dev
+npm install
+npm run dev
 ```
 
-When installing with yarn 4, you need to disable experimental fetch with the following nodejs config.
+Configure somente variáveis públicas do frontend a partir de `.env.example`. Secrets de IA e `service_role` pertencem ao Netlify/Supabase e nunca devem entrar no bundle.
 
-```
-NODE_OPTIONS=--no-experimental-fetch yarn add supabase
-```
-
-> **Note**
-For Bun versions below v1.0.17, you must add `supabase` as a [trusted dependency](https://bun.sh/guides/install/trusted) before running `bun add -D supabase`.
-
-<details>
-  <summary><b>macOS</b></summary>
-
-  Available via [Homebrew](https://brew.sh). To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To install the beta release channel:
-  
-  ```sh
-  brew install supabase/tap/supabase-beta
-  brew link --overwrite supabase-beta
-  ```
-  
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Windows</b></summary>
-
-  Available via [Scoop](https://scoop.sh). To install:
-
-  ```powershell
-  scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-  scoop install supabase
-  ```
-
-  To upgrade:
-
-  ```powershell
-  scoop update supabase
-  ```
-</details>
-
-<details>
-  <summary><b>Linux</b></summary>
-
-  Available via [Homebrew](https://brew.sh) and Linux packages.
-
-  #### via Homebrew
-
-  To install:
-
-  ```sh
-  brew install supabase/tap/supabase
-  ```
-
-  To upgrade:
-
-  ```sh
-  brew upgrade supabase
-  ```
-
-  #### via Linux packages
-
-  Linux packages are provided in [Releases](https://github.com/supabase/cli/releases). To install, download the `.apk`/`.deb`/`.rpm`/`.pkg.tar.zst` file depending on your package manager and run the respective commands.
-
-  ```sh
-  sudo apk add --allow-untrusted <...>.apk
-  ```
-
-  ```sh
-  sudo dpkg -i <...>.deb
-  ```
-
-  ```sh
-  sudo rpm -i <...>.rpm
-  ```
-
-  ```sh
-  sudo pacman -U <...>.pkg.tar.zst
-  ```
-</details>
-
-<details>
-  <summary><b>Other Platforms</b></summary>
-
-  You can also install the CLI via [go modules](https://go.dev/ref/mod#go-install) without the help of package managers.
-
-  ```sh
-  go install github.com/supabase/cli@latest
-  ```
-
-  Add a symlink to the binary in `$PATH` for easier access:
-
-  ```sh
-  ln -s "$(go env GOPATH)/bin/cli" /usr/bin/supabase
-  ```
-
-  This works on other non-standard Linux distros.
-</details>
-
-<details>
-  <summary><b>Community Maintained Packages</b></summary>
-
-  Available via [pkgx](https://pkgx.sh/). Package script [here](https://github.com/pkgxdev/pantry/blob/main/projects/supabase.com/cli/package.yml).
-  To install in your working directory:
-
-  ```bash
-  pkgx install supabase
-  ```
-
-  Available via [Nixpkgs](https://nixos.org/). Package script [here](https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/supabase-cli/default.nix).
-</details>
-
-### Run the CLI
+## Validar
 
 ```bash
-supabase bootstrap
+npm test
+npm run build
 ```
 
-Or using npx:
+Os contratos verificam as 78 questões, scoring DISC/PQ, sincronização frontend/Edge e invariantes básicas de segurança. O GitHub Actions executa testes e build em pushes e pull requests.
 
-```bash
-npx supabase bootstrap
-```
+## Arquitetura importante
 
-The bootstrap command will guide you through the process of setting up a Supabase project using one of the [starter](https://github.com/supabase-community/supabase-samples/blob/main/samples.json) templates.
+A pasta `src/firebase/` não usa Firebase: é a camada REST legada sobre Supabase. Novas colunas precisam ser registradas no mapa `CAMEL_TO_DB` de `firestore.js`.
 
-## Docs
+Fluxos públicos por token passam por Edge Functions com `service_role`; o cliente anônimo não acessa diretamente tabelas `app_*`. O isolamento de dados é por facilitador (`adminuid`).
 
-Command & config reference can be found [here](https://supabase.com/docs/reference/cli/about).
+## Documentação
 
-## Breaking changes
+- [Manual oficial de uso](MANUAL-OFICIAL.md)
+- [Manual técnico](manual_tecnico.md)
+- [PRD](PRD.md)
+- [Roadmap de consolidação](ROADMAP-FINAL.md)
+- [Preparação Android e iOS](MOBILE-RELEASE.md)
+- [Marketing e prompts da landing page](MARKETING-LANDING-PROMPTS.md)
+- [Checklist de publicação](DEPLOY-READY.md)
 
-We follow semantic versioning for changes that directly impact CLI commands, flags, and configurations.
+Documentos públicos do aplicativo:
 
-However, due to dependencies on other service images, we cannot guarantee that schema migrations, seed.sql, and generated types will always work for the same CLI major version. If you need such guarantees, we encourage you to pin a specific version of CLI in package.json.
+- `/privacidade`
+- `/termos`
+- `/suporte`
 
-## Developing
+## Publicação
 
-To run from source:
+Não publique o frontend antes das Edge Functions das quais ele depende. Siga a ordem documentada em `DEPLOY-READY.md`: testes → build → migração → Edge Functions → preview → smoke test → produção.
 
-```sh
-# Go >= 1.22
-go run . help
-```
+## Mobile
+
+Identidade preparada:
+
+- Nome: `Perfil Master`
+- Application ID: `ai.vianexx.perfilmaster`
+
+Antes de criar o app na Google Play, confirme a propriedade definitiva desse identificador e defina o e-mail público de suporte/privacidade.
+
+---
+
+Perfil Master © 2026 — Vianexx AI · Breno Luis

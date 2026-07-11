@@ -21,6 +21,7 @@ const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
 // ─── Lazy-loaded Public Pages (sem login) ────────────────────────────────────
 const AvaliacaoPublica = lazy(() => import('@/pages/public/AvaliacaoPublica.jsx'));
 const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'));
+const LegalPage = lazy(() => import('@/pages/public/LegalPage.jsx'));
 
 // ─── Lazy-loaded Admin Pages ──────────────────────────────────────────────────
 // FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
@@ -166,6 +167,9 @@ export default function AppRoutes() {
 
         {/* Resultado público para o avaliado ver seu perfil — sem login */}
         <Route path="/resultado/:token" element={<ResultadoPublico />} />
+        <Route path="/privacidade" element={<LegalPage />} />
+        <Route path="/termos" element={<LegalPage />} />
+        <Route path="/suporte" element={<LegalPage />} />
 
         {/* Recuperação de senha — o link do e-mail traz #type=recovery; a página
             estabelece a sessão de recuperação e permite definir nova senha.

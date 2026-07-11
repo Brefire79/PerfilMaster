@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.profileai.app',
-  appName: 'ProfileAI',
+  appId: 'ai.vianexx.perfilmaster',
+  appName: 'Perfil Master',
   webDir: 'dist',
   bundledWebRuntime: false,
   server: {

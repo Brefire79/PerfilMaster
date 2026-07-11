@@ -12,7 +12,7 @@ export default defineConfig({
       manifest: {
         name: 'Perfil Master',
         short_name: 'PerfilMaster',
-        description: 'Plataforma de avaliação de perfil comportamental DISC com IA',
+        description: 'Avaliação comportamental DISC + PQ/Sabotadores para profissionais e equipes',
         theme_color: '#6366F1',
         background_color: '#0F1117',
         display: 'standalone',
