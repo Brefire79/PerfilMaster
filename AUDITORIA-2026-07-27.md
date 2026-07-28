@@ -353,16 +353,51 @@ npm run deploy
 
 Depois do deploy, confirmar no ar: responder 3 questões e forçar o envio (DevTools) deve devolver **422**, não um perfil.
 
-**Sprint 3 — enxergar a operação (3 a 5 dias) — próximo**
+**Sprint 3 — enxergar a operação — ✅ APLICADO em 28/07/2026**
 
-11. M2: `logClientError` + painel na Central.
-12. A4: rate limit nas Edge públicas + mensagens de erro genéricas no `catch`.
-13. Anti-pausa do Supabase: ping semanal ou upgrade para Pro *(a causa do incidente que abriu esta auditoria)*.
-14. GitHub Action com `npm run check` — os contratos só rodam localmente hoje.
+11. ✅ M2: Edge `logClientError` + `clientErrors.js` enviando + aba **Diagnóstico** na Central. Instrumentados os pontos que mais doem: carregar e enviar a avaliação pública, init do auth e o error boundary.
+12. ✅ A4: `_shared/rateLimit.ts` nas quatro Edge públicas (IP só em hash) e fim do `err.message` cru no `catch`.
+13. ✅ Anti-pausa: `.github/workflows/keepalive.yml`, cron a cada 3 dias.
+14. ✅ CI: `.github/workflows/check.yml` roda `npm run check` em push e PR.
+
+**Pendente de execução do Sprint 3:**
+
+```bash
+# 1. Banco — DELTA 20 no SQL Editor do Supabase
+#    supabase/migrations/20260728_delta20_telemetria_ratelimit.sql
+
+# 2. Edge Functions
+supabase functions deploy logClientError      --project-ref zlbynxjeefqxcgrsmkjp
+supabase functions deploy buscarPorToken      --project-ref zlbynxjeefqxcgrsmkjp
+supabase functions deploy atualizarStatus     --project-ref zlbynxjeefqxcgrsmkjp
+supabase functions deploy validateInviteToken --project-ref zlbynxjeefqxcgrsmkjp
+
+# 3. Frontend
+npm run check && npm run deploy
+
+# 4. GitHub — secret do keepalive
+#    Settings > Secrets and variables > Actions > New repository secret
+#    Nome: SUPABASE_ANON_KEY
+```
 
 **Contínuo**
 
 15. B1..B6: limpeza de código morto, decisão sobre i18n, paginação da Central de Pessoas.
+
+---
+
+## 8. Fecho da auditoria
+
+Os três sprints estão aplicados no código. Os oito achados de severidade crítica e alta foram resolvidos, e cada um deixou uma **guarda automatizada** para trás — os contratos falham se C1, C3, A1, A3, A4, M4 ou M5 forem desfeitos numa refatoração futura. Essa é a parte que dura: a correção resolve hoje, o contrato resolve daqui a seis meses, quando ninguém lembrar por que aquele código estava assim.
+
+O que mudou de verdade na postura do sistema:
+
+- **Antes**, uma queda do backend virava tela de carregamento infinita. **Agora** vira mensagem em 12 segundos.
+- **Antes**, um endpoint de IA aberto na internet esperava ser descoberto. **Agora** não existe.
+- **Antes**, o banco aceitava avaliação com uma resposta e devolvia "sucesso" mesmo sem gravar. **Agora** recusa e verifica.
+- **Antes**, erro de usuário morria no navegador dele. **Agora** aparece na Central.
+
+O que continua verdade e merece atenção: o projeto roda em **Free tier**, e o keepalive é um remendo — bom, barato, mas remendo. Se o Perfil Master começar a atender clientes pagantes, o plano Pro deixa de ser gasto e vira seguro.
 
 ---
 

@@ -37,6 +37,7 @@ const CentralLayout = lazy(() => import('@/pages/admin/central/CentralLayout.jsx
 const CentralVisaoGeral = lazy(() => import('@/pages/admin/central/VisaoGeral.jsx'));
 const CentralPessoas = lazy(() => import('@/pages/admin/central/PessoasHistorico.jsx'));
 const CentralGrupos = lazy(() => import('@/pages/admin/central/InteligenciaGrupos.jsx'));
+const CentralDiagnostico = lazy(() => import('@/pages/admin/central/Diagnostico.jsx'));
 // Sub-aba "Mestre (IA)" removida (jul/2026): o chat virou flutuante
 // (components/mestre/MestreChat.jsx, montado no AdminLayout). Arquivo
 // AssistenteIA.jsx preservado para referência; rota redireciona abaixo.
@@ -212,6 +213,7 @@ export default function AppRoutes() {
             <Route path="visao-geral" element={<CentralVisaoGeral />} />
             <Route path="pessoas" element={<CentralPessoas />} />
             <Route path="grupos" element={<CentralGrupos />} />
+            <Route path="diagnostico" element={<CentralDiagnostico />} />
             {/* Link antigo da aba do Mestre → Painel (o chat agora é flutuante) */}
             <Route path="assistente" element={<Navigate to="/admin/dashboard" replace />} />
           </Route>

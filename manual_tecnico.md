@@ -279,7 +279,14 @@ Foi o contrato de scoring que pegou a divergência de pesos DISC da auditoria de
 
 Desde 27/07/2026, `npm run deploy` e `npm run deploy:preview` rodam `npm test` antes do bump/build — contrato violado quebra o deploy cedo.
 
-> ⚠️ **Não há GitHub Actions neste repo** (não existe `.github/workflows`). Os contratos só rodam localmente. Criar a Action que executa `npm run check` em todo push é item aberto do Sprint 3. Também não há linter de estilo.
+Desde 28/07/2026 existe CI de verdade em `.github/workflows/`:
+
+| Workflow | Quando | O que faz |
+|---|---|---|
+| `check.yml` | push e PR na `main` | roda `npm run check` |
+| `keepalive.yml` | cron a cada 3 dias | pinga o Supabase para o projeto não pausar por inatividade — a causa do incidente de 27/07. Requer o secret `SUPABASE_ANON_KEY` |
+
+> Não há linter de estilo configurado.
 
 ### Smoke test do caminho crítico (rodar antes de todo deploy de produção)
 
@@ -328,4 +335,39 @@ profileai/
 
 ---
 
-*Perfil Master · Vianexx AI · Manual Técnico · atualizado 27/07/2026 (auditoria + Sprints 1 e 2)*
+---
+
+## 6. 🔭 Telemetria e limites (Sprint 3, 28/07/2026)
+
+### Erros do cliente (M2)
+
+Erro de navegador vivia em `sessionStorage` e sumia ao fechar a aba — quando um avaliado travava no meio das 78 questões, ninguém do outro lado ficava sabendo.
+
+```
+src/lib/clientErrors.js  →  Edge logClientError  →  app_client_errors  →  /admin/central/diagnostico
+```
+
+- A Edge é **pública de propósito**: o erro mais caro é o do avaliado anônimo, que não tem sessão para autenticar.
+- PII é redigida **no servidor** (e-mail, CPF, UUID e tokens viram marcador) — o front também redige, mas o servidor não confia no cliente.
+- Envio é best-effort com `keepalive`, e nem tenta quando `navigator.onLine === false`.
+- Responde **204 sempre**: telemetria não pode virar um segundo erro na tela de quem já está com problema.
+- A aba Diagnóstico **agrupa por mensagem** — 40 ocorrências do mesmo erro são um problema, não quarenta.
+
+### Rate limit das Edge públicas (A4)
+
+`_shared/rateLimit.ts`, contador em `app_rate_limit`:
+
+| Função | Limite | Janela |
+|---|---|---|
+| `buscarPorToken` | 60 | 5 min |
+| `atualizarStatus` | 40 | 5 min |
+| `logClientError` | 30 | 5 min |
+| `validateInviteToken` | 20 | 5 min |
+
+Duas decisões que valem lembrar: o **IP nunca é gravado em claro** (só hash SHA-256 com sal do projeto), e o limitador **falha aberto** — se o contador quebrar, a chamada passa. Um defeito na telemetria não pode derrubar quem está no meio da avaliação.
+
+A poda das duas tabelas (`podar_telemetria()`) roda oportunisticamente em ~1% das chamadas, porque o Free tier não tem agendador.
+
+---
+
+*Perfil Master · Vianexx AI · Manual Técnico · atualizado 28/07/2026 (auditoria + Sprints 1, 2 e 3)*

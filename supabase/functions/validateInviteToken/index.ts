@@ -1,5 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
+import { checarRateLimit, CORPO_429 } from '../_shared/rateLimit.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -11,6 +12,11 @@ Deno.serve(async (req) => {
   if (cors) return cors;
 
   try {
+    // A4: limite apertado — validar convite é ação pontual do cadastro.
+    // Sem isso dava para varrer tokens de convite à vontade.
+    const limite = await checarRateLimit(req, 'validateInviteToken', 20, 5);
+    if (limite.limitado) return jsonResponse(CORPO_429, 429, req);
+
     const { token } = await req.json();
     if (!token) return jsonResponse({ valid: false, reason: 'missing_token' }, 400, req);
 
@@ -45,6 +51,8 @@ Deno.serve(async (req) => {
       expiresAt: invite.expiresat || null,
     }, 200, req);
   } catch (err) {
-    return jsonResponse({ valid: false, reason: (err as Error).message || 'validateInviteToken failed' }, 500, req);
+    // A4: `reason` ia direto para a tela de cadastro com o texto interno do erro.
+    console.error('[validateInviteToken] erro inesperado:', err);
+    return jsonResponse({ valid: false, reason: 'error' }, 500, req);
   }
 });

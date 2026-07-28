@@ -1,0 +1,51 @@
+name: keepalive
+
+# Por que existe:
+# Em 27/07/2026 o Perfil Master saiu do ar. Não foi bug — o projeto Supabase
+# (Free tier) tinha sido PAUSADO por inatividade, e o app, sem timeout em
+# lugar nenhum, ficava em "Carregando..." para sempre. O timeout foi corrigido
+# (C1), mas a causa continua: sem tráfego, o projeto pausa de novo.
+#
+# Este workflow bate num endpoint leve do Supabase a cada 3 dias. Uma requisição
+# a cada 72h basta para o projeto ser considerado ativo.
+#
+# Requer o secret do repositório: SUPABASE_ANON_KEY
+# (Settings > Secrets and variables > Actions > New repository secret)
+#
+# Alternativa definitiva: plano Pro, que não pausa.
+
+on:
+  schedule:
+    # 09:00 UTC (06:00 em Brasília) a cada 3 dias
+    - cron: '0 9 */3 * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Acordar o Supabase
+        env:
+          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          PROJECT_URL: https://zlbynxjeefqxcgrsmkjp.supabase.co
+        run: |
+          if [ -z "$ANON_KEY" ]; then
+            echo "::error::Secret SUPABASE_ANON_KEY não configurado no repositório."
+            exit 1
+          fi
+
+          # Endpoint de saúde do Auth: não toca em dado nenhum, mas conta como
+          # atividade para o projeto.
+          STATUS=$(curl -s -o /tmp/resposta -w "%{http_code}" --max-time 30 \
+            -H "apikey: $ANON_KEY" \
+            "$PROJECT_URL/auth/v1/health")
+
+          echo "HTTP $STATUS"
+          cat /tmp/resposta || true
+
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::Supabase respondeu $STATUS — pode estar pausado. Verifique o dashboard."
+            exit 1
+          fi
+
+          echo "Projeto ativo."

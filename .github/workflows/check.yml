@@ -1,0 +1,35 @@
+name: check
+
+# Os contratos (scoring e segurança) existiam desde antes, mas só rodavam se
+# alguém lembrasse de digitar `npm test` — não havia CI neste repositório,
+# apesar do README afirmar que havia. Agora rodam sozinhos.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  contratos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      # npm run check = npm test (contratos) + npm run build
+      - name: Contratos e build
+        run: npm run check
+        env:
+          # O build só precisa das variáveis públicas. Se não estiverem
+          # configuradas nos secrets, o Vite embute string vazia — suficiente
+          # para compilar e validar os contratos.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}

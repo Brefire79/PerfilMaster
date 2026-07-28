@@ -26,7 +26,7 @@ npm run check   # = npm test + npm run build
 
 Os contratos verificam as 78 questões, scoring DISC/PQ, sincronização frontend/Edge e invariantes básicas de segurança. `npm run deploy` roda `npm test` antes do build.
 
-> ⚠️ **Não há GitHub Actions configurado** neste repo — os contratos só rodam localmente. Criar o workflow que executa `npm run check` em todo push é item aberto.
+O workflow `check.yml` roda os mesmos contratos em push e PR na `main`. O `keepalive.yml` pinga o Supabase a cada 3 dias para o projeto não pausar por inatividade (requer o secret `SUPABASE_ANON_KEY`).
 
 ## Rede e indisponibilidade
 

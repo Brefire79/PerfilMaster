@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { onAuthStateChange, signOut as firebaseSignOut } from '@/firebase/auth.js';
 import { getUser } from '@/firebase/firestore.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
+import { reportClientError } from '@/lib/clientErrors.js';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
 import useProfileStore from '@/store/profileStore.js';
@@ -42,6 +43,8 @@ export function useAuth() {
           // falha é de transporte, não sabemos o papel — mostramos a tela de
           // indisponibilidade em vez de adivinhar.
           if (isBackendDown(err)) {
+            // M2: registra a indisponibilidade — é o sintoma do Supabase pausado.
+            reportClientError(err, { source: 'auth/init', adminUid: firebaseUser.uid });
             setInitError(mensagemDeRede(err));
           } else {
             // Resposta veio do servidor, mas sem documento do usuário:

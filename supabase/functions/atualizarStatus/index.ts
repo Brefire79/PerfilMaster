@@ -2,6 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 // P1-3: usa CORS centralizado de _shared/response.ts (alinhado com PRD §4.4)
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { logAuditEvent } from '../_shared/audit.ts';
+import { checarRateLimit, CORPO_429 } from '../_shared/rateLimit.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -161,6 +162,11 @@ Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
   try {
+    // A4: limite mais folgado que o de leitura — uma avaliação legítima faz
+    // 1 chamada de início + 1 de conclusão, mas retentativas são normais.
+    const limite = await checarRateLimit(req, 'atualizarStatus', 40, 5);
+    if (limite.limitado) return jsonResponse(CORPO_429, 429, req);
+
     // O body só pode ser lido UMA vez (stream).
     const body = await req.json();
     const { token, novoStatus, cpf, cpfConsent } = body;
@@ -286,6 +292,8 @@ Deno.serve(async (req) => {
 
     return jsonResponse({ success: true, ...(perfil ? { perfil } : {}) }, 200, req);
   } catch (err) {
-    return jsonResponse({ error: (err as Error).message || 'atualizarStatus failed' }, 500, req);
+    // A4: idem buscarPorToken — não vazar mensagem interna para anônimo.
+    console.error('[atualizarStatus] erro inesperado:', err);
+    return jsonResponse({ error: 'Não foi possível processar sua avaliação. Tente novamente.' }, 500, req);
   }
 });

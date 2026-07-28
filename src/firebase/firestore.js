@@ -1552,5 +1552,27 @@ export async function getAuditLog({ adminUid = null, action = null, limit = 200 
   return rows.map((row) => ({ id: row.id, ...row }));
 }
 
+/**
+ * getClientErrors — telemetria de erros do navegador (DELTA 20 / M2).
+ *
+ * RLS já escopa: o facilitador vê os erros do próprio tenant; o superadmin vê
+ * tudo, inclusive os anônimos (adminuid NULL) — que são os do avaliado no link
+ * público, exatamente os que mais interessam e que antes se perdiam.
+ *
+ * INSERT só acontece pela Edge `logClientError` (service_role).
+ */
+export async function getClientErrorsLog({ origem = null, codigo = null, limit = 200 } = {}) {
+  const filters = [];
+  if (origem) filters.push({ field: 'origem', op: 'eq', value: origem });
+  if (codigo) filters.push({ field: 'codigo', op: 'eq', value: codigo });
+  const rows = await selectRows('app_client_errors', {
+    filters,
+    orderBy: 'criadoem',
+    ascending: false,
+    limit,
+  });
+  return rows.map((row) => ({ id: row.id, ...row }));
+}
+
 // Keep named export compatibility.
 export const db = { provider: 'supabase-rest' };

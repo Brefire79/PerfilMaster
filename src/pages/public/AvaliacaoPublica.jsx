@@ -17,6 +17,7 @@ import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
 import BackendIndisponivel from '@/components/ui/BackendIndisponivel.jsx';
+import { reportClientError } from '@/lib/clientErrors.js';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -546,6 +547,9 @@ export default function AvaliacaoPublica() {
         }
       })
       .catch((err) => {
+        // M2: este é O erro mais caro do produto — o avaliado não conseguiu
+        // nem abrir a avaliação. Antes sumia sem deixar rastro.
+        reportClientError(err, { source: 'avaliacao/carregar', route: '/avaliacao' });
         // C1: distingue "backend fora" de "token realmente inválido".
         if (isBackendDown(err)) {
           dispatch({ type: 'ERRO_REDE', mensagem: mensagemDeRede(err) });
@@ -579,6 +583,8 @@ export default function AvaliacaoPublica() {
           dispatch({ type: 'VOLTAR_INCOMPLETO' });
           return;
         }
+        // M2: pior caso possível — a pessoa respondeu as 78 e o envio falhou.
+        reportClientError(err, { source: 'avaliacao/enviar', route: '/avaliacao' });
         dispatch({ type: 'ERRO_SUBMIT', mensagem: err.message });
       });
   }, [state.tela, state.erroSubmit]);

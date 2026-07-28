@@ -60,4 +60,34 @@ for (const nome of ['firestore.js', 'functions.js', 'auth.js']) {
   );
 }
 
+// A4 (Sprint 3): Edge públicas com rate limit e sem vazar erro interno.
+// Antes, o catch devolvia (err as Error).message para um chamador ANÔNIMO —
+// mensagem do Postgres com nome de tabela, coluna e constraint.
+for (const fn of ['buscarPorToken', 'atualizarStatus', 'validateInviteToken']) {
+  const source = await readFile(
+    new URL(`../supabase/functions/${fn}/index.ts`, import.meta.url), 'utf8'
+  );
+  assert.ok(
+    source.includes('checarRateLimit'),
+    `${fn} e publica e precisa de rate limit (_shared/rateLimit.ts).`
+  );
+  assert.ok(
+    !/jsonResponse\(\s*\{[^}]*\(err as Error\)\.message/.test(source),
+    `${fn} nao pode devolver err.message para o cliente anonimo.`
+  );
+}
+
+// O identificador do rate limit nunca pode guardar IP em claro.
+const rateSource = await readFile(new URL('../supabase/functions/_shared/rateLimit.ts', import.meta.url), 'utf8');
+assert.ok(rateSource.includes('SHA-256'), 'O identificador do rate limit deve ser hash, nunca o IP em claro.');
+
+// M2: a telemetria redige PII no SERVIDOR — não confia no cliente.
+const telemetriaSource = await readFile(new URL('../supabase/functions/logClientError/index.ts', import.meta.url), 'utf8');
+for (const padrao of ['[email]', '[documento]', '[uuid]']) {
+  assert.ok(
+    telemetriaSource.includes(padrao),
+    `logClientError deve redigir ${padrao} no servidor.`
+  );
+}
+
 console.log('Contrato de segurança validado.');

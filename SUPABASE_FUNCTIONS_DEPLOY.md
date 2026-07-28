@@ -43,10 +43,11 @@ supabase functions deploy groupInsights
 supabase functions deploy therapyFlag
 supabase functions deploy generate-report
 
-# Cálculo determinístico e auditoria
+# Cálculo determinístico, auditoria e telemetria
 supabase functions deploy generateReport
 supabase functions deploy calculate-assessment
 supabase functions deploy logAudit
+supabase functions deploy logClientError
 ```
 
 `assistenteCentral` segue deployada mas **não é mais chamada** — o chat "Mestre"
@@ -65,17 +66,32 @@ supabase functions invoke buscarPorToken --data '{"token":"TOKEN_AQUI"}'
 - Tabelas usadas: `app_users`, `app_groups`, `app_assessments`, `app_profiles`,
   `app_invites`, `app_sessoes`, `app_avaliados`, `app_sessao_respostas`,
   `app_identity_links`, `app_report_meta`, `app_superadmins`, `audit_log`,
-  `app_central_ai`.
+  `app_central_ai`, `app_client_errors`, `app_rate_limit`.
+- **Edge pública nova** precisa de `checarRateLimit()` de `_shared/rateLimit.ts`
+  e de um `catch` que não devolva `err.message` ao cliente. O contrato de
+  segurança (`npm test`) falha se faltar.
 
 ## 6) Pendências de deploy (auditoria 27/07/2026)
 
-- [ ] **`atualizarStatus`** — C3 corrigido no código: o erro do INSERT em
-  `app_sessao_respostas` e do UPDATE em `app_avaliados` era ignorado e a função
-  respondia `success:true` com o banco vazio. **Precisa de redeploy.**
+**Primeiro, o banco:** rodar o **DELTA 20** no SQL Editor
+(`supabase/migrations/20260728_delta20_telemetria_ratelimit.sql`). Cria
+`app_client_errors` e `app_rate_limit`. Sem ele, a aba Diagnóstico exibe aviso e
+o rate limit *falha aberto* — libera as chamadas, sem quebrar nada.
 
 ```bash
-supabase functions deploy atualizarStatus --project-ref zlbynxjeefqxcgrsmkjp
+# Sprints 1 e 2 — completude, sanitização e writes verificados
+supabase functions deploy atualizarStatus     --project-ref zlbynxjeefqxcgrsmkjp
+
+# Sprint 3 — rate limit e erros genéricos
+supabase functions deploy buscarPorToken      --project-ref zlbynxjeefqxcgrsmkjp
+supabase functions deploy validateInviteToken --project-ref zlbynxjeefqxcgrsmkjp
+
+# Sprint 3 — telemetria (função NOVA)
+supabase functions deploy logClientError      --project-ref zlbynxjeefqxcgrsmkjp
 ```
+
+Depois, no GitHub: secret **`SUPABASE_ANON_KEY`** em *Settings → Secrets and
+variables → Actions*, para o workflow `keepalive` conseguir pingar o projeto.
 
 ---
 

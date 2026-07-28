@@ -11,6 +11,9 @@ const SUBTABS = [
   { to: '/admin/central/visao-geral',    label: 'Visão Geral' },
   { to: '/admin/central/pessoas',        label: 'Pessoas & Histórico' },
   { to: '/admin/central/grupos',         label: 'Inteligência de Grupos' },
+  // M2 (DELTA 20): erros do navegador dos usuários — antes morriam no
+  // sessionStorage e ninguém ficava sabendo.
+  { to: '/admin/central/diagnostico',    label: 'Diagnóstico' },
 ];
 
 /**
