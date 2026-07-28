@@ -12,20 +12,23 @@
  */
 
 import { useEffect, useState, useCallback } from 'react';
+import { fetchComTimeout } from '@/firebase/http.js';
 
 // Versão "embutida" no bundle. Trocada a cada build pelo bump-version.mjs.
 // Precisa bater com public/version.json.
-const APP_VERSION = '1.0.53';
+const APP_VERSION = '1.0.54';
 const CHECK_INTERVAL_MS = 60_000; // 1 minuto
 
 async function fetchRemoteVersion() {
   try {
     // Cache-bust manual com query string + headers para garantir frescor
     const url = `/version.json?t=${Date.now()}`;
-    const res = await fetch(url, {
+    // C1: prazo curto — é uma checagem de fundo a cada minuto; se demorar,
+    // desiste em silêncio e tenta no próximo ciclo (nunca trava a UI).
+    const res = await fetchComTimeout(url, {
       cache: 'no-store',
       headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' },
-    });
+    }, 5000);
     if (!res.ok) return null;
     return await res.json();
   } catch {

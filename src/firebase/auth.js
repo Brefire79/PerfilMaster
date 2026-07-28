@@ -1,3 +1,5 @@
+import { fetchComTimeout, TIMEOUT, isBackendDown } from './http.js';
+
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const SESSION_KEY = 'profileai.supabase.session';
@@ -29,19 +31,26 @@ async function refreshSession() {
   if (_refreshPromise) return _refreshPromise;
   _refreshPromise = (async () => {
     try {
-      const res = await fetch(
+      const res = await fetchComTimeout(
         `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
         {
           method: 'POST',
           headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({ refresh_token: currentSession.refresh_token }),
-        }
+        },
+        TIMEOUT.AUTH,
       );
+      // Só descarta a sessão se o servidor RESPONDEU recusando o refresh_token.
       if (!res.ok) { saveSession(null); return null; }
       const data = await res.json();
       saveSession(data);
       return data;
-    } catch { return null; }
+    } catch (err) {
+      // C1: backend fora (timeout/offline) NÃO invalida a sessão — deslogar
+      // aqui faria o usuário perder o acesso por causa de uma queda passageira.
+      if (isBackendDown(err)) throw err;
+      return null;
+    }
     finally { _refreshPromise = null; }
   })();
   return _refreshPromise;
@@ -86,11 +95,11 @@ async function authRequest(path, { method = 'GET', body, accessToken } = {}) {
   };
   if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
 
-  const res = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+  const res = await fetchComTimeout(`${SUPABASE_URL}/auth/v1/${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-  });
+  }, TIMEOUT.AUTH);
 
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
@@ -245,9 +254,41 @@ export async function updateDisplayName(displayName) {
   saveSession({ ...currentSession, user: data.user || data });
 }
 
-export async function changePassword(_currentPassword, newPassword) {
+/**
+ * changePassword — troca de senha de um usuário LOGADO.
+ *
+ * M4 (auditoria 27/07/2026): esta função recebia `currentPassword` e o
+ * IGNORAVA (`_currentPassword`). Quem sentasse numa sessão aberta trocava a
+ * senha sem saber a antiga — e `verifyPassword` já existia justamente para
+ * isso, só não estava ligada.
+ *
+ * Para o fluxo de recuperação por e-mail/WhatsApp (onde não há senha atual,
+ * porque a pessoa esqueceu), use `definirSenhaAposRecuperacao`.
+ */
+export async function changePassword(currentPassword, newPassword) {
   const token = getAccessToken();
   if (!token) throw buildAuthError('auth/user-not-found', 'No authenticated user');
+  if (!currentPassword) {
+    throw buildAuthError('auth/missing-password', 'Informe sua senha atual para confirmar a troca.');
+  }
+  // Lança auth/invalid-credential se a senha atual estiver errada.
+  await verifyPassword(currentPassword);
+  await authRequest('user', {
+    method: 'PUT',
+    accessToken: token,
+    body: { password: newPassword },
+  });
+}
+
+/**
+ * definirSenhaAposRecuperacao — define a nova senha dentro de uma sessão de
+ * recuperação (token de uso único já validado por verifyRecoveryToken ou
+ * applyRecoverySession). Aqui NÃO existe senha atual a confirmar: a prova de
+ * identidade é a posse do link enviado ao e-mail/WhatsApp do usuário.
+ */
+export async function definirSenhaAposRecuperacao(newPassword) {
+  const token = getAccessToken();
+  if (!token) throw buildAuthError('auth/user-not-found', 'Sessão de recuperação expirada. Solicite um novo link.');
   await authRequest('user', {
     method: 'PUT',
     accessToken: token,

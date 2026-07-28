@@ -58,7 +58,9 @@ SQL: rodar no **SQL Editor do dashboard** (CLI `supabase db` não faz query avul
 
 ## 9. ARQUIVOS-CHAVE
 - `src/lib/localEngine.js` — motor DISC offline (DISC_PROFILES, SABOTADORES_DATA, deepInsights, coachingQuestions)
-- `src/lib/apiKeyManager.js` — orquestra IA (Gemini → fallback local), mergeAiData
+- `src/lib/discScoring.js` / `saboteurScoring.js` — motores canônicos DISC e PQ (espelhados no Edge `atualizarStatus`)
+- `src/firebase/http.js` — camada única de rede: timeout, retry e erro classificado (C1, 27/07/2026)
+- ~~`src/lib/apiKeyManager.js`~~ — **removido em 27/07/2026** (orquestrava IA via Netlify Function; a função era um proxy aberto e nenhuma tela chamava). IA hoje só via Edge Functions.
 - `src/lib/cpf.js` — validação/máscara de CPF
 - `src/firebase/firestore.js` — CRUD Supabase REST + mapeamento de colunas + getSugestoesVinculo/getHistoricoEvolucao
 - `src/firebase/functions.js` — chamadas Edge Functions (callFunction)

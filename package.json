@@ -12,8 +12,8 @@
     "bump": "node bump-version.mjs",
     "bump:minor": "node bump-version.mjs --minor",
     "bump:major": "node bump-version.mjs --major",
-    "deploy": "node bump-version.mjs && npm run build && netlify deploy --prod --dir=dist",
-    "deploy:preview": "npm run build && netlify deploy --dir=dist",
+    "deploy": "npm test && node bump-version.mjs && npm run build && netlify deploy --prod --dir=dist",
+    "deploy:preview": "npm test && npm run build && netlify deploy --dir=dist",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios"

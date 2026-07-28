@@ -71,11 +71,13 @@ src/
 ├── firebase/           # Wrappers Supabase (mantém shape de API do Firebase)
 │   ├── auth.js         # signIn/signUp/signOut/onAuthStateChange/getValidAccessToken
 │   ├── firestore.js    # CRUD Supabase REST — tabelas app_*
-│   └── functions.js    # Chamadas Edge Functions autenticadas; sem chave de IA no cliente
+│   ├── functions.js    # Chamadas Edge Functions autenticadas; sem chave de IA no cliente
+│   └── http.js         # Camada única de rede: timeout + retry + erro classificado
 ├── lib/
-│   ├── supabase.js     # Cliente @supabase/supabase-js
-│   ├── apiKeyManager.js# Carrega/salva API key (Supabase settings + localStorage)
-│   └── localEngine.js  # Motor local DISC (fallback offline)
+│   ├── discScoring.js  # Motor DISC canônico (ponderado) — espelhado no Edge
+│   ├── saboteurScoring.js # Sabotadores + PQ Score
+│   ├── localEngine.js  # Motor local DISC/PQ (fallback sem IA)
+│   └── mestreLocal.js  # Chat "Mestre" — 100% local, sem IA externa
 ├── store/              # Zustand stores
 ├── pages/
 │   ├── admin/          # Dashboard, Students, Groups, GroupDetail, Reports,
@@ -109,19 +111,24 @@ supabase/functions/
 └── atualizarStatus/    # Atualiza status do avaliado
 ```
 
-### 4.3 Fluxo de Chave de API
+### 4.3 Fluxo da chave de IA
+
+> Atualizado em 27/07/2026. O fluxo antigo (admin digitava a chave Gemini em Configurações, guardada em `localStorage`) **não existe mais** — nenhuma credencial de IA passa pelo navegador.
 
 ```
-Admin → Settings → Integrações de IA → digita chave Google AI Studio
-       ↓
-localStorage('profileai_api_key') + Supabase settings table
-       ↓
-functions.js: callFunction() → injeta { geminiKey } em todas as chamadas de IA
-       ↓
-Edge/Netlify Function lê `AI_API_KEY` dos Secrets → chama DeepSeek sem expor a chave
-       ↓
-Fallback: GEMINI_API_KEY (env var do servidor) se geminiKey não fornecida
+Frontend  → functions.js → Edge Function (JWT do usuário, SEM chave no payload)
+                              ↓
+                         _shared/anthropic.ts lê AI_API_KEY dos Supabase Secrets
+                              ↓
+                         DeepSeek (provider único)
+                              ↓
+                    Falhou? → fallback determinístico src/lib/localEngine.js
 ```
+
+- A chave existe **só** nos Supabase Secrets (`AI_API_KEY`). Não vai para bundle, `localStorage`, URL nem env do Netlify.
+- `scripts/verify-security-contract.mjs` falha o build se algum arquivo de `src/` citar `AI_API_KEY`, `DEEPSEEK_API_KEY` ou `SUPABASE_SERVICE_ROLE_KEY`.
+- A tela Configurações → `ApiKeySection.jsx` é apenas informativa (não há nada para o usuário configurar).
+- **Não há mais Netlify Function de IA** — o proxy `/api/generate-profile-analysis` era aberto ao público e foi removido (C2 da auditoria de 27/07/2026).
 
 ### 4.4 CORS
 

@@ -12,6 +12,10 @@ const useAuthStore = create(
         loading: true,
         initialized: false,
         error: null,
+        // C1 (auditoria 27/07/2026): falha de TRANSPORTE na inicialização
+        // (backend pausado, timeout, offline). Enquanto era null e o fetch
+        // pendurava, o app ficava em "Carregando..." para sempre.
+        initError: null,
 
         // ─── Actions ─────────────────────────────────────────────────────────
 
@@ -36,9 +40,22 @@ const useAuthStore = create(
               loading: false,
               initialized: true,
               error: null,
+              initError: null,
             },
             false,
             'auth/setUser'
+          ),
+
+        /**
+         * C1 — o backend não respondeu durante a inicialização. Não sabemos se
+         * o usuário é admin ou aluno, então NÃO chutamos papel: a UI mostra a
+         * tela de indisponibilidade com "Tentar novamente".
+         */
+        setInitError: (initError) =>
+          set(
+            { initError, loading: false, initialized: true },
+            false,
+            'auth/setInitError'
           ),
 
         /**
@@ -62,6 +79,7 @@ const useAuthStore = create(
               loading: false,
               initialized: true,
               error: null,
+              initError: null,
             },
             false,
             'auth/clearUser'

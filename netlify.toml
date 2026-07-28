@@ -2,15 +2,15 @@
   publish = "dist"
   command  = "npm run build"
 
-[functions]
-  directory = "netlify/functions"
-
-# API routes → Netlify Functions (deve vir ANTES do catch-all)
-[[redirects]]
-  from   = "/api/*"
-  to     = "/.netlify/functions/:splat"
-  status = 200
-  force  = true
+# C2 (auditoria 27/07/2026): o bloco [functions] e o redirect /api/* foram
+# REMOVIDOS. A única Netlify Function era `generate-profile-analysis`, um proxy
+# DeepSeek SEM autenticação e com CORS "*" — qualquer pessoa podia chamar
+# /api/generate-profile-analysis e queimar a cota de IA. Pior: a única
+# consumidora (src/lib/apiKeyManager.js → generateAnalysis) não era chamada por
+# nenhuma tela; a IA dos relatórios roda pela Edge Function `insightPerfil`.
+# Sem o [functions], a Netlify deixa de publicar qualquer função deste repo.
+# Se um dia voltar a existir função aqui, ela precisa exigir JWT do Supabase,
+# CORS restrito ao domínio próprio, limite de body e rate limit.
 
 [[redirects]]
   from   = "/*"

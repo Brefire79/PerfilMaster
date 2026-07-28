@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 're
 import useAuthStore from '@/store/authStore.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import RouteErrorBoundary from '@/components/ui/RouteErrorBoundary.jsx';
+import BackendIndisponivel from '@/components/ui/BackendIndisponivel.jsx';
 
 // ─── Lazy-loaded Layouts ──────────────────────────────────────────────────────
 const AdminLayout = lazy(() => import('@/layouts/AdminLayout.jsx'));
@@ -69,8 +70,14 @@ function PageLoader() {
 
 // ─── Protected Route Component ────────────────────────────────────────────────
 function ProtectedRoute({ children, requiredRole }) {
-  const { user, role, loading, initialized } = useAuthStore();
+  const { user, role, loading, initialized, initError } = useAuthStore();
   const location = useLocation();
+
+  // C1: o backend não respondeu durante a inicialização. Sem isso, o app ficava
+  // preso no PageLoader para sempre (initialized nunca virava true).
+  if (initError) {
+    return <BackendIndisponivel mensagem={initError} />;
+  }
 
   // Still initializing auth state
   if (!initialized || loading) {
@@ -120,7 +127,10 @@ function JoinHandler() {
 // ─── Already-Auth Route — redireciona usuários logados fora das telas de auth ────
 // P1-2: impede que usuário autenticado acesse /login, /register, /forgot-password
 function AlreadyAuthRoute({ children }) {
-  const { user, role, loading, initialized } = useAuthStore();
+  const { user, role, loading, initialized, initError } = useAuthStore();
+  // C1: com o backend fora, mostrar o formulário de login seria enganoso —
+  // o submit falharia de qualquer jeito.
+  if (initError) return <BackendIndisponivel mensagem={initError} />;
   if (!initialized || loading) return <PageLoader />;
   if (user) {
     return <Navigate to={role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} replace />;
@@ -130,8 +140,9 @@ function AlreadyAuthRoute({ children }) {
 
 // ─── Root Redirect ─────────────────────────────────────────────────────────────
 function RootRedirect() {
-  const { user, role, loading, initialized } = useAuthStore();
+  const { user, role, loading, initialized, initError } = useAuthStore();
 
+  if (initError) return <BackendIndisponivel mensagem={initError} />;
   if (!initialized || loading) return <PageLoader />;
 
   if (!user) return <Navigate to="/login" replace />;

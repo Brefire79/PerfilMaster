@@ -10,18 +10,20 @@
 
 ## 1. 🏛️ Arquitetura geral do sistema
 
-O Perfil Master é uma **SPA (React)** que conversa com o **Supabase** (banco + autenticação + funções server-side) e com **uma Netlify Function** que faz proxy seguro para a IA (DeepSeek). Não há servidor próprio — tudo é serverless.
+O Perfil Master é uma **SPA (React)** que conversa com o **Supabase** (banco + autenticação + funções server-side). Não há servidor próprio — tudo é serverless. O Netlify só serve os arquivos estáticos.
+
+> ⚠️ **Desde 27/07/2026 não existem Netlify Functions.** A única (`generate-profile-analysis`) era um proxy DeepSeek **sem autenticação e com CORS `*`** — qualquer pessoa podia chamar e queimar a cota de IA — e nenhuma tela a usava. Foi removida junto com o bloco `[functions]` e o redirect `/api/*` do `netlify.toml` (C2 da auditoria). **Toda IA passa por Edge Functions do Supabase.**
 
 ```mermaid
 flowchart TD
     subgraph Cliente["🌐 Navegador (SPA React + Vite + PWA)"]
         UI[Telas: Auth / Admin / Student / Público]
+        HTTP["http.js — timeout + retry"]
         DL["Camada de dados (src/firebase/*)"]
     end
 
     subgraph Netlify["▲ Netlify"]
         Static[Static hosting - dist/]
-        NF["Netlify Function<br/>generate-profile-analysis.mjs"]
     end
 
     subgraph Supabase["🟢 Supabase"]
@@ -33,11 +35,10 @@ flowchart TD
     DeepSeek[["🤖 DeepSeek API"]]
 
     UI --> DL
-    DL -->|JWT REST / PostgREST| PG
-    DL -->|login/sessão| Auth
-    DL -->|invoca| EF
-    UI -->|/api/*| NF
-    NF -->|chave server-side| DeepSeek
+    DL --> HTTP
+    HTTP -->|JWT REST / PostgREST| PG
+    HTTP -->|login/sessão| Auth
+    HTTP -->|invoca| EF
     EF -->|service_role| PG
     EF -->|chave server-side| DeepSeek
     Static --> UI
@@ -49,11 +50,35 @@ flowchart TD
   - `auth.js` — wrapper do Supabase Auth (GoTrue REST); sessão em `localStorage` (`profileai.supabase.session`) com refresh automático de token.
   - `firestore.js` — wrapper REST do **PostgREST**. Contém o mapa `CAMEL_TO_DB` (camelCase do app ↔ colunas lowercase do Postgres). **Toda coluna nova precisa ser registrada nesse mapa**, senão o INSERT/PATCH falha silenciosamente.
   - `functions.js` — invocador das Edge Functions (injeta o JWT do usuário ou a anon key).
+  - `http.js` — **camada única de rede** (ver §1.1). Todo fetch passa por aqui.
   - `config.js` — stub vazio, só compatibilidade.
 - **Colunas do Postgres são lowercase sem underscore** (`adminuid`, `criadoem`), exceto as do DELTA 7 (`cpf_consent`, `avaliado_id`, etc.).
 - **RLS por facilitador:** cada admin enxerga **apenas** seus grupos/alunos/sessões (por `adminuid` ou grupo). Nunca `is_admin()` global, nunca `USING (true)` em tabelas `app_*`.
 - **Fluxos públicos (sem login)** passam **só por Edge Functions** com `service_role` — o anônimo nunca acessa as tabelas `app_*` diretamente.
-- **IA = DeepSeek, provider único, sempre server-side.** A chave fica apenas nos Secrets do Supabase e nas env vars do Netlify — **nunca** no bundle, `localStorage` ou URL. Fallback determinístico: `src/lib/localEngine.js`.
+- **IA = DeepSeek, provider único, sempre server-side, só via Edge Functions.** A chave fica apenas nos Secrets do Supabase — **nunca** no bundle, `localStorage`, URL ou env do Netlify. Fallback determinístico: `src/lib/localEngine.js`.
+
+### 1.1 Camada de rede (`src/firebase/http.js`)
+
+Criada em 27/07/2026 (C1 da auditoria). **Nenhum fetch do app tinha prazo** — quando o projeto Supabase pausou por inatividade (Free tier), a promise nunca resolvia, `useAuth` ficava preso, `initialized` nunca virava `true` e o app exibia "Carregando..." para sempre. O avaliado travava em "Verificando seu link...".
+
+| Export | Papel |
+|---|---|
+| `fetchComTimeout(url, opts, ms)` | `fetch` com `AbortController`; erro classificado |
+| `fetchComRetry(url, opts, ms, n)` | idem + 2 tentativas com backoff — **só para GET** |
+| `isBackendDown(err)` | `true` se o erro é de transporte (não é 4xx/5xx da app) |
+| `mensagemDeRede(err)` | texto pronto para o usuário final |
+| `TIMEOUT` | `DB: 12s` · `AUTH: 12s` · `FUNCTION: 30s` (Edge com IA demora mais) |
+
+Códigos de erro: `backend/timeout`, `backend/offline`, `backend/unreachable`.
+
+Consequências no comportamento:
+
+- `authStore.initError` + `<BackendIndisponivel/>` substituem o spinner infinito em `RootRedirect`, `ProtectedRoute` e `AlreadyAuthRoute`.
+- `useAuth` **não assume mais `student`** quando a leitura de `app_users` falha por rede — isso rebaixava admin silenciosamente. Só assume no caso legítimo (conta sem linha em `app_users`).
+- `refreshSession` **não desloga** em queda de rede; só quando o servidor responde recusando o `refresh_token`.
+- `AvaliacaoPublica` separa "servidor fora" (tela `SEM_CONEXAO`) de "link inválido".
+
+> **Regra:** chamada de rede nova usa `http.js`. `fetch` direto recria o bug.
 
 ### Três modos de atendimento
 
@@ -181,13 +206,13 @@ supabase functions deploy <nome> --project-ref <ref>
 - IA compartilhada em `_shared/anthropic.ts` → `callAnthropic(system, user, maxTokens)`; a chave vem **só** de `AI_API_KEY`/`DEEPSEEK_API_KEY` dos Secrets (o cliente nunca envia chave).
 - `verify_jwt` por função é definido em `supabase/config.toml` (o CLI respeita no deploy).
 
-### 4.3 Netlify Function
+### 4.3 Netlify Functions — **não existem mais**
 
-| Endpoint | Método | Descrição |
-|---|---|---|
-| `/api/generate-profile-analysis` | `POST` | Proxy seguro DeepSeek. Body: `{ discScores, sabScores, localAnalysis }`. Resposta: `{ success, analysis, model }`. Sem chave no servidor → `503`. |
+Removidas em 27/07/2026 (C2 da auditoria). O `netlify.toml` não tem mais bloco `[functions]` nem redirect `/api/*`; o Netlify apenas serve `dist/`.
 
-Mapeado em `netlify.toml` (`/api/* → /.netlify/functions/:splat`).
+O que havia: `/api/generate-profile-analysis`, proxy DeepSeek **sem autenticação, com `Access-Control-Allow-Origin: *` e sem rate limit** — endereço público que qualquer um podia chamar para consumir a cota de IA, com parte do prompt vinda do body (prompt injection). Sua única consumidora (`src/lib/apiKeyManager.js`) não era chamada por nenhuma tela.
+
+**Se um dia voltar a existir função no Netlify**, ela precisa de: JWT do Supabase validado, CORS restrito ao domínio próprio, limite de tamanho de body e rate limit por IP.
 
 ### 4.4 Camada de dados (`src/firebase/firestore.js`)
 
@@ -208,8 +233,27 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 
 ### 4.6 Regras de negócio sensíveis (não alterar isoladamente)
 
-- **Questões:** `src/constants/sampleQuestions.js` — 78 questões (28 DISC + 50 sabotadores). O fluxo público usa só as 28 DISC; os ids/pesos DISC estão **duplicados** em `atualizarStatus/index.ts` — alterou questão DISC, atualize os dois lugares.
-- **Fórmula PQ Score:** `PQ Score = 100 − (média dos 3 maiores scores brutos × 10)`. Sincronizar entre `calculate-assessment`, `generate-report` e `src/lib/localEngine.js`.
+- **Questões:** `src/constants/sampleQuestions.js` — 78 questões (28 DISC + 50 sabotadores), todas likert5. Desde o **DELTA 19** o fluxo público é **Completo (78)**: `AvaliacaoPublica` aplica DISC→Sabotadores e `atualizarStatus` pontua os dois. Ids/pesos DISC e o scoring de Sabotadores estão **duplicados** em `atualizarStatus/index.ts` — mexeu em um lado, mexa no outro (e o contrato de scoring cobre a parte DISC).
+- **Motor DISC canônico:** `src/lib/discScoring.js` — `(valor−1)/4 × peso`, média ponderada por dimensão × 100. Lê `sampleQuestions.js` em runtime (sincroniza sozinho); o array `QUESTIONS` do Edge é atualizado à mão.
+- **Fórmula PQ Score:** `PQ Score = 100 − (média dos 3 maiores scores brutos × 10)`. Sincronizar entre `calculate-assessment`, `generate-report`, `src/lib/localEngine.js` e `src/lib/saboteurScoring.js`.
+- **Acoplamento front ↔ Edge nos Sabotadores:** o front deriva a chave pelo campo `dimension`; o Edge deriva por regex no id (`/^q_sab_([a-z]+)_\d+$/`) + `SAB_SLUG_TO_KEY`. Desde 27/07/2026 o **contrato de scoring prova a equivalência** (mapeamento questão a questão, allowlist dos 50 ids e `pqScore` idêntico). Id de sabotador fora do padrão `q_sab_<slug>_NN` quebra o `npm test` — antes era ignorado em silêncio pelo Edge.
+
+### 4.7 Validação das respostas no fluxo público (A1/A3)
+
+`atualizarStatus` era a porta aberta do sistema: gravava `payload.respostas` com o objeto cru do cliente e concluía a avaliação com **uma única resposta**.
+
+| Regra | Valor |
+|---|---|
+| Ids aceitos | allowlist `IDS_VALIDOS` — 28 DISC + 50 `q_sab_<slug>_01..05` |
+| Valores | inteiro forçado, faixa **1-5**; fora disso a resposta é descartada |
+| Teto do payload | 200 chaves (78 legítimas) |
+| Cobertura mínima DISC | **26** de 28 |
+| Cobertura mínima Sabotadores | **45** de 50 — *só exigida se vier algum* |
+| Recusa | HTTP **422**, `code: 'assessment/incomplete'`, com ids faltantes |
+
+A tolerância de 2 questões existe para não invalidar uma avaliação por um item perdido; concluir com meia dúzia de respostas, não passa. Avaliado **DISC-only** (link anterior ao DELTA 19) continua válido: sem nenhuma `q_sab_*`, o bloco de sabotadores não é cobrado.
+
+No front, `AvaliacaoPublica` intercepta antes de enviar — "Finalizar" com questões em branco leva à primeira pendência com aviso, e o 422 do servidor dispara `VOLTAR_INCOMPLETO`.
 - **Cores DISC canônicas:** D `#EF4444` · I `#F59E0B` · S `#22C55E` · C `#6366F1`.
 - **Relatório Oficial × "Ver perfil":** o `RelatorioOficial` é DISC-only por origem (fluxo de sessão usa só 28 questões). Para **contas de aluno** (uid), `getAvaliadoLikeFromUid` traz também `saboteurPatterns`/`derailmentRisks`/`summary` do `app_profiles`, e o relatório renderiza a **§ 3.1 (Padrões Sabotadores e Riscos de Derailment)** quando esses dados existem — paridade com o `ProfileDetail` ("Ver perfil"). Avaliados de sessão não têm esses dados → seção oculta.
 
@@ -217,33 +261,46 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 
 ## 5. 🧪 Como rodar os testes
 
-O projeto possui contratos automatizados sem dependências adicionais: `npm test` valida a equivalência dos motores DISC/PQ, as 78 questões e invariantes de segurança. O GitHub Actions executa testes e build em todo push/PR para `main`. Ainda não há linter de estilo configurado.
-
-A **validação oficial** é:
+Não são testes de unidade — são **contratos** que travam invariantes que o projeto não pode violar. Rodam em Node puro, sem dependência extra.
 
 ```bash
-# 1. Build de produção precisa ficar verde (sem erros)
-npm run build
-
-# 2. Verificação manual no preview/dev
-npm run dev
+npm test     # verify-scoring-contract.mjs + verify-security-contract.mjs
+npm run check   # test + build — o gate antes de qualquer deploy
 ```
 
-### Checklist de smoke test (manual)
+| Contrato | O que garante |
+|---|---|
+| `scripts/verify-scoring-contract.mjs` | 78 questões (28 DISC + 50 Sab), ids únicos, todas likert5, extremos do DISC (0/100), PQ nos extremos (90/50) e que **os ids e pesos DISC do Edge `atualizarStatus` batem com `sampleQuestions.js`** |
+| `scripts/verify-security-contract.mjs` | nenhum secret de servidor citado em `src/`, `deleteAccount` via Edge com JWT + confirmação explícita, migration de hardening presente, `changePassword` reautenticando, e `firestore/functions/auth` fazendo rede por `http.js` |
+
+O contrato de scoring também prova a equivalência **front ↔ Edge dos Sabotadores** (§4.6) e trava a presença das validações A1/A3 e das checagens de erro C3 em `atualizarStatus` — refatorar essas partes para fora quebra o `npm test`.
+
+Foi o contrato de scoring que pegou a divergência de pesos DISC da auditoria de 07/07/2026.
+
+Desde 27/07/2026, `npm run deploy` e `npm run deploy:preview` rodam `npm test` antes do bump/build — contrato violado quebra o deploy cedo.
+
+> ⚠️ **Não há GitHub Actions neste repo** (não existe `.github/workflows`). Os contratos só rodam localmente. Criar a Action que executa `npm run check` em todo push é item aberto do Sprint 3. Também não há linter de estilo.
+
+### Smoke test do caminho crítico (rodar antes de todo deploy de produção)
+
+O caminho do avaliado é onde o produto ganha ou perde. São ~4 minutos e cobrem os três achados críticos da auditoria de uma vez:
+
+1. Anônimo abre `/avaliacao/:token` → boas-vindas carregam em < 3s.
+2. Responder 3 questões → **F5** → volta na 4ª (retomada via `localStorage`).
+3. Concluir → redireciona para `/resultado/:token` com o perfil.
+4. Conferir no banco: `app_avaliados.status = 'concluido'` **e** `perfil` preenchido.
+5. Facilitador abre `/admin/relatorio/:token` → relatório monta com DISC + PQ.
+
+### Smoke test geral
 
 1. `/login` carrega sem erros no console.
-2. `/avaliacao/token-invalido` e `/resultado/token-invalido` mostram **erro amigável** ("Link inválido / Resultado não encontrado").
-3. Console **sem** warnings de React Router e **sem** erros.
-4. Rebrand correto (título e rodapé exibem **"Perfil Master"**).
-5. (Opcional) Testar a IA no ar:
-   ```bash
-   curl -X POST https://perfilmaster.netlify.app/api/generate-profile-analysis \
-     -H "Content-Type: application/json" \
-     -d '{"discScores":{"D":50,"I":60,"S":40,"C":70},"sabScores":{"judge":5},"localAnalysis":{"summary":"teste"}}'
-   # Esperado: HTTP 200 {"success":true,...,"model":"deepseek-chat"}
-   ```
+2. `/avaliacao/token-invalido` mostra **"Link inválido ou expirado"**.
+3. **DevTools → Network → Offline** e recarregar: deve aparecer a tela **"Servidor fora do ar"** em ~12s (regressão do C1 — antes girava para sempre).
+4. Responder 3 questões e forçar `atualizarStatus` com `novoStatus: 'concluido'`: deve devolver **422 `assessment/incomplete`**, nunca um perfil (regressão do A1).
+4. Console sem warnings de React Router.
+5. Título e rodapé exibem **"Perfil Master"**.
 
-> 💡 Para adicionar testes no futuro, recomenda-se **Vitest** (integra nativamente com Vite) + **@testing-library/react**, começando pelas funções puras de `src/lib/localEngine.js` (cálculo DISC/PQ).
+> 💡 Para evoluir: **Vitest** + **@testing-library/react** nas funções puras (`discScoring.js`, `saboteurScoring.js`, `localEngine.js`), e Playwright para automatizar o smoke test do caminho crítico.
 
 ---
 
@@ -255,8 +312,8 @@ profileai/
 │   ├── routes/index.jsx        # rotas + proteção por papel
 │   ├── pages/                  # telas (auth/ admin/ student/ public/ shared/)
 │   ├── components/             # UI, assessment, profile, group, layout, sessao
-│   ├── firebase/               # camada de dados Supabase (auth, firestore, functions)
-│   ├── lib/                    # localEngine, apiKeyManager, appUrl, cpf
+│   ├── firebase/               # camada de dados Supabase (auth, firestore, functions, http)
+│   ├── lib/                    # localEngine, discScoring, saboteurScoring, mestreLocal, appUrl, cpf
 │   ├── store/                  # Zustand (authStore, sessaoStore, ...)
 │   ├── constants/              # sampleQuestions (78 questões), siglas
 │   └── i18n/                   # pt-BR / en / es
@@ -264,11 +321,11 @@ profileai/
 │   ├── functions/              # Edge Functions (Deno/TS) + _shared/
 │   ├── migrations/             # SQL (fonte da verdade do schema/RLS)
 │   └── config.toml             # verify_jwt por função
-├── netlify/functions/          # generate-profile-analysis.mjs (proxy DeepSeek)
-├── netlify.toml                # redirects, headers/CSP, NODE_VERSION
+├── scripts/                    # verify-scoring-contract.mjs, verify-security-contract.mjs
+├── netlify.toml                # redirects, headers/CSP, NODE_VERSION (sem [functions])
 └── vite.config.js              # build, PWA, manualChunks
 ```
 
 ---
 
-*Perfil Master · Vianexx AI · Manual Técnico · atualizado 12/06/2026*
+*Perfil Master · Vianexx AI · Manual Técnico · atualizado 27/07/2026 (auditoria + Sprints 1 e 2)*

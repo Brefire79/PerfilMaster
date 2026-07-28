@@ -42,5 +42,8 @@ npm run deploy
 - Exclusão de conta vazia em ambiente de teste.
 - Bloqueio da exclusão de admin que tenha grupos/alunos/sessões.
 - Falha simulada de carregamento de página exibindo “Tentar novamente”.
+- **(27/07/2026)** DevTools → Network → **Offline** + reload: deve aparecer a tela **“Servidor fora do ar”** em ~12s. Se ficar girando em “Carregando...”, o C1 regrediu.
+
+> Desde 27/07/2026 `npm run deploy` e `deploy:preview` rodam `npm test` (contratos de scoring e segurança) antes do build — se um contrato quebrar, o deploy nem começa.
 
 Não testar exclusão usando a conta produtiva do fundador.

@@ -1,6 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { onAuthStateChange, signOut as firebaseSignOut } from '@/firebase/auth.js';
 import { getUser } from '@/firebase/firestore.js';
+import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
 import useProfileStore from '@/store/profileStore.js';
@@ -13,7 +14,7 @@ import useAssessmentStore from '@/store/assessmentStore.js';
  * and provides auth action helpers.
  */
 export function useAuth() {
-  const { user, role, loading, initialized, setUser, clearUser, setLoading } =
+  const { user, role, loading, initialized, initError, setUser, clearUser, setLoading, setInitError } =
     useAuthStore();
   const resetGroups = useGroupStore((s) => s.reset);
   const resetProfiles = useProfileStore((s) => s.reset);
@@ -36,7 +37,17 @@ export function useAuth() {
           );
         } catch (err) {
           console.error('[useAuth] Failed to fetch user document:', err);
-          setUser(firebaseUser, 'student');
+          // C1/A2: antes assumia 'student' aqui. Um blip de rede rebaixava o
+          // facilitador a aluno e o jogava em /student/dashboard. Quando a
+          // falha é de transporte, não sabemos o papel — mostramos a tela de
+          // indisponibilidade em vez de adivinhar.
+          if (isBackendDown(err)) {
+            setInitError(mensagemDeRede(err));
+          } else {
+            // Resposta veio do servidor, mas sem documento do usuário:
+            // conta recém-criada ainda sem linha em app_users → aluno.
+            setUser(firebaseUser, 'student');
+          }
         }
       } else {
         clearUser();
@@ -65,6 +76,7 @@ export function useAuth() {
     role,
     loading,
     initialized,
+    initError,
     isAuthenticated: !!user,
     isAdmin: role === 'admin',
     isStudent: role === 'student',

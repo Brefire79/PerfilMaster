@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { applyRecoverySession, verifyRecoveryToken, changePassword, signOut } from '@/firebase/auth.js';
+import { applyRecoverySession, verifyRecoveryToken, definirSenhaAposRecuperacao, signOut } from '@/firebase/auth.js';
 import Button from '@/components/ui/Button.jsx';
 
 // Lê os tokens do hash do link de recuperação (#access_token=...&type=recovery).
@@ -64,7 +64,8 @@ export default function ResetPassword() {
     if (senha !== confirma) { setErro('As senhas não conferem.'); return; }
     setSalvando(true);
     try {
-      await changePassword('', senha);
+      // M4: fluxo de recuperação não tem senha atual — a prova é o token do link.
+      await definirSenhaAposRecuperacao(senha);
       // Encerra a sessão de recuperação e manda para o login com a nova senha.
       await signOut().catch(() => {});
       setFase('salvo');

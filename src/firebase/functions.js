@@ -1,4 +1,5 @@
 import { getValidAccessToken } from './auth.js';
+import { fetchComTimeout, TIMEOUT } from './http.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -12,7 +13,8 @@ async function callFunction(name, payload) {
   const enrichedPayload = payload || {};
 
   const token = await getValidAccessToken();
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+  // C1: prazo maior que o do banco — algumas Edge chamam IA (insightPerfil).
+  const res = await fetchComTimeout(`${SUPABASE_URL}/functions/v1/${name}`, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -20,7 +22,7 @@ async function callFunction(name, payload) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(enrichedPayload),
-  });
+  }, TIMEOUT.FUNCTION);
 
   const text = await res.text();
   const data = text ? JSON.parse(text) : {};

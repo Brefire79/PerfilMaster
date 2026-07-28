@@ -1,4 +1,5 @@
 import { getValidAccessToken } from './auth.js';
+import { fetchComTimeout, fetchComRetry, TIMEOUT } from './http.js';
 import { normalizeName } from '@/lib/cpf.js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -181,11 +182,13 @@ async function sbRequest(path, { method = 'GET', query = '', body, prefer } = {}
   const headers = await buildHeaders();
   if (prefer) headers.Prefer = prefer;
 
-  const res = await fetch(url, {
+  // C1: leitura pode ser reexecutada com segurança (idempotente) — escrita não.
+  const enviar = method === 'GET' ? fetchComRetry : fetchComTimeout;
+  const res = await enviar(url, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  }, TIMEOUT.DB);
 
   const text = await res.text();
   let json = null;

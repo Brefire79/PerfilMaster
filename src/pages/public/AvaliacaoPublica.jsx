@@ -15,6 +15,8 @@ const QUESTOES_SAB = SAMPLE_QUESTIONS.filter((q) =>
 const QUESTOES_PUBLICAS = [...QUESTOES_DISC, ...QUESTOES_SAB];
 import { SiglaProvider, SiglaComSignificado } from '@/constants/siglas.jsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
+import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
+import BackendIndisponivel from '@/components/ui/BackendIndisponivel.jsx';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -87,6 +89,9 @@ function clearRespostas(token) {
 const TELAS = {
   CARREGANDO:   'carregando',
   INVALIDO:     'invalido',
+  // C1: servidor fora ≠ link inválido. Dizer "link inválido" quando o backend
+  // caiu faz o avaliado desistir e pedir outro link que também não vai abrir.
+  SEM_CONEXAO:  'sem_conexao',
   CONCLUIDO:    'concluido',
   BOAS_VINDAS:  'boas_vindas',
   AVALIANDO:    'avaliando',
@@ -102,6 +107,8 @@ const estadoInicial = {
   questaoAtual: 0,
   respostas: {},
   perfil: null,
+  // A1: aviso quando o avaliado tenta finalizar com questões em branco
+  avisoIncompleto: null,
 };
 
 function reducer(state, action) {
@@ -116,6 +123,8 @@ function reducer(state, action) {
       };
     case 'ERRO_TOKEN':
       return { ...state, tela: TELAS.INVALIDO, erro: action.mensagem };
+    case 'ERRO_REDE':
+      return { ...state, tela: TELAS.SEM_CONEXAO, erro: action.mensagem };
     case 'INICIAR': {
       // Retoma respostas salvas localmente (refresh no meio da avaliação):
       // posiciona na primeira questão ainda sem resposta.
@@ -129,16 +138,31 @@ function reducer(state, action) {
       return {
         ...state,
         respostas: { ...state.respostas, [action.questionId]: action.valor },
+        avisoIncompleto: null,
       };
     // F2: avançar via CTA fixo; ao passar da última, vai para ANALISANDO
     case 'AVANCAR': {
       const proximaQuestao = state.questaoAtual + 1;
       const fim = proximaQuestao >= QUESTOES_PUBLICAS.length;
-      return {
-        ...state,
-        questaoAtual: fim ? state.questaoAtual : proximaQuestao,
-        tela: fim ? TELAS.ANALISANDO : TELAS.AVALIANDO,
-      };
+      if (!fim) {
+        return { ...state, questaoAtual: proximaQuestao, tela: TELAS.AVALIANDO, avisoIncompleto: null };
+      }
+      // A1 (auditoria 27/07/2026): antes, "Finalizar" enviava o que houvesse.
+      // Com um rascunho retomado com buracos, a avaliação era concluída
+      // incompleta e virava perfil oficial. Agora leva à primeira pendência.
+      const pendente = QUESTOES_PUBLICAS.findIndex((q) => state.respostas[q.id] == null);
+      if (pendente >= 0) {
+        const faltam = QUESTOES_PUBLICAS.filter((q) => state.respostas[q.id] == null).length;
+        return {
+          ...state,
+          questaoAtual: pendente,
+          tela: TELAS.AVALIANDO,
+          avisoIncompleto: faltam === 1
+            ? 'Falta 1 pergunta sem resposta. Ela está aqui.'
+            : `Faltam ${faltam} perguntas sem resposta. Vamos voltar à primeira.`,
+        };
+      }
+      return { ...state, tela: TELAS.ANALISANDO, avisoIncompleto: null };
     }
     case 'VOLTAR':
       return {
@@ -151,6 +175,17 @@ function reducer(state, action) {
       return { ...state, tela: TELAS.RESULTADO, perfil: action.perfil, erroSubmit: null };
     case 'ERRO_SUBMIT':
       return { ...state, tela: TELAS.ANALISANDO, erroSubmit: action.mensagem };
+    // A1: servidor recusou por incompletude (422) — volta à primeira pendência.
+    case 'VOLTAR_INCOMPLETO': {
+      const pendente = QUESTOES_PUBLICAS.findIndex((q) => state.respostas[q.id] == null);
+      return {
+        ...state,
+        tela: TELAS.AVALIANDO,
+        questaoAtual: pendente >= 0 ? pendente : 0,
+        erroSubmit: null,
+        avisoIncompleto: 'Ainda há perguntas sem resposta. Precisamos de todas para gerar seu perfil.',
+      };
+    }
     case 'TENTAR_NOVAMENTE':
       return { ...state, erroSubmit: null };
     default:
@@ -340,7 +375,7 @@ function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentCh
   );
 }
 
-function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar }) {
+function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar, aviso }) {
   const progresso = Math.round((questaoAtual / total) * 100);
   const isLikert  = questao.type === 'likert5';
   const opcoes    = isLikert ? LIKERT_OPCOES : questao.options;
@@ -348,6 +383,17 @@ function TelaAvaliando({ questao, questaoAtual, total, resposta, onSelecionar })
 
   return (
     <div className="flex flex-col gap-5 w-full animate-fade-in">
+      {/* A1: aviso de questões em branco ao tentar finalizar */}
+      {aviso && (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-xl border border-[#F59E0B]/40 bg-[#F59E0B]/10 px-3.5 py-3"
+        >
+          <span aria-hidden="true">⚠️</span>
+          <p className="text-xs text-[#F7F8FC] leading-snug">{aviso}</p>
+        </div>
+      )}
+
       {/* Barra de progresso */}
       <div>
         <div className="flex justify-between text-xs text-[#A0A3B1] mb-1.5">
@@ -499,7 +545,14 @@ export default function AvaliacaoPublica() {
           document.title = 'Avaliação de ' + primeiro + ' — Perfil Master';
         }
       })
-      .catch((err) => dispatch({ type: 'ERRO_TOKEN', mensagem: err.message }));
+      .catch((err) => {
+        // C1: distingue "backend fora" de "token realmente inválido".
+        if (isBackendDown(err)) {
+          dispatch({ type: 'ERRO_REDE', mensagem: mensagemDeRede(err) });
+        } else {
+          dispatch({ type: 'ERRO_TOKEN', mensagem: err.message });
+        }
+      });
   }, [token]);
 
   // Quando entra em ANALISANDO (e não tem erro pendente), envia as respostas
@@ -520,6 +573,12 @@ export default function AvaliacaoPublica() {
       })
       .catch((err) => {
         submittingRef.current = false;
+        // A1: o servidor recusou por avaliação incompleta (422). Em vez da tela
+        // genérica de falha, devolve o avaliado à primeira questão em branco.
+        if (err?.code === 'assessment/incomplete') {
+          dispatch({ type: 'VOLTAR_INCOMPLETO' });
+          return;
+        }
         dispatch({ type: 'ERRO_SUBMIT', mensagem: err.message });
       });
   }, [state.tela, state.erroSubmit]);
@@ -627,6 +686,11 @@ export default function AvaliacaoPublica() {
           <CentralLayout><TelaInvalido mensagem={state.erro} /></CentralLayout>
         )}
 
+        {/* C1: servidor fora — o rascunho local do avaliado é preservado */}
+        {state.tela === TELAS.SEM_CONEXAO && (
+          <BackendIndisponivel mensagem={state.erro} />
+        )}
+
         {state.tela === TELAS.CONCLUIDO && state.avaliado && (
           <CentralLayout><TelaConcluido avaliado={state.avaliado} /></CentralLayout>
         )}
@@ -655,6 +719,7 @@ export default function AvaliacaoPublica() {
                 total={total}
                 resposta={respostaAtual}
                 onSelecionar={handleSelecionar}
+                aviso={state.avisoIncompleto}
               />
             </div>
           </main>

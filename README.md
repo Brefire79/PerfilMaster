@@ -16,16 +16,21 @@ npm install
 npm run dev
 ```
 
-Configure somente variáveis públicas do frontend a partir de `.env.example`. Secrets de IA e `service_role` pertencem ao Netlify/Supabase e nunca devem entrar no bundle.
+Configure somente variáveis públicas do frontend a partir de `.env.example`. Secrets de IA e `service_role` vivem **apenas nos Supabase Secrets** e nunca devem entrar no bundle. Desde 27/07/2026 não há Netlify Functions — o Netlify só serve `dist/`.
 
 ## Validar
 
 ```bash
-npm test
-npm run build
+npm run check   # = npm test + npm run build
 ```
 
-Os contratos verificam as 78 questões, scoring DISC/PQ, sincronização frontend/Edge e invariantes básicas de segurança. O GitHub Actions executa testes e build em pushes e pull requests.
+Os contratos verificam as 78 questões, scoring DISC/PQ, sincronização frontend/Edge e invariantes básicas de segurança. `npm run deploy` roda `npm test` antes do build.
+
+> ⚠️ **Não há GitHub Actions configurado** neste repo — os contratos só rodam localmente. Criar o workflow que executa `npm run check` em todo push é item aberto.
+
+## Rede e indisponibilidade
+
+Todo fetch passa por `src/firebase/http.js` (timeout de 12s no banco/auth, 30s nas Edge, retry só em GET). Sem isso, o app ficava em "Carregando..." para sempre quando o Supabase pausava por inatividade. Ao criar chamada nova, **use `http.js`** — `fetch` direto recria o bug.
 
 ## Arquitetura importante
 
@@ -42,6 +47,8 @@ Fluxos públicos por token passam por Edge Functions com `service_role`; o clien
 - [Preparação Android e iOS](MOBILE-RELEASE.md)
 - [Marketing e prompts da landing page](MARKETING-LANDING-PROMPTS.md)
 - [Checklist de publicação](DEPLOY-READY.md)
+- [Auditoria 27/07/2026 + plano de sprints](AUDITORIA-2026-07-27.md)
+- [Deploy das Edge Functions](SUPABASE_FUNCTIONS_DEPLOY.md)
 
 Documentos públicos do aplicativo:
 

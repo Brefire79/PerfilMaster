@@ -1,5 +1,16 @@
 # Auditoria de Segurança — ProfileAI
 
+> ⚠️ **DOCUMENTO HISTÓRICO (09/05/2026).** Vários achados aqui já foram
+> resolvidos — em especial **A-1** (CORS `*` nas Edge → hoje há allowlist em
+> `_shared/response.ts`), **M-1** (CSP ausente → headers completos no
+> `netlify.toml`) e **A-3** (RLS → `20260609_delta8_seguranca.sql`, isolamento
+> por facilitador). **B-1** (mensagens de erro do Supabase expostas) e **M-3**
+> (rate limiting) continuam abertos.
+>
+> **Estado atual e plano de ação: [`AUDITORIA-2026-07-27.md`](../AUDITORIA-2026-07-27.md)** (raiz do repo `profileai/`).
+> Resolvidos em 27/07/2026: proxy de IA aberto ao público (C2), writes
+> silenciosos no fluxo público (C3) e ausência de timeout na rede (C1).
+
 Avaliação realizada em 2026-05-09. Cobre frontend, Edge Functions, autenticação, autorização, dados sensíveis e configuração de deploy.
 
 **Escopo**: `profileai/` (React + Supabase Edge Functions + PostgREST)
