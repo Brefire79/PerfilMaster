@@ -4,7 +4,7 @@ SaaS da Vianexx AI para avaliações comportamentais DISC + PQ/Sabotadores, com 
 
 - Produção: https://perfilmaster.netlify.app
 - Repositório: https://github.com/Brefire79/PerfilMaster
-- Frontend: React 18 + Vite + Tailwind + Zustand
+- Frontend: React 18 + Vite + Tailwind + Zustand (PT-BR exclusivo, sem i18next)
 - Backend: Supabase Auth, PostgreSQL, RLS e Edge Functions
 - IA: DeepSeek exclusivamente server-side, com fallback determinístico local
 - Distribuição: PWA e preparação Capacitor para Android/iOS

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import { createPortal } from 'react-dom';
 import useAuthStore from '@/store/authStore.js';

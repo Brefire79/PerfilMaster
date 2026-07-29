@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import { updateUser, getUser } from '@/firebase/firestore.js';

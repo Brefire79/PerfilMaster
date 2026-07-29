@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser } from '@/firebase/firestore.js';
 import { computeSaboteurs } from '@/lib/saboteurScoring.js';

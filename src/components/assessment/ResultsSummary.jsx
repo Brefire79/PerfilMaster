@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import Button from '@/components/ui/Button.jsx';
 

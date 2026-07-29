@@ -16,7 +16,7 @@ import { fetchComTimeout } from '@/firebase/http.js';
 
 // Versão "embutida" no bundle. Trocada a cada build pelo bump-version.mjs.
 // Precisa bater com public/version.json.
-const APP_VERSION = '1.0.55';
+const APP_VERSION = '1.0.56';
 const CHECK_INTERVAL_MS = 60_000; // 1 minuto
 
 async function fetchRemoteVersion() {

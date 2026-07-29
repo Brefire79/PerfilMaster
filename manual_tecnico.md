@@ -55,6 +55,7 @@ flowchart TD
 - **Colunas do Postgres são lowercase sem underscore** (`adminuid`, `criadoem`), exceto as do DELTA 7 (`cpf_consent`, `avaliado_id`, etc.).
 - **RLS por facilitador:** cada admin enxerga **apenas** seus grupos/alunos/sessões (por `adminuid` ou grupo). Nunca `is_admin()` global, nunca `USING (true)` em tabelas `app_*`.
 - **Fluxos públicos (sem login)** passam **só por Edge Functions** com `service_role` — o anônimo nunca acessa as tabelas `app_*` diretamente.
+- **PT-BR exclusivo, sem framework de i18n.** Desde 28/07/2026 (B3 da auditoria) o `i18next` saiu do bundle. `src/lib/i18n.js` mantém a interface `useTranslation()` → `{ t }` lendo `pt-BR.json` — as 25 telas antigas seguem com `t()`, e **tela nova escreve o português direto no JSX**.
 - **IA = DeepSeek, provider único, sempre server-side, só via Edge Functions.** A chave fica apenas nos Secrets do Supabase — **nunca** no bundle, `localStorage`, URL ou env do Netlify. Fallback determinístico: `src/lib/localEngine.js`.
 
 ### 1.1 Camada de rede (`src/firebase/http.js`)
@@ -90,7 +91,7 @@ Consequências no comportamento:
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 18 + Vite + JSX, Tailwind CSS, Zustand, react-router v6, i18next, vite-plugin-pwa, recharts |
+| Frontend | React 18 + Vite + JSX, Tailwind CSS, Zustand, react-router v6, vite-plugin-pwa, recharts |
 | Camada de dados | REST puro p/ Supabase (PostgREST) em `src/firebase/` |
 | Backend | Supabase: PostgreSQL + RLS + Auth (GoTrue) + Edge Functions (Deno/TS) |
 | IA | DeepSeek server-side (Netlify Function + Edge `_shared/anthropic.ts`), fallback `localEngine` |
@@ -323,7 +324,7 @@ profileai/
 │   ├── lib/                    # localEngine, discScoring, saboteurScoring, mestreLocal, appUrl, cpf
 │   ├── store/                  # Zustand (authStore, sessaoStore, ...)
 │   ├── constants/              # sampleQuestions (78 questões), siglas
-│   └── i18n/                   # pt-BR / en / es
+│   └── i18n/locales/           # pt-BR.json (fonte das strings antigas)
 ├── supabase/
 │   ├── functions/              # Edge Functions (Deno/TS) + _shared/
 │   ├── migrations/             # SQL (fonte da verdade do schema/RLS)

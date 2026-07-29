@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { createPortal } from 'react-dom';
 import QRCode from 'react-qr-code';
 import clsx from 'clsx';

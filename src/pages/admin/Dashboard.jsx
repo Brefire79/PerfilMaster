@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { Link } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';

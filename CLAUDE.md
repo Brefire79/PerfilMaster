@@ -44,7 +44,7 @@ Desde 27/07/2026 `npm run deploy` roda `npm test` antes do bump/build — deploy
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 18 + Vite + JSX (Tailwind CSS, Zustand, react-router v6, i18next) |
+| Frontend | React 18 + Vite + JSX (Tailwind CSS, Zustand, react-router v6) |
 | Backend | Supabase (PostgreSQL + Auth + Edge Functions em Deno/TS) |
 | Deploy | Netlify (frontend + 1 function proxy DeepSeek) + Supabase (Edge Functions) |
 | Mobile | Capacitor |
@@ -197,6 +197,18 @@ Relatório completo: `AUDITORIA-2026-07-27.md` (raiz desta pasta). Gatilho: o ap
 - [ ] **Keepalive — configurar o secret**: `.github/workflows/keepalive.yml` pinga o Supabase a cada 3 dias (causa do incidente de 27/07). Precisa do secret **`SUPABASE_ANON_KEY`** em *Settings → Secrets and variables → Actions*.
 
 **Requer redeploy**: Edge `buscarPorToken`, `atualizarStatus`, `validateInviteToken` + nova `logClientError`.
+
+### B3 — i18next removido (28/07/2026)
+
+O app é **PT-BR exclusivo** (decisão de produto, jul/2026). EN e ES já não entravam no bundle; o `i18next` + `react-i18next` continuavam embarcados (~40 KB) para servir um único idioma estático.
+
+- **`src/lib/i18n.js`** substitui a biblioteca com a mesma interface: `useTranslation()` → `{ t }`, chave aninhada por ponto, interpolação `{{var}}` e plural `_one`/`_other`. Lê o mesmo `src/i18n/locales/pt-BR.json` (447 chaves).
+- Nas 25 telas **só o import mudou** (`react-i18next` → `@/lib/i18n.js`). Nenhuma das 447 chamadas `t()` foi tocada — trocar tudo por texto direto seria muita cirurgia para pouco ganho.
+- `App.jsx` perdeu o `<I18nextProvider>`; `main.jsx` não importa mais o init.
+- `src/i18n/index.js` virou re-export do novo módulo (compatibilidade).
+- `en.json` e `es.json` continuam em disco, órfãos — podem ser apagados.
+
+**Tela nova não precisa de `t()`**: escreva o português direto no JSX. O `pt-BR.json` segue como fonte só das strings que já existem.
 
 ---
 

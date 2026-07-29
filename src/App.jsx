@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import { I18nextProvider } from 'react-i18next';
-import i18n from './i18n/index.js';
+// B3 (27/07/2026): o i18next saiu. O app é PT-BR exclusivo e as strings vêm de
+// `src/lib/i18n.js`, que lê o mesmo pt-BR.json sem provider e sem dependência.
 import AppRoutes from './routes/index.jsx';
 import UpdateBanner from './components/layout/UpdateBanner.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
@@ -19,15 +19,13 @@ function LoadingFallback() {
 
 export default function App() {
   return (
-    <I18nextProvider i18n={i18n}>
-      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <ToastProvider>
-          <UpdateBanner />
-          <Suspense fallback={<LoadingFallback />}>
-            <AppRoutes />
-          </Suspense>
-        </ToastProvider>
-      </BrowserRouter>
-    </I18nextProvider>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ToastProvider>
+        <UpdateBanner />
+        <Suspense fallback={<LoadingFallback />}>
+          <AppRoutes />
+        </Suspense>
+      </ToastProvider>
+    </BrowserRouter>
   );
 }

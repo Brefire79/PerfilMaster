@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { getProfile, updateProfile, updateUser, getAssessmentsByUser, getAvaliadoByEmail, getAvaliadoByToken, getAdminStrategy, saveAdminStrategy } from '@/firebase/firestore.js';
 import { generateLocalAnalysis } from '@/lib/localEngine.js';
 // FIX (auditoria 07/07/2026): usa o motor DISC canônico (fórmula ponderada,

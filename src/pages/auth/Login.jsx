@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { signInWithEmail } from '@/firebase/auth.js';
 import { getUser } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';

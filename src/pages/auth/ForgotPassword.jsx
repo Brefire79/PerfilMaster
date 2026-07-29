@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { resetPassword } from '@/firebase/auth.js';
 import Button from '@/components/ui/Button.jsx';
 

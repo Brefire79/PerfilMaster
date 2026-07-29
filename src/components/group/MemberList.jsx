@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';

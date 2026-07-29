@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from '@/lib/i18n.js';
 import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
