@@ -6,18 +6,30 @@ name: keepalive
 # lugar nenhum, ficava em "Carregando..." para sempre. O timeout foi corrigido
 # (C1), mas a causa continua: sem tráfego, o projeto pausa de novo.
 #
-# Este workflow bate num endpoint leve do Supabase a cada 3 dias. Uma requisição
-# a cada 72h basta para o projeto ser considerado ativo.
+# Revisão de 24/08/2026:
+#  - O ping batia em /auth/v1/health, atendido pelo gateway, que pode NÃO contar
+#    como atividade no Postgres. Agora chama a RPC public.ping() via PostgREST,
+#    que força uma consulta real ao banco (ver
+#    supabase/migrations/20260824_keepalive_ping.sql).
+#  - Passou de 3 em 3 dias para diário. Actions é gratuito e ilimitado em
+#    repositório público, e uma folga maior só aumenta o risco.
+#
+# ATENÇÃO — este workflow NÃO basta sozinho: o GitHub desativa workflows
+# agendados após 60 dias sem atividade no repositório. Um app que fica meses sem
+# commit perde o cron em silêncio. Por isso existe um segundo pinger externo
+# (cron-job.org), independente do GitHub. Mantenha os dois.
 #
 # Requer o secret do repositório: SUPABASE_ANON_KEY
 # (Settings > Secrets and variables > Actions > New repository secret)
+# A chave anon é pública por design — já vai no bundle do frontend. Quem protege
+# os dados é o RLS, não o sigilo dela.
 #
 # Alternativa definitiva: plano Pro, que não pausa.
 
 on:
   schedule:
-    # 09:00 UTC (06:00 em Brasília) a cada 3 dias
-    - cron: '0 9 */3 * *'
+    # 09:00 UTC (06:00 em Brasília), todos os dias
+    - cron: '0 9 * * *'
   workflow_dispatch:
 
 jobs:
@@ -34,14 +46,23 @@ jobs:
             exit 1
           fi
 
-          # Endpoint de saúde do Auth: não toca em dado nenhum, mas conta como
-          # atividade para o projeto.
+          # RPC que só devolve now(): toca o Postgres de verdade, sem ler dado algum.
           STATUS=$(curl -s -o /tmp/resposta -w "%{http_code}" --max-time 30 \
+            -X POST \
             -H "apikey: $ANON_KEY" \
-            "$PROJECT_URL/auth/v1/health")
+            -H "Authorization: Bearer $ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$PROJECT_URL/rest/v1/rpc/ping")
 
           echo "HTTP $STATUS"
           cat /tmp/resposta || true
+          echo
+
+          if [ "$STATUS" = "404" ] || [ "$STATUS" = "403" ]; then
+            echo "::error::A RPC public.ping() não existe ou não foi liberada para anon. Rode RODAR-NO-SUPABASE-KEEPALIVE.sql no SQL Editor."
+            exit 1
+          fi
 
           if [ "$STATUS" != "200" ]; then
             echo "::warning::Supabase respondeu $STATUS — pode estar pausado. Verifique o dashboard."
