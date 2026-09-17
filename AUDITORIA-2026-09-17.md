@@ -40,7 +40,7 @@ Edge são bloqueados para o agente). Os três passos, na ordem:
      `https://perfilmaster.netlify.app/auth/callback` e
      `http://localhost:3000/auth/callback`.
    - O botão "Continuar com Google" fica **escondido por padrão**: só aparece com
-     `VITE_ENABLE_GOOGLE_AUTH=true` no Netlify (*Site settings → Environment
+     `VITE_ENABLE_GOOGLE_AUTH=true` no **`.env.local`** (o `npm run deploy` faz o build na sua máquina — variável só no painel do Netlify não entra no bundle; *Site settings → Environment
      variables*) e no `.env.local`. Ligue depois de configurar o provedor — assim o
      deploy do frontend pode sair antes do Google.
 4. `npm run deploy` (confira a conta do Netlify CLI: **breno.luis@gmail.com**).

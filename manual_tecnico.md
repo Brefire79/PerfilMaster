@@ -379,7 +379,7 @@ A poda das duas tabelas (`podar_telemetria()`) roda oportunisticamente em ~1% da
 
 ## 7. 🔐 Login com Google — configuração (DELTA 21, 17/09/2026)
 
-Tudo gratuito. Sem isto o botão "Continuar com Google" cai numa página de erro do Supabase (*provider is not enabled*); o botão só aparece com `VITE_ENABLE_GOOGLE_AUTH=true` (Netlify env).
+Tudo gratuito. Sem isto o botão "Continuar com Google" cai numa página de erro do Supabase (*provider is not enabled*); o botão só aparece com `VITE_ENABLE_GOOGLE_AUTH=true` no `.env.local` (o build do `npm run deploy` é local — env do painel Netlify não entra no bundle).
 
 1. **Google Cloud Console** → *APIs & Services → Credentials → Create OAuth client ID* (Web application). *Authorized redirect URIs*: `https://zlbynxjeefqxcgrsmkjp.supabase.co/auth/v1/callback`. Se pedir *OAuth consent screen*: External, publicar (login básico não exige verificação).
 2. **Supabase → Authentication → Providers → Google**: ligar, colar Client ID/Secret.
