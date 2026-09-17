@@ -46,7 +46,11 @@ function interpolar(texto, opts) {
  * Fallback igual ao dele: chave não encontrada volta como a própria chave,
  * o que deixa o problema visível na tela em vez de virar um espaço em branco.
  */
-export function t(chave, opts) {
+export function t(chave, opts, extra) {
+  // Forma de 3 argumentos do i18next: t(chave, 'texto padrão', { name }).
+  // StudentDashboard usa assim; sem isto o objeto de interpolação era ignorado
+  // e a tela mostrava "Olá, {{name}}".
+  if (typeof opts === 'string') opts = { defaultValue: opts, ...(extra || {}) };
   let texto;
 
   // Plural: i18next resolve chave_one / chave_other quando há `count`.
