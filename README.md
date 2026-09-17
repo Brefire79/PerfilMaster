@@ -5,7 +5,8 @@ SaaS da Vianexx AI para avaliações comportamentais DISC + PQ/Sabotadores, com 
 - Produção: https://perfilmaster.netlify.app
 - Repositório: https://github.com/Brefire79/PerfilMaster
 - Frontend: React 18 + Vite + Tailwind + Zustand (PT-BR exclusivo, sem i18next)
-- Backend: Supabase Auth, PostgreSQL, RLS e Edge Functions
+- Backend: Supabase Auth (e-mail/senha e **Google**, sempre por convite), PostgreSQL, RLS e Edge Functions
+- Privacidade: CPF nunca em claro (HMAC + Supabase Vault), RLS por facilitador, IA só server-side
 - IA: DeepSeek exclusivamente server-side, com fallback determinístico local
 - Distribuição: PWA e preparação Capacitor para Android/iOS
 
@@ -48,6 +49,7 @@ Fluxos públicos por token passam por Edge Functions com `service_role`; o clien
 - [Marketing e prompts da landing page](MARKETING-LANDING-PROMPTS.md)
 - [Checklist de publicação](DEPLOY-READY.md)
 - [Auditoria 27/07/2026 + plano de sprints](AUDITORIA-2026-07-27.md)
+- [Auditoria 17/09/2026 — Google, convite por e-mail, CPF pseudonimizado, performance, questões, módulos](AUDITORIA-2026-09-17.md)
 - [Deploy das Edge Functions](SUPABASE_FUNCTIONS_DEPLOY.md)
 
 Documentos públicos do aplicativo:

@@ -34,6 +34,7 @@ const useAuthStore = create(
                     displayName: user.displayName,
                     photoURL: user.photoURL,
                     emailVerified: user.emailVerified,
+                    provider: user.provider || 'email', // 'google' após login com Google (DELTA 21)
                   }
                 : null,
               role,

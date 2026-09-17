@@ -82,6 +82,10 @@ Dentro do grupo:
 
 ## 4. Página de Alunos (`/admin/students`)
 
+> **Convite por e-mail + Google (set/2026).** Em *Convidar aluno*, preencher o **e-mail** faz o convite ficar amarrado àquela pessoa (uso único). Ela pode então entrar em `/login` com **Continuar com Google** usando esse e-mail e a conta é ativada sozinha — sem link, sem senha para lembrar. O link de convite continua funcionando (com senha ou com Google). Contas Google sem convite não entram.
+
+> **CPF (set/2026).** O sistema não guarda mais o CPF legível: só um código irreversível (para reconhecer a mesma pessoa entre avaliação avulsa e conta) e a máscara `***.***.*89-09`, que é o que aparece na Central de Pessoas e no Relatório Oficial.
+
 Lista consolidada de todos os alunos de todos os seus grupos, com filtros:
 - **Busca** por nome ou e-mail
 - **Filtro por grupo**

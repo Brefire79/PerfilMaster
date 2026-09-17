@@ -41,7 +41,9 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
     try {
       // groupId null → aluno avulso (sem grupo). registerStudentWithGroup já trata null.
       const targetGroupId = form.groupId || null;
-      const token = await createInvite(targetGroupId, adminUid);
+      // DELTA 21: com e-mail, o convite fica amarrado à pessoa — se ela entrar
+      // com Google usando esse e-mail, o banco ativa a conta sem precisar do link.
+      const token = await createInvite(targetGroupId, adminUid, 7, { email: form.email.trim() || null });
       const groupParam = targetGroupId ? `&group=${targetGroupId}` : '';
       setInviteUrl(`${getPublicBaseUrl()}/register?token=${token}${groupParam}`);
       setStep(STEPS.LINK);
@@ -161,6 +163,9 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
               className={clsx('input-base', errors.email && 'border-[#EF4444]!')}
             />
             {errors.email && <p className="text-xs text-[#EF4444]">{errors.email}</p>}
+            <p className="text-xs text-[#4A4D6A]">
+              Com e-mail, a pessoa também pode entrar direto com a conta Google desse e-mail — sem precisar do link.
+            </p>
           </div>
 
           <div className="flex flex-col gap-1.5">
@@ -203,7 +208,10 @@ export default function InviteStudentModal({ isOpen, onClose, groups, adminUid }
             </div>
             <div>
               <p className="text-sm font-semibold text-[#22C55E]">Link de convite gerado!</p>
-              <p className="text-xs text-[#A0A3B1]">Válido por 7 dias · {form.groupId ? 'vários cadastros' : 'uso único'}</p>
+              <p className="text-xs text-[#A0A3B1]">
+                Válido por 7 dias · {form.email.trim() ? 'pessoal (uso único)' : form.groupId ? 'vários cadastros' : 'uso único'}
+                {form.email.trim() && ' · também entra com Google usando este e-mail'}
+              </p>
             </div>
           </div>
 

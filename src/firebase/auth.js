@@ -72,8 +72,10 @@ function toUserShape(user) {
   return {
     uid: user.id,
     email: user.email || null,
-    displayName: user.user_metadata?.display_name || null,
-    photoURL: user.user_metadata?.avatar_url || null,
+    // display_name = cadastro por e-mail; full_name/name/picture = Google (DELTA 21)
+    displayName: user.user_metadata?.display_name || user.user_metadata?.full_name || user.user_metadata?.name || null,
+    photoURL: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    provider: user.app_metadata?.provider || 'email',
     emailVerified: !!user.email_confirmed_at,
   };
 }
@@ -163,11 +165,58 @@ export async function verifyPassword(password) {
   return true;
 }
 
-export async function signInWithGoogle() {
-  throw buildAuthError(
-    'auth/operation-not-supported-in-this-environment',
-    'Google login is not configured in Supabase for this app.'
-  );
+// ─── Login com Google (DELTA 21) ─────────────────────────────────────────────
+// Fluxo implícito do GoTrue: redireciona para /auth/v1/authorize?provider=google
+// e o Supabase devolve o navegador em `${origin}/auth/callback#access_token=…`.
+// A página AuthCallback lê o hash (applyOAuthCallback) e decide o que fazer com
+// a conta: já tem app_users → entra; tem convite (token pendente ou e-mail no
+// convite) → consome; nada → desloga com aviso. Requer, no painel do Supabase:
+//   Auth → Providers → Google (Client ID/Secret do Google Cloud, grátis) e
+//   Auth → URL Configuration → Redirect URLs com {origin}/auth/callback.
+export const PENDING_INVITE_KEY = 'profileai.invite.pending';
+
+export function signInWithGoogle({ inviteToken = null } = {}) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    throw buildAuthError('auth/configuration-not-found', 'Supabase auth is not configured.');
+  }
+  try {
+    if (inviteToken) localStorage.setItem(PENDING_INVITE_KEY, inviteToken);
+  } catch { /* storage indisponível — o convite por e-mail ainda cobre */ }
+  const redirectTo = `${window.location.origin}/auth/callback`;
+  const url = `${SUPABASE_URL}/auth/v1/authorize?provider=google&redirect_to=${encodeURIComponent(redirectTo)}`;
+  window.location.assign(url);
+}
+
+/** Lê e limpa o token de convite guardado antes do redirect do Google. */
+export function takePendingInviteToken() {
+  try {
+    const t = localStorage.getItem(PENDING_INVITE_KEY);
+    localStorage.removeItem(PENDING_INVITE_KEY);
+    return t || null;
+  } catch { return null; }
+}
+
+/**
+ * applyOAuthCallback — estabelece a sessão a partir do hash devolvido pelo
+ * provedor (#access_token=…&refresh_token=…). Retorna o usuário ou lança
+ * auth/oauth-error com a descrição que o Supabase mandou (#error_description).
+ */
+export async function applyOAuthCallback(hash = window.location.hash) {
+  const params = new URLSearchParams(String(hash || '').replace(/^#/, ''));
+  const erro = params.get('error_description') || params.get('error');
+  if (erro) throw buildAuthError('auth/oauth-error', decodeURIComponent(erro.replace(/\+/g, ' ')));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  if (!accessToken) throw buildAuthError('auth/invalid-token', 'Resposta do provedor sem token.');
+  const user = await authRequest('user', { accessToken });
+  saveSession({
+    access_token: accessToken,
+    refresh_token: refreshToken || null,
+    token_type: params.get('token_type') || 'bearer',
+    expires_in: Number(params.get('expires_in')) || undefined,
+    user,
+  });
+  return toUserShape(user);
 }
 
 export async function signOut() {

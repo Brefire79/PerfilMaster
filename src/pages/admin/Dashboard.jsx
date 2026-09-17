@@ -6,7 +6,7 @@ import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge from '@/components/ui/Badge.jsx';
 import Button from '@/components/ui/Button.jsx';
 import clsx from 'clsx';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getProfilesByGroup, getAvaliadosByAdmin } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroupIds, getAssessmentsByGroupIds, getProfilesByGroupIds, getAvaliadosByAdmin } from '@/firebase/firestore.js';
 import { MestreTrigger } from '@/components/mestre/MestreChat.jsx';
 
 const ACTIVITY_PROFILE_COLORS = {
@@ -170,13 +170,19 @@ export default function AdminDashboard() {
         const allEvents = [];
         const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
+        // 3 requisições no total (não 3 por grupo) — ver getUsersByGroupIds.
+        const ids = groups.map((g) => g.id);
+        const [membersMap, assessmentsMap, profilesMap] = await Promise.all([
+          getUsersByGroupIds(ids),
+          getAssessmentsByGroupIds(ids),
+          getProfilesByGroupIds(ids),
+        ]);
+        if (cancelled) return;
         await Promise.all(
           groups.map(async (g) => {
-            const [members, assessments, profiles] = await Promise.all([
-              getUsersByGroup(g.id),
-              getAssessmentsByGroup(g.id),
-              getProfilesByGroup(g.id),
-            ]);
+            const members = membersMap.get(g.id) || [];
+            const assessments = assessmentsMap.get(g.id) || [];
+            const profiles = profilesMap.get(g.id) || [];
             members.forEach((m) => seenStudentUids.add(m.uid || m.id));
             const completedUids = new Set(
               assessments

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n.js';
-import { signUpWithEmail } from '@/firebase/auth.js';
+import { signUpWithEmail, signInWithEmail } from '@/firebase/auth.js';
 import { createUser } from '@/firebase/firestore.js';
 import { validateInviteToken, consumeInvite } from '@/firebase/functions.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
+import GoogleButton, { GOOGLE_AUTH_ATIVO } from '@/components/ui/GoogleButton.jsx';
 import clsx from 'clsx';
 import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 
@@ -140,7 +141,20 @@ export default function Register() {
 
     try {
       // 1. FIX B1: cria usuário no Supabase Auth (não Firebase)
-      const firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
+      let firebaseUser;
+      try {
+        firebaseUser = await signUpWithEmail(email.trim(), password, name.trim());
+      } catch (err) {
+        // Auditoria 17/09/2026: se o signUp passou numa tentativa anterior mas o
+        // consumeInvite falhou (rede, servidor), a conta ficava órfã no Auth e a
+        // pessoa via "e-mail já em uso" para sempre. Com convite válido, tenta
+        // entrar com a senha digitada e retoma o consumo do convite.
+        if (err?.code === 'auth/email-already-in-use' && token && invite) {
+          firebaseUser = await signInWithEmail(email.trim(), password).catch(() => { throw err; });
+        } else {
+          throw err;
+        }
+      }
 
       // 2. DELTA 8: com convite, todo o consumo (app_users + grupo + invite)
       //    acontece no backend via Edge Function — groupId/adminUid saem do
@@ -255,6 +269,22 @@ export default function Register() {
 
       {/* Card */}
       <div className="bg-[#1A1D2E] border border-[#2D3047] rounded-2xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+        {/* Google (DELTA 21): guarda o token do convite, o Google devolve em
+            /auth/callback e o consumeInvite roda lá — sem senha para lembrar. */}
+        {GOOGLE_AUTH_ATIVO && (
+          <div className="mb-5 space-y-3">
+            <GoogleButton
+              inviteToken={token}
+              label="Criar conta com Google"
+              onError={() => setServerError(t('errors.generic'))}
+            />
+            <div className="flex items-center gap-3 text-xs text-[#A0A3B1]">
+              <span className="h-px flex-1 bg-[#2D3047]" />
+              ou com e-mail e senha
+              <span className="h-px flex-1 bg-[#2D3047]" />
+            </div>
+          </div>
+        )}
         <form onSubmit={handleSubmit} noValidate className="space-y-4">
           {/* Server error */}
           {serverError && (

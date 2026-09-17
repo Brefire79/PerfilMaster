@@ -6,6 +6,10 @@ Bem-vindo ao ProfileAI, plataforma de avaliação comportamental DISC. Este manu
 
 ## 1. Primeiro acesso
 
+### 1.0 Duas formas de entrar
+- **Link de convite** (abaixo) — cadastro com e-mail e senha ou com o botão **Criar conta com Google**.
+- **Só com o Google** — se o instrutor registrou o seu e-mail no convite, abra `/login` e use **Continuar com Google** com a conta desse e-mail. A conta é ativada automaticamente. Sem convite, o Google não dá acesso (a sessão é encerrada com aviso).
+
 ### 1.1 Convite via link
 Você receberá do seu instrutor um link de convite no formato:
 ```

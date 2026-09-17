@@ -33,11 +33,36 @@ const LIKERT_OPTIONS = [
 
 // ─── Fetch helpers ────────────────────────────────────────────────────────────
 
+// Seleciona por `dimension`, não por posição no array — reordenar o banco de
+// questões não pode mudar quem é DISC e quem é Sabotador.
 async function fetchQuestionsByType(assessmentType) {
   if (!Array.isArray(SAMPLE_QUESTIONS) || SAMPLE_QUESTIONS.length === 0) return [];
-  if (assessmentType === 'disc') return SAMPLE_QUESTIONS.slice(0, TOTAL_DISC);
-  if (assessmentType === 'saboteurs') return SAMPLE_QUESTIONS.slice(TOTAL_DISC, TOTAL_QUESTIONS);
+  if (assessmentType === 'disc') return SAMPLE_QUESTIONS.filter((q) => ['D', 'I', 'S', 'C'].includes(q.dimension));
+  if (assessmentType === 'saboteurs') return SAMPLE_QUESTIONS.filter((q) => String(q.dimension || '').startsWith('SAB_'));
   return SAMPLE_QUESTIONS;
+}
+
+// ─── Rascunho local (17/09/2026) ─────────────────────────────────────────────
+// A tela dizia "Progresso salvo automaticamente", mas as respostas viviam só no
+// estado React: um refresh no meio das 78 questões perdia tudo. Agora o rascunho
+// fica em localStorage por usuário (mesmo padrão do fluxo público) e é limpo
+// quando o envio conclui.
+const rascunhoKey = (uid) => `profileai.wizard.respostas.${uid}`;
+function carregarRascunho(uid) {
+  if (!uid) return {};
+  try {
+    const raw = localStorage.getItem(rascunhoKey(uid));
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch { return {}; }
+}
+function salvarRascunho(uid, respostas) {
+  if (!uid) return;
+  try { localStorage.setItem(rascunhoKey(uid), JSON.stringify(respostas)); } catch { /* quota/privado */ }
+}
+function limparRascunho(uid) {
+  if (!uid) return;
+  try { localStorage.removeItem(rascunhoKey(uid)); } catch { /* noop */ }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -57,7 +82,7 @@ function ProgressBar({ answered, total, etapaLabel }) {
   );
 }
 
-function IntroScreen({ onStart, blocked, blockedUntil, t }) {
+function IntroScreen({ onStart, blocked, blockedUntil, respondidas = 0, t }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4 animate-fade-in">
       <div className="w-20 h-20 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/30 flex items-center justify-center">
@@ -92,6 +117,12 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
           </span>
         </div>
 
+        {!blocked && respondidas > 0 && (
+          <p className="text-xs text-[#22C55E] text-center">
+            Você já respondeu {respondidas} de {TOTAL_QUESTIONS} — vamos continuar de onde parou.
+          </p>
+        )}
+
         {blocked ? (
           <div className="text-center space-y-1">
             <p className="text-sm text-[#EF4444] font-medium">
@@ -112,7 +143,7 @@ function IntroScreen({ onStart, blocked, blockedUntil, t }) {
           </div>
         ) : (
           <Button variant="primary" size="lg" fullWidth onClick={onStart}>
-            {t('wizard.intro.start', 'Iniciar Avaliação')}
+            {respondidas > 0 ? 'Continuar avaliação' : t('wizard.intro.start', 'Iniciar Avaliação')}
           </Button>
         )}
       </div>
@@ -314,7 +345,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
   const [erroCarregamento, setErroCarregamento] = useState(null);
 
   // ─── Answers & navigation ─────────────────────────────────────────────────
-  const [respostas, setRespostas] = useState({}); // { [questionId]: 1-5 }
+  const [respostas, setRespostas] = useState(() => carregarRascunho(user?.uid)); // { [questionId]: 1-5 }
   const [indice, setIndice] = useState(0);
   const [animDir, setAnimDir] = useState('enter'); // 'enter' | 'exit-left' | 'exit-right'
 
@@ -373,6 +404,11 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
     load();
     return () => { cancelled = true; };
   }, [t]);
+
+  // Persiste o rascunho a cada resposta (ver carregarRascunho).
+  useEffect(() => {
+    if (Object.keys(respostas).length > 0) salvarRascunho(user?.uid, respostas);
+  }, [respostas, user?.uid]);
 
   // ─── Answer selection ─────────────────────────────────────────────────────
   const selecionarResposta = useCallback(
@@ -544,6 +580,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       buildProfileAI({ assessmentId: assessmentDocId, uid: user.uid, language: 'ptBR' })
         .catch((err) => console.warn('[AssessmentWizard] buildProfile AI falhou (nao-critico):', err));
 
+      limparRascunho(user.uid);
       setEtapa('completed');
       onCompleted?.({ assessmentId: assessmentDocId });
     } catch (err) {
@@ -568,9 +605,14 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
   // ─── Start assessment from intro ──────────────────────────────────────────
   const iniciarAvaliacao = useCallback(() => {
     if (perguntasDisc.length === 0) return;
-    setEtapa('disc');
-    setIndice(0);
-  }, [perguntasDisc.length]);
+    // Retoma um rascunho: vai para a primeira questão ainda sem resposta.
+    const pendDisc = perguntasDisc.findIndex((q) => respostas[q.id] == null);
+    if (pendDisc >= 0) { setEtapa('disc'); setIndice(pendDisc); return; }
+    const pendSab = perguntasSaboteurs.findIndex((q) => respostas[q.id] == null);
+    if (pendSab >= 0) { setEtapa('saboteurs'); setIndice(pendSab); return; }
+    setEtapa('saboteurs');
+    setIndice(Math.max(0, perguntasSaboteurs.length - 1));
+  }, [perguntasDisc, perguntasSaboteurs, respostas]);
 
   // ─── Retry load ───────────────────────────────────────────────────────────
   const retryLoad = useCallback(() => {
@@ -618,6 +660,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           onStart={iniciarAvaliacao}
           blocked={assessmentBloqueado}
           blockedUntil={proximaAvaliacao}
+          respondidas={totalRespondidas}
           t={t}
         />
       </div>
@@ -687,7 +730,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
         </p>
         <p className="text-xs text-[#A0A3B1]">
           {indice + 1} {t('assessment.of', 'de')} {perguntas.length}{' '}
-          {etapa === 'disc' ? 'nesta etapa' : 'nesta etapa'}
+          nesta etapa
         </p>
       </div>
 

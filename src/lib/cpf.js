@@ -61,9 +61,19 @@ export function formatCpf(value) {
  * Para CPF inválido/vazio, retorna string vazia.
  */
 export function maskCpf(value) {
-  const cpf = cleanCpf(value);
+  const str = String(value ?? '');
+  // DELTA 21: o banco devolve o CPF pseudonimizado (HMAC, 64 hex). Não dá para
+  // mascarar — use `cpfMask` da linha. Aqui só evitamos extrair dígitos do hash.
+  if (/^[0-9a-f]{64}$/.test(str)) return '';
+  const cpf = cleanCpf(str);
   if (cpf.length !== 11) return '';
   return `***.***.*${cpf.slice(8, 9)}-${cpf.slice(9)}`;
+}
+
+/** Texto de exibição do CPF de uma linha do banco: cpfMask (DELTA 21) ou máscara local. */
+export function cpfParaExibir(row) {
+  if (!row) return '';
+  return row.cpfMask || row.cpf_mask || maskCpf(row.cpf) || '';
 }
 
 /**

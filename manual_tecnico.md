@@ -174,6 +174,9 @@ supabase functions deploy <nome> --project-ref <ref>
 |---|---|---|
 | `/login`, `/register`, `/forgot-password` | Público (auth) | Autenticação. `/register?token=` para cadastro por convite |
 | `/join/:token` | Público | Redireciona o convite para `/register?token=` |
+| `/` | Público | Landing page (visitante); com sessão salva redireciona ao painel |
+| `/auth/callback` | Público | Volta do **login com Google** (DELTA 21): lê `#access_token`, decide convite (token pendente / e-mail) e manda ao painel — ou desloga se não há convite |
+| `/reset-password` | Público | Define nova senha a partir do link (`?token_hash=`) |
 | `/avaliacao/:token` | **Público (sem login)** | Avaliação do esporádico (link WhatsApp) |
 | `/resultado/:token` | **Público (sem login)** | Resultado do esporádico |
 | `/admin/dashboard` | Admin | Painel do facilitador |
@@ -234,7 +237,10 @@ Funções de acesso ao Postgres via PostgREST (helpers internos: `selectRows`, `
 
 ### 4.6 Regras de negócio sensíveis (não alterar isoladamente)
 
-- **Questões:** `src/constants/sampleQuestions.js` — 78 questões (28 DISC + 50 sabotadores), todas likert5. Desde o **DELTA 19** o fluxo público é **Completo (78)**: `AvaliacaoPublica` aplica DISC→Sabotadores e `atualizarStatus` pontua os dois. Ids/pesos DISC e o scoring de Sabotadores estão **duplicados** em `atualizarStatus/index.ts` — mexeu em um lado, mexa no outro (e o contrato de scoring cobre a parte DISC).
+- **CPF (DELTA 21):** nunca em claro. Trigger `trg_cpf_pseudonimo` troca os 11 dígitos por `HMAC-SHA256(cpf, pepper)` (pepper no Vault: `perfilmaster_cpf_pepper`) e preenche `cpf_mask`. Igualdade continua valendo para matching; para exibir, `cpfParaExibir(row)` (`lib/cpf.js`). Não passe `row.cpf` a `formatCpf`.
+- **Convite por e-mail (DELTA 21):** `app_invites.email` + trigger `on_auth_user_created_perfilmaster` em `auth.users` (só `provider <> 'email'`) cria `app_users`/entra no grupo/queima o convite. `consumeInvite` aceita `{ token }` ou `{ byEmail: true }`.
+- **Leituras em lote:** `getUsersByGroupIds` / `getAssessmentsByGroupIds` (sem `answers`) / `getProfilesByGroupIds` → `Map<groupId, rows[]>`. Telas que percorrem grupos usam isso, não N chamadas.
+- **Questões:** `src/constants/sampleQuestions.js` — 78 questões (28 DISC + 50 sabotadores), todas likert5, texto só `ptBR` (23 itens revisados em 17/09/2026, ids/pesos intocados). Desde o **DELTA 19** o fluxo público é **Completo (78)**: `AvaliacaoPublica` aplica DISC→Sabotadores e `atualizarStatus` pontua os dois. Ids/pesos DISC e o scoring de Sabotadores estão **duplicados** em `atualizarStatus/index.ts` — mexeu em um lado, mexa no outro (e o contrato de scoring cobre a parte DISC).
 - **Motor DISC canônico:** `src/lib/discScoring.js` — `(valor−1)/4 × peso`, média ponderada por dimensão × 100. Lê `sampleQuestions.js` em runtime (sincroniza sozinho); o array `QUESTIONS` do Edge é atualizado à mão.
 - **Fórmula PQ Score:** `PQ Score = 100 − (média dos 3 maiores scores brutos × 10)`. Sincronizar entre `calculate-assessment`, `generate-report`, `src/lib/localEngine.js` e `src/lib/saboteurScoring.js`.
 - **Acoplamento front ↔ Edge nos Sabotadores:** o front deriva a chave pelo campo `dimension`; o Edge deriva por regex no id (`/^q_sab_([a-z]+)_\d+$/`) + `SAB_SLUG_TO_KEY`. Desde 27/07/2026 o **contrato de scoring prova a equivalência** (mapeamento questão a questão, allowlist dos 50 ids e `pqScore` idêntico). Id de sabotador fora do padrão `q_sab_<slug>_NN` quebra o `npm test` — antes era ignorado em silêncio pelo Edge.
@@ -371,4 +377,17 @@ A poda das duas tabelas (`podar_telemetria()`) roda oportunisticamente em ~1% da
 
 ---
 
-*Perfil Master · Vianexx AI · Manual Técnico · atualizado 28/07/2026 (auditoria + Sprints 1, 2 e 3)*
+## 7. 🔐 Login com Google — configuração (DELTA 21, 17/09/2026)
+
+Tudo gratuito. Sem isto o botão "Continuar com Google" cai numa página de erro do Supabase (*provider is not enabled*); o botão só aparece com `VITE_ENABLE_GOOGLE_AUTH=true` (Netlify env).
+
+1. **Google Cloud Console** → *APIs & Services → Credentials → Create OAuth client ID* (Web application). *Authorized redirect URIs*: `https://zlbynxjeefqxcgrsmkjp.supabase.co/auth/v1/callback`. Se pedir *OAuth consent screen*: External, publicar (login básico não exige verificação).
+2. **Supabase → Authentication → Providers → Google**: ligar, colar Client ID/Secret.
+3. **Supabase → Authentication → URL Configuration → Redirect URLs**: `https://perfilmaster.netlify.app/auth/callback` e `http://localhost:3000/auth/callback`.
+4. Rodar o DELTA 21 (`supabase/migrations/20260917_delta21_google_login_cpf_pseudonimo.sql`) no SQL Editor e redeployar `consumeInvite` e `convertAvaliado`.
+
+Fluxo no código: `signInWithGoogle()` → `/auth/v1/authorize?provider=google&redirect_to=/auth/callback` → `AuthCallback.jsx` (`applyOAuthCallback`) → `getUser` / `consumeInvite` → painel. Contas Google sem convite são deslogadas no callback. Identidade Google e e-mail/senha com o mesmo e-mail verificado são unificadas pelo próprio Supabase.
+
+---
+
+*Perfil Master · Vianexx AI · Manual Técnico · atualizado 17/09/2026 (auditoria: Google + convite por e-mail, CPF pseudonimizado, lotes)*

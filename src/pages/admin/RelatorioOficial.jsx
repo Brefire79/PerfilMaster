@@ -8,7 +8,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { insightPerfil, therapyFlag, buscarPorToken } from '@/firebase/functions.js';
 import { getAvaliadoByToken, getHistoricoEvolucao, getAvaliadoLikeFromUid, getReportMeta, salvarReportInsight, salvarReportObservacao } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
-import { formatCpf } from '@/lib/cpf.js';
+import { cpfParaExibir } from '@/lib/cpf.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
@@ -169,6 +169,7 @@ export default function RelatorioOficial() {
             sessaoTitulo: edge?.sessaoTitulo ?? avaliado?.sessaoTitulo ?? base?.sessaoTitulo,
             sessaoDescricao: edge?.sessaoDescricao ?? avaliado?.sessaoDescricao ?? null,
             cpf: base?.cpf ?? avaliado?.cpf ?? null,
+            cpfMask: base?.cpfMask ?? avaliado?.cpfMask ?? null,
           };
           setAvaliado(merged);
           setLoading(false);
@@ -202,8 +203,9 @@ export default function RelatorioOficial() {
   const perfil   = avaliado?.perfil;
   const nome     = avaliado?.nome || '';
   const telefone = avaliado?.telefone || '';
-  // CPF completo só no documento oficial (rastreabilidade legal — PRD §6.8)
-  const cpfFmt   = avaliado?.cpf ? formatCpf(avaliado.cpf) : null;
+  // DELTA 21: o banco não guarda mais o CPF em claro (só pseudônimo + máscara).
+  // O documento oficial mostra a máscara — rastreabilidade sem expor o número.
+  const cpfFmt   = avaliado?.cpf ? (cpfParaExibir(avaliado) || 'registrado') : null;
   const docId    = gerarDocId(token || uid, avaliado?.criadoEm);
   const dataDoc  = hoje();
   const horaDoc  = agora();

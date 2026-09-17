@@ -5,7 +5,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # Perfil Master (profileai)
 
 > SaaS de avaliação comportamental DISC + PQ Sabotadores · Vianexx AI · Breno Luis
-> Deploy: perfilmaster.netlify.app · Repo: Brefire79/profileai (branch `main`)
+> Deploy: perfilmaster.netlify.app (conta Netlify breno.luis@gmail.com) · Repo: Brefire79/PerfilMaster (branch `main`) · Instruções completas e atualizadas: `CLAUDE.md`
 > **Todo o código fica em `profileai/` — nunca edite fora desta pasta.**
 
 ---

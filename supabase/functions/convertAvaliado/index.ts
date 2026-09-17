@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     // Avaliado precisa existir, ser do caller e ainda não ter sido convertido.
     const { data: avaliado, error: avErr } = await sb
       .from('app_avaliados')
-      .select('id, token, nome, email, telefone, cpf, cpf_consent, cpf_consent_at, perfil, adminuid, converted_uid')
+      .select('id, token, nome, email, telefone, cpf, cpf_mask, cpf_consent, cpf_consent_at, perfil, adminuid, converted_uid')
       .eq('token', token)
       .single();
     if (avErr) {
@@ -156,7 +156,8 @@ Deno.serve(async (req) => {
       updatedat: agora,
     };
     if (avaliado.cpf) {
-      userRow.cpf = avaliado.cpf;
+      userRow.cpf = avaliado.cpf; // DELTA 21: já vem pseudonimizado (64 hex) — o trigger mantém
+      userRow.cpf_mask = avaliado.cpf_mask ?? null;
       userRow.cpf_consent = avaliado.cpf_consent ?? true;
       userRow.cpf_consent_at = avaliado.cpf_consent_at ?? agora;
     }

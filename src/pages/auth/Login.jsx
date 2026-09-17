@@ -6,6 +6,7 @@ import { getUser } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import DiscMark from '@/components/brand/DiscMark.jsx';
+import GoogleButton, { GOOGLE_AUTH_ATIVO } from '@/components/ui/GoogleButton.jsx';
 import clsx from 'clsx';
 
 export default function Login() {
@@ -176,6 +177,18 @@ export default function Login() {
             {t('auth.login')}
           </Button>
         </form>
+
+        {/* Login com Google (DELTA 21) — a conta precisa ter convite (link ou e-mail) */}
+        {GOOGLE_AUTH_ATIVO && (
+          <div className="mt-5 space-y-3">
+            <div className="flex items-center gap-3 text-xs text-[#A0A3B1]">
+              <span className="h-px flex-1 bg-[#2D3047]" />
+              ou
+              <span className="h-px flex-1 bg-[#2D3047]" />
+            </div>
+            <GoogleButton onError={() => setError(t('errors.generic'))} />
+          </div>
+        )}
 
         {/* Register link */}
         <p className="text-center text-sm text-[#A0A3B1] mt-5">

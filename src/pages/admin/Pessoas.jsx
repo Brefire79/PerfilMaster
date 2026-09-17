@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import { getPessoas, autoVincularPorCpf, deleteIdentityLink } from '@/firebase/firestore.js';
-import { maskCpf } from '@/lib/cpf.js';
+import { cpfParaExibir } from '@/lib/cpf.js';
 import Card from '@/components/ui/Card.jsx';
 import Input from '@/components/ui/Input.jsx';
 
@@ -85,7 +85,7 @@ export default function Pessoas() {
       list = list.filter((p) =>
         (p.nome || '').toLowerCase().includes(q) ||
         (p.conta?.email || '').toLowerCase().includes(q) ||
-        (p.cpf ? maskCpf(p.cpf).includes(q) : false)
+        (p.cpf ? cpfParaExibir(p).includes(q) : false)
       );
     }
     // Ordena: com diagnóstico primeiro, depois alfabético.
@@ -169,7 +169,7 @@ export default function Pessoas() {
                     {s.pessoas.map((p) => (
                       <span key={p.id} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#242736] border border-[#2D3047]">
                         {p.origem.map((o) => ORIGEM_META[o]?.label || o).join(' · ')}
-                        {p.temCpf ? ` · CPF ${maskCpf(p.cpf)}` : ' · sem CPF'}
+                        {p.temCpf ? ` · CPF ${cpfParaExibir(p) || 'registrado'}` : ' · sem CPF'}
                       </span>
                     ))}
                   </li>
@@ -235,7 +235,7 @@ export default function Pessoas() {
                     </div>
                     <div className="min-w-0">
                       <span className="block text-sm text-[#F7F8FC] font-medium truncate">{p.nome}</span>
-                      {p.temCpf && <span className="block text-xs text-[#A0A3B1]">CPF {maskCpf(p.cpf)}</span>}
+                      {p.temCpf && <span className="block text-xs text-[#A0A3B1]">CPF {cpfParaExibir(p) || 'registrado'}</span>}
                     </div>
                   </div>
 
@@ -321,7 +321,7 @@ function PessoaDetalhe({ pessoa, onClose, onDesvincular, onAbrirRelatorio, onAbr
             </div>
             <div className="min-w-0">
               <h2 className="text-base font-heading font-semibold text-[#F7F8FC] truncate">{pessoa.nome}</h2>
-              {pessoa.temCpf && <p className="text-xs text-[#A0A3B1]">CPF {maskCpf(pessoa.cpf)}</p>}
+              {pessoa.temCpf && <p className="text-xs text-[#A0A3B1]">CPF {cpfParaExibir(pessoa) || 'registrado'}</p>}
             </div>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center text-[#A0A3B1] hover:text-[#F7F8FC] hover:bg-[#2D3047] transition-colors">

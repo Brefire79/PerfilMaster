@@ -11,7 +11,7 @@ import PessoaRelatorioRow from '@/components/admin/PessoaRelatorioRow.jsx';
 import useGroupStore from '@/store/groupStore.js';
 import useAuthStore from '@/store/authStore.js';
 import { useGroup } from '@/hooks/useGroup.js';
-import { getGroupReportsByAdmin, getAssessmentsByGroup, getUsersByGroup, getPessoas } from '@/firebase/firestore.js';
+import { getGroupReportsByAdmin, getAssessmentsByGroupIds, getUsersByGroupIds, getPessoas } from '@/firebase/firestore.js';
 import { getGroupColor } from '@/utils/groupColors.js';
 
 // ─── Profile config ───────────────────────────────────────────────────────────
@@ -388,13 +388,15 @@ export default function Reports() {
     if (!groups.length) return;
     const STATUS_DONE = new Set(['submitted', 'completed', 'analyzed']);
 
-    Promise.all(
+    // 2 requisições no total (não 2 por grupo) — ver getUsersByGroupIds.
+    const ids = groups.map((g) => g.id);
+    Promise.all([getUsersByGroupIds(ids), getAssessmentsByGroupIds(ids)])
+      .catch(() => [new Map(), new Map()])
+      .then(([membersMap, assessmentsMap]) => Promise.all(
       groups.map(async (g) => {
         try {
-          const [members, assessments] = await Promise.all([
-            getUsersByGroup(g.id),
-            getAssessmentsByGroup(g.id),
-          ]);
+          const members = membersMap.get(g.id) || [];
+          const assessments = assessmentsMap.get(g.id) || [];
           // Melhor status por usuário
           const bestByUid = {};
           for (const a of assessments) {
@@ -419,7 +421,7 @@ export default function Reports() {
           return { groupId: g.id, completedCount: 0, memberCount: 0 };
         }
       })
-    ).then((results) => {
+    )).then((results) => {
       const map = {};
       for (const r of results) map[r.groupId] = r;
       setLiveStats(map);

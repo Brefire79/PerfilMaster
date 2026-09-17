@@ -41,21 +41,48 @@ Deno.serve(async (req) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return jsonResponse({ error: 'Não autenticado.' }, 401, req);
 
-    const { token, userData } = await req.json();
-    if (!token || typeof token !== 'string' || token.length < 10 || token.length > 100) {
+    const { token: tokenBruto, userData, byEmail } = await req.json();
+    const sb = serviceClient();
+
+    // DELTA 21 — dois jeitos de achar o convite:
+    //   (a) token do link /join/:token (fluxo clássico, também após login Google);
+    //   (b) byEmail: o facilitador registrou o e-mail da pessoa no convite
+    //       (app_invites.email). Normalmente o trigger do banco já consome no
+    //       primeiro login; este caminho cobre conta antiga no Auth sem app_users.
+    let invite: Record<string, any> | null = null;
+    let token = typeof tokenBruto === 'string' ? tokenBruto : '';
+    if (token) {
+      if (token.length < 10 || token.length > 100) {
+        return jsonResponse({ error: 'token inválido' }, 400, req);
+      }
+      const { data } = await sb.from('app_invites').select('*').eq('token', token).single();
+      invite = data ?? null;
+    } else if (byEmail === true) {
+      // Só provedores OAuth (Google) provam a posse do e-mail. Cadastro por
+      // e-mail/senha não confirma o endereço — alguém poderia se cadastrar com
+      // o e-mail de outra pessoa e roubar o convite dela.
+      const provider = String(user.app_metadata?.provider || 'email');
+      if (provider === 'email') {
+        return jsonResponse({ error: 'Convite por e-mail só é reconhecido em login com Google. Use o link do convite.' }, 403, req);
+      }
+      const email = String(user.email || '').trim().toLowerCase();
+      if (!email) return jsonResponse({ error: 'Conta sem e-mail — não dá para localizar convite.' }, 400, req);
+      const { data } = await sb
+        .from('app_invites')
+        .select('*')
+        .ilike('email', email)
+        .eq('used', false)
+        .order('createdat', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      invite = data ?? null;
+      token = invite?.token || '';
+    } else {
       return jsonResponse({ error: 'token inválido' }, 400, req);
     }
 
-    const sb = serviceClient();
-
-    const { data: invite, error: inviteError } = await sb
-      .from('app_invites')
-      .select('*')
-      .eq('token', token)
-      .single();
-
-    if (inviteError || !invite) {
-      return jsonResponse({ error: 'Convite não encontrado.' }, 404, req);
+    if (!invite) {
+      return jsonResponse({ error: 'Convite não encontrado para esta conta. Peça ao facilitador um link ou o registro do seu e-mail.' }, 404, req);
     }
     if (invite.used) {
       return jsonResponse({ error: 'Convite já utilizado.' }, 409, req);
@@ -80,7 +107,10 @@ Deno.serve(async (req) => {
       uid: user.id,
       role: isAdminInvite ? 'admin' : 'student',
       email: user.email || (typeof safe.email === 'string' ? safe.email : null),
-      displayname: typeof safe.displayName === 'string' ? safe.displayName.slice(0, 120) : null,
+      displayname: typeof safe.displayName === 'string' && safe.displayName
+        ? safe.displayName.slice(0, 120)
+        : (String(user.user_metadata?.full_name || user.user_metadata?.name || '').slice(0, 120) || null),
+      photourl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
       groupid: isAdminInvite ? null : (invite.groupid || null),
       adminuid: isAdminInvite ? null : (invite.adminuid || null),
       updatedat: agora,
@@ -137,7 +167,8 @@ Deno.serve(async (req) => {
     // Convite de GRUPO (groupid presente) é MULTIUSO: registra o último uso
     // sem invalidar, permitindo vários cadastros até a data de expiração.
     // Convite avulso (sem groupid) permanece de USO ÚNICO.
-    if (invite.groupid) {
+    // DELTA 21: convite com e-mail é PESSOAL → uso único mesmo com grupo.
+    if (invite.groupid && !invite.email) {
       await sb
         .from('app_invites')
         .update({ usedat: agora, usedby: user.id }) // NÃO seta used:true

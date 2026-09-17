@@ -84,7 +84,7 @@ CPF opcional (com consentimento LGPD) liga avaliações esporádicas ↔ contas 
 | `buscarPorToken` | pública (token = credencial) | dados do avaliado p/ link público (sem telefone/CPF) |
 | `atualizarStatus` | pública (token) | transição de status + **cálculo DISC server-side** (28 questões `q_*_01..07`) + grava respostas/perfil |
 | `validateInviteToken` | pública (token) | valida convite no cadastro |
-| `consumeInvite` | JWT obrigatório | consome convite: cria aluno (ou admin, se `invite.role='admin'`), entra no grupo, marca usado |
+| `consumeInvite` | JWT obrigatório | consome convite: cria aluno (ou admin, se `invite.role='admin'`), entra no grupo, marca usado. **DELTA 21**: aceita `{ token }` ou `{ byEmail: true }` (acha o convite pelo e-mail do caller — só provedor OAuth); convite com `email` é uso único |
 | `generateInviteLink` | JWT + role admin | gera convite (grupo, avulso ou **admin** via `role:'admin'`) |
 | `manageTeamAdmins` | JWT + role admin | lista/revoga/reativa admins do caller (escopo `invitedby`) + `promoteByEmail` (promove conta existente) — DELTA 12 |
 | `analyzeResponse`, `buildProfile`, `generate-report`, `groupInsights`, `insightPerfil`, `therapyFlag` | variado | IA (DeepSeek via `_shared/anthropic.ts`) — chave só nos Secrets do servidor |
@@ -99,7 +99,7 @@ Padrões: `handleCors(req)` no início, erros via `jsonResponse({ error }, statu
 **Edge pública nova precisa de duas coisas** (A4, 28/07/2026): `checarRateLimit(req, 'nomeDaFuncao', limite, janelaMin)` de `_shared/rateLimit.ts` logo no início do `try`, e um `catch` que **não** devolva `err.message` — o detalhe vai para `console.error`, o cliente recebe texto neutro. O contrato de segurança falha se faltar.
 
 ### Questões da avaliação
-`src/constants/sampleQuestions.js` tem 78 questões: 28 DISC (`dimension: D/I/S/C`) + 50 sabotadores (`q_sab_*`), **todas likert5**. Desde o **DELTA 19**, o fluxo público é **Completo (78 = 28 DISC + 50 Sabotadores)** — `AvaliacaoPublica.jsx` aplica DISC→Sabotadores e `atualizarStatus/index.ts` pontua **ambos** (DISC + PQ/Sabotadores). Os ids/pesos DISC e o scoring de Sabotadores estão **duplicados** em `atualizarStatus/index.ts` (espelha `src/lib/saboteurScoring.js`) — mudou questão DISC ou regra de sabotador, atualize os dois lados.
+`src/constants/sampleQuestions.js` tem 78 questões: 28 DISC (`dimension: D/I/S/C`) + 50 sabotadores (`q_sab_*`), **todas likert5**. Texto **só em `ptBR`** (en/es removidos em 17/09/2026; 23 itens reescritos na auditoria — ver `AUDITORIA-2026-09-17.md` §4 — ids e pesos intocados). O `AssessmentWizard` seleciona por `dimension`, nunca por posição no array. Desde o **DELTA 19**, o fluxo público é **Completo (78 = 28 DISC + 50 Sabotadores)** — `AvaliacaoPublica.jsx` aplica DISC→Sabotadores e `atualizarStatus/index.ts` pontua **ambos** (DISC + PQ/Sabotadores). Os ids/pesos DISC e o scoring de Sabotadores estão **duplicados** em `atualizarStatus/index.ts` (espelha `src/lib/saboteurScoring.js`) — mudou questão DISC ou regra de sabotador, atualize os dois lados.
 
 **Motor DISC canônico (auditoria 07/07/2026):** a fórmula oficial é a ponderada — `(valor−1)/4 × peso`, média ponderada por dimensão × 100 — implementada em **`src/lib/discScoring.js`** (frontend: `AssessmentWizard`, `MemberProfileSlideOver`) e espelhada em `atualizarStatus/index.ts` (fluxo público). Antes, o wizard usava média simples (÷5×100, sem pesos) e o Edge tinha types errados (`forced_choice`/`scenario` em `q_*_03/_05`, range 3) — a mesma pessoa recebia scores diferentes conforme o fluxo. **Perfis antigos não foram recalculados** (persistidos como estavam); apenas avaliações novas usam o motor canônico. Mudou peso/questão: `discScoring.js` lê `sampleQuestions.js` em runtime (sincroniza sozinho), mas o array `QUESTIONS` do Edge precisa ser atualizado à mão.
 
@@ -128,6 +128,18 @@ Aba de topo (`/admin/central`, em `src/pages/admin/central/`), visível a admin/
 
 ---
 
+### Login com Google + convite ativado no banco (DELTA 21, 17/09/2026)
+Fluxo implícito do GoTrue, sem supabase-js: `signInWithGoogle()` (`auth.js`) redireciona a `/auth/v1/authorize?provider=google&redirect_to={origin}/auth/callback`; `AuthCallback.jsx` lê o hash (`applyOAuthCallback`), limpa a URL e decide: já tem `app_users` → painel; token pendente (`profileai.invite.pending`, guardado em `/register?token=`) → `consumeInvite({ token })`; senão `consumeInvite({ byEmail: true })`; nada → `signOut` + aviso "sem convite". **Ninguém entra sem convite.**
+- **Convite por e-mail**: `createInvite(groupId, adminUid, dias, { email })` grava `app_invites.email` (modal *Convidar aluno*). O trigger `on_auth_user_created_perfilmaster` (`perfilmaster_ativar_convite_por_email`) em `auth.users` cria `app_users`, entra no grupo e queima o convite no primeiro login OAuth. **Ignora `provider = 'email'`** (cadastro por senha não prova posse do e-mail — evita roubo de convite). Convite com e-mail é **uso único**, mesmo com grupo.
+- Requer no painel do Supabase: *Providers → Google* (Client ID/Secret do Google Cloud, grátis) e *Redirect URLs* com `{origin}/auth/callback`. O botão só aparece com `VITE_ENABLE_GOOGLE_AUTH=true` (escondido por padrão — `GoogleButton.jsx`).
+- `toUserShape` lê `full_name`/`name`/`picture` do Google; `authStore.user.provider` = `'google'|'email'`.
+
+### CPF pseudonimizado (DELTA 21)
+O banco **não guarda CPF em claro**: trigger `trg_cpf_pseudonimo` (BEFORE INSERT/UPDATE OF cpf em `app_users`, `app_avaliados`, `app_identity_links`) troca os 11 dígitos por `HMAC-SHA256(cpf, pepper)` (64 hex) e preenche `cpf_mask` (`***.***.*89-09`). Pepper no **Supabase Vault** (`perfilmaster_cpf_pepper`) — perder o pepper = perder o matching por CPF. App e Edge continuam enviando os 11 dígitos; **matching por igualdade continua funcionando** (mesma pessoa → mesmo hash). Para exibir use `cpfMask` (`cpfParaExibir()` em `lib/cpf.js`); **nunca** passe `row.cpf` a `formatCpf` (extrairia dígitos do hex). O Relatório Oficial mostra a máscara, não o número completo. `convertAvaliado` copia `cpf` (já hash) + `cpf_mask`.
+
+### Leitura em lote (performance, 17/09/2026)
+`getUsersByGroupIds`, `getAssessmentsByGroupIds` (sem a coluna `answers`) e `getProfilesByGroupIds` em `firestore.js` devolvem `Map<groupId, rows[]>` com um único `in.(...)`. Painel, Alunos e Relatórios usam isso (3 chamadas em vez de 3 por grupo). **Tela nova que percorre grupos: use os lotes**, não `getUsersByGroup` em loop. Fontes: só o `<link>` do `index.html` (o `@import` do CSS foi removido — duplicava e bloqueava). Wizard de conta salva rascunho em `localStorage` (`profileai.wizard.respostas.<uid>`), como o fluxo público.
+
 ### Landing page (17/09/2026)
 `/` é a landing pública (`src/pages/public/Landing.jsx`) para quem não está logado; com sessão confirmada, `RootRedirect` manda ao painel (com sessão salva no `localStorage`, espera o auth para não piscar a landing). Renderiza sem depender do Supabase. Não há cadastro self-service (Register exige convite), então o CTA "Solicitar demonstração" leva a contato — `src/constants/landing.js` (`VITE_CONTATO_WHATSAPP` tem prioridade; fallback e-mail breno.luis@gmail.com). Copy sem depoimentos/números inventados; o perfil do hero está marcado "exemplo fictício". SEO/OG/Schema.org no `index.html`.
 
@@ -143,6 +155,10 @@ Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12
 **Ao criar chamada de rede nova: use `http.js`.** `fetch` direto volta a criar o bug.
 
 ## Pendências conhecidas
+
+- [ ] **DELTA 21 — rodar no SQL Editor**: `supabase/migrations/20260917_delta21_google_login_cpf_pseudonimo.sql` (convite por e-mail + trigger em `auth.users` + Vault + CPF pseudonimizado com backfill). Depois **redeploy** de `consumeInvite` e `convertAvaliado` (esta lê `cpf_mask` — só depois do SQL). Configurar Google em *Auth → Providers* e `/auth/callback` em *Redirect URLs*. Passo a passo em `AUDITORIA-2026-09-17.md` §0.
+- [ ] **(Psicometria) Itens invertidos no DISC** — hoje os 28 itens são todos "concordo = mais perfil"; quem concorda com tudo sai com 4 perfis altos. Adicionar 1–2 itens invertidos por dimensão (`6 − valor`) exige mudar `discScoring.js` + `atualizarStatus` + contrato e quebra comparabilidade com perfis antigos — decisão de produto (`AUDITORIA-2026-09-17.md` §4).
+- [ ] **(Modelos) Social Style / OCAI / Personalizado** — veredito em `AUDITORIA-2026-09-17.md` §5: Social Style = derivar do DISC (lente, sem questionário); Personalizado = motor genérico por dimensões (próximo com melhor custo-benefício, só com cliente); OCAI = outro produto (organizacional), adiar.
 
 - [x] **Banco — DELTA 8/9/10 aplicados** (SQL Editor, 12/06/2026): RLS por facilitador, coluna `auto` (Central de Pessoas) e tabela `app_admin_strategies` (Painel Estratégico).
 - [x] **Banco — DELTA 11 aplicado** (SQL Editor, 18/06/2026): adiciona `app_users.notifications` (jsonb) para persistir as preferências de notificação. Aplicado no script consolidado `RODAR-NO-SUPABASE-DELTAS-11-13-16-17.sql` (gitignored).
@@ -215,4 +231,4 @@ O app é **PT-BR exclusivo** (decisão de produto, jul/2026). EN e ES já não e
 
 ---
 
-*Perfil Master · Vianexx AI · Breno Luis · atualizado 28/07/2026 (auditoria completa + Sprints 1, 2 e 3: timeout de rede, proxy de IA removido, writes verificados, respostas validadas, telemetria + rate limit + CI)*
+*Perfil Master · Vianexx AI · Breno Luis · atualizado 17/09/2026 (auditoria: login com Google + convite por e-mail no banco, CPF pseudonimizado, leituras em lote, rascunho do wizard, questões revisadas — `AUDITORIA-2026-09-17.md`)*

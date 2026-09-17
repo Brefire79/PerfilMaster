@@ -13,8 +13,8 @@ O Perfil Master aplica avaliações DISC + PQ/Sabotadores para alunos com conta 
 
 ## 3. Aluno com conta
 
-1. O facilitador gera um convite de grupo ou individual.
-2. O aluno abre o link, cria a conta e entra no aplicativo.
+1. O facilitador gera um convite de grupo ou individual. Se informar o **e-mail** do aluno no convite, ele passa a ser pessoal (uso único).
+2. O aluno abre o link e cria a conta — com e-mail e senha **ou** com o botão **Criar conta com Google**. Quem tem o e-mail registrado no convite pode ir direto em `/login` → **Continuar com Google**: a conta é ativada na hora, sem link e sem senha.
 3. A avaliação completa possui 78 questões: 28 DISC e 50 de Sabotadores.
 4. Ao concluir, o perfil é calculado e persistido.
 5. O aluno consulta Meu Perfil; o facilitador consulta o relatório completo.
@@ -51,7 +51,8 @@ O facilitador pode gerar um link de recuperação para enviar por WhatsApp. O li
 
 - Cada facilitador acessa apenas seu próprio escopo.
 - Links públicos usam token como credencial.
-- CPF é opcional, não aparece publicamente e depende de consentimento.
+- CPF é opcional, não aparece publicamente e depende de consentimento. Desde set/2026 o banco guarda apenas um código irreversível do CPF (para reconhecer a mesma pessoa) e uma máscara `***.***.*89-09` para exibição — o número completo não existe mais no sistema.
+- Login com Google não abre o acesso a ninguém: sem convite (link ou e-mail registrado) a sessão é encerrada.
 - Exclusão de conta exige senha. Administradores com dados de terceiros são protegidos contra exclusão automática.
 - Documentos públicos: `/privacidade`, `/termos` e `/suporte`.
 

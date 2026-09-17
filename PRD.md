@@ -168,6 +168,7 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 
 ### 6.1 Autenticação
 - Login / Cadastro / Recuperação de senha via Supabase Auth
+- **Login com Google (DELTA 21, set/2026)** — botão "Continuar com Google" no login e "Criar conta com Google" no cadastro. Fluxo implícito do GoTrue com retorno em `/auth/callback`. **Acesso continua exclusivamente por convite**: o callback só admite quem já tem `app_users`, quem trouxe o token do link (`/join/:token`) ou quem tem o e-mail registrado num convite pendente; sem convite, a sessão é encerrada com aviso.
 - Redirecionamento automático por role (admin → `/admin/dashboard`, aluno → `/student/dashboard`)
 - Proteção de rotas via `ProtectedRoute` + Zustand `authStore`
 - Tokens JWT com refresh automático
@@ -175,6 +176,7 @@ Origens permitidas em `supabase/functions/_shared/response.ts`:
 ### 6.2 Grupos e Convites
 - Admin cria grupos com nome e descrição
 - Geração de link de convite com token único (validade: 7 dias, uso único)
+- **Convite por e-mail ativado no banco (DELTA 21)**: ao informar o e-mail em *Convidar aluno*, o convite fica amarrado à pessoa (`app_invites.email`, uso único). No primeiro login com Google desse e-mail, um trigger em `auth.users` cria a conta em `app_users` (role/grupo/facilitador vindos do convite), entra no grupo e queima o convite — sem passar pelo cliente. Cadastro por e-mail/senha não ativa pelo e-mail (não prova posse do endereço); usa o link.
 - Aluno acessa `/join/:token` → redirecionado para `/register?token=xxx`
 - Após cadastro, aluno é automaticamente vinculado ao grupo
 
@@ -340,6 +342,8 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 - Indicadores de bem-estar (§ 4 do relatório) são de uso exclusivamente interno
 - Não há diagnósticos clínicos — apenas indicadores de atenção para suporte
 - Documento oficial contém aviso de conformidade LGPD no rodapé
+- **CPF pseudonimizado (DELTA 21)**: o banco não armazena CPF em texto legível. Guarda `HMAC-SHA256(cpf, pepper)` — código irreversível, igual para a mesma pessoa (mantém a convergência de identidade) — e uma máscara `***.***.*89-09` só para exibição. O *pepper* fica no Supabase Vault, fora do banco. O Relatório Oficial exibe a máscara.
+- Criptografia em repouso (Supabase, AES-256) e em trânsito (TLS) em todos os dados; telefone/e-mail permanecem legíveis apenas para o facilitador dono (RLS), porque são operacionais (WhatsApp).
 
 ### 8.2 Rastreabilidade Legal
 - Cada relatório possui ID único: `DISC-{ANO}-{8-hex-chars-do-token}`
@@ -443,6 +447,7 @@ Assistente do facilitador, **100% local** — nenhuma chamada a IA externa no ch
 | 1.1 | Mai 2026 | Auditoria autônoma — documentação de arquitetura |
 | 2.0 | Mai 2026 | Google Gemini (migração de Anthropic), `insightPerfil`, `therapyFlag` com chave do usuário, RelatorioOficial (documento legal com ID único + LGPD), ResultadoPublico (página pública para avaliado), configuração de API key no painel, CORS localhost:3001, erros de IA humanizados |
 | 1.0.43 | Jun 2026 | Rebrand **Perfil Master**; IA **DeepSeek server-side** (provider único, sem chave do admin); abas Sessões/Pessoas ocultadas; DELTAs 8–13; **tema claro/escuro**; **Dashboard interativo** (stat cards clicáveis + DISC expansível); **Equipe de administradores** com convite, **promoção de conta existente** (`promoteByEmail`) e revogação reversível |
+| 1.1.x | Set 2026 | **Landing page** pública em `/`; **login com Google** + **convite por e-mail ativado no banco** (DELTA 21); **CPF pseudonimizado** (HMAC + Vault); leituras em lote no Painel/Alunos/Relatórios; rascunho local do wizard; 23 questões revisadas (ids/pesos mantidos); en/es removidos do banco de questões. Relatório: `AUDITORIA-2026-09-17.md` |
 | 1.1.0 | Jun 2026 | **Central de Gestão** (admin/superadmin) — DELTAs 14–17. 4 módulos: Visão Geral (observabilidade das 2 fontes, com visão global do superadmin), Pessoas & Histórico + **Trilha de Auditoria append-only**, Inteligência de Grupos (agregados anonimizados com **k-anonimato**, DISC + conclusão + **PQ Score/Sabotadores** agora persistidos), Assistente IA (camada semântica fixa, sem PII ao DeepSeek, cache + rate limit, **PDF local**). Superadmin via allowlist `app_superadmins`/`is_superadmin()` |
 
 > **Fonte da verdade:** este PRD, `manual_tecnico.md` e o `AGENTS.md` da raiz devem permanecer alinhados. A pasta `src/firebase/` é a camada Supabase com naming legado.

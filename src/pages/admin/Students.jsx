@@ -4,7 +4,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useGroupStore from '@/store/groupStore.js';
-import { getGroupsByAdmin, getUsersByGroup, getAssessmentsByGroup, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin, deleteStudent, deleteAvaliado, addMemberToGroup, removeMemberFromGroup, updateUser } from '@/firebase/firestore.js';
+import { getGroupsByAdmin, getUsersByGroupIds, getAssessmentsByGroupIds, getModules, createAssessment, getAvaliadosByAdmin, getSessoesByAdmin, getAvulsosByAdmin, deleteStudent, deleteAvaliado, addMemberToGroup, removeMemberFromGroup, updateUser } from '@/firebase/firestore.js';
 import Card from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge, { ProfileBadge, StatusBadge } from '@/components/ui/Badge.jsx';
@@ -127,13 +127,17 @@ export default function Students() {
         if (cancelled) return;
         setGroups(fetchedGroups);
 
-        // Fetch members for all groups in parallel
+        // 2 requisições no total (não 2 por grupo) — ver getUsersByGroupIds.
+        const ids = fetchedGroups.map((g) => g.id);
+        const [membersMap, assessmentsMap] = await Promise.all([
+          getUsersByGroupIds(ids),
+          getAssessmentsByGroupIds(ids),
+        ]);
+        if (cancelled) return;
         const membersByGroup = await Promise.all(
           fetchedGroups.map(async (g) => {
-            const [members, assessments] = await Promise.all([
-              getUsersByGroup(g.id),
-              getAssessmentsByGroup(g.id),
-            ]);
+            const members = membersMap.get(g.id) || [];
+            const assessments = assessmentsMap.get(g.id) || [];
 
             // Cruza com assessments reais para descobrir status atual
             const STATUS_RANK = { completed: 4, analyzed: 4, submitted: 3, in_progress: 2, pending: 1 };

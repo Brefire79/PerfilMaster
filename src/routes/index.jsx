@@ -15,6 +15,7 @@ const Login = lazy(() => import('@/pages/auth/Login.jsx'));
 const Register = lazy(() => import('@/pages/auth/Register.jsx'));
 const ForgotPassword = lazy(() => import('@/pages/auth/ForgotPassword.jsx'));
 const ResetPassword = lazy(() => import('@/pages/auth/ResetPassword.jsx'));
+const AuthCallback = lazy(() => import('@/pages/auth/AuthCallback.jsx'));
 
 // ─── Lazy-loaded Shared Pages ─────────────────────────────────────────────────
 const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
@@ -201,6 +202,9 @@ export default function AppRoutes() {
             Fora do AlreadyAuthRoute de propósito (a sessão de recuperação não pode
             redirecionar para o dashboard). */}
         <Route path="/reset-password" element={<ResetPassword />} />
+        {/* Volta do login com Google (DELTA 21). Fora do AlreadyAuthRoute: a página
+            decide se a conta tem convite antes de mandar ao painel. */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
 
         {/* Auth routes — redireciona usuários já logados para seu dashboard (P1-2) */}
         <Route element={<AlreadyAuthRoute><AuthLayout /></AlreadyAuthRoute>}>

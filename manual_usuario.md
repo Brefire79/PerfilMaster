@@ -38,10 +38,16 @@ A plataforma atende a **dois tipos de usuário**:
    | E-mail | ✅ | Será seu login |
    | Senha | ✅ | Mínimo **8 caracteres** (há um medidor de força) |
    | Confirmar senha | ✅ | Precisa ser igual à senha |
-   | CPF | ⬜ Opcional | Permite acompanhar a **evolução do seu perfil** ao longo do tempo (LGPD) |
+   | CPF | ⬜ Opcional | Permite acompanhar a **evolução do seu perfil** ao longo do tempo (LGPD). O sistema guarda só um código irreversível e a máscara `***.***.*89-09` — o número nunca fica legível |
 4. Se informar o **CPF**, marque a caixa de **consentimento** (exigência da LGPD).
 5. Clique em **Criar conta**.
 6. Pronto! Você entra direto no seu **painel** (`/student/dashboard`).
+
+### Prefere entrar com o Google?
+
+- Na tela do convite, clique em **Criar conta com Google** em vez de preencher senha. O Google confirma quem você é e o convite é aplicado automaticamente.
+- Se o facilitador registrou o **seu e-mail** no convite, nem precisa do link: abra `perfilmaster.netlify.app/login` e clique em **Continuar com Google** com a conta desse e-mail. Sua conta é ativada na hora.
+- Se aparecer *"Esta conta ainda não tem convite"*, é porque a conta Google usada não é a do e-mail convidado. Peça ao facilitador para registrar esse e-mail ou use o link do convite.
 
 > 🔒 **Segurança:** todo usuário criado é um **aluno** — ninguém vira administrador pelo cadastro. Promoções a admin são feitas só pela equipe técnica.
 

@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import { getSugestoesVinculo, createIdentityLink } from '@/firebase/firestore.js';
-import { maskCpf } from '@/lib/cpf.js';
+import { cpfParaExibir } from '@/lib/cpf.js';
 
 export default function IdentityLinkPanel({ adminUid, onLinked }) {
   const [sugestoes, setSugestoes] = useState([]);
@@ -100,7 +100,7 @@ export default function IdentityLinkPanel({ adminUid, onLinked }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#F7F8FC] truncate">{nomeRef}</p>
                 <p className="text-xs text-[#A0A3B1]">
-                  <span className="font-mono">{maskCpf(grupo.cpf)}</span>
+                  <span className="font-mono">{cpfParaExibir(grupo) || 'CPF registrado'}</span>
                   {' · '}
                   {totalAval > 0 && `${totalAval} avaliaç${totalAval > 1 ? 'ões' : 'ão'}`}
                   {totalAval > 0 && totalContas > 0 && ' + '}

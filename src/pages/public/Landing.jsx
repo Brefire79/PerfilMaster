@@ -55,14 +55,15 @@ const RECURSOS = [
   ['Relatório oficial do facilitador', 'Perfil, gráficos, sabotadores predominantes e espaço para a sua observação. Exportável em PDF.'],
   ['Análise assistida por IA', 'Um texto de leitura do perfil gerado a partir dos resultados, para apoiar a conversa de devolutiva.'],
   ['Inteligência de grupos', 'Distribuição de perfis e médias por turma, com supressão automática de grupos pequenos.'],
-  ['Convites e senhas sem e-mail', 'Links de convite e de redefinição de senha prontos para enviar pelo WhatsApp.'],
+  ['Convites pelo WhatsApp ou pelo Google', 'Links de convite e de redefinição de senha prontos para enviar pelo WhatsApp. Quem tem o e-mail registrado no convite entra direto com a conta Google, sem senha.'],
   ['Funciona no celular', 'Interface pensada para a tela do telefone, onde o avaliado realmente responde.'],
 ];
 
 const FAQ = [
   ['O Perfil Master faz diagnóstico psicológico?', 'Não. DISC e Sabotadores são instrumentos de autoconhecimento e desenvolvimento. Os resultados não constituem diagnóstico clínico e não devem ser a única base para decisões de contratação ou desligamento.'],
   ['Quem responde precisa criar conta?', 'Não. Na avaliação avulsa o link enviado por WhatsApp é a credencial. Contas são opcionais e servem para acompanhar a pessoa ao longo do tempo.'],
-  ['Quem vê os dados dos meus avaliados?', 'Só você. Cada facilitador enxerga apenas os próprios grupos, alunos e avaliações. Não existe visão cruzada entre facilitadores.'],
+  ['Quem vê os dados dos meus avaliados?', 'Só você. Cada facilitador enxerga apenas os próprios grupos, alunos e avaliações. Não existe visão cruzada entre facilitadores. O CPF, quando informado, é guardado apenas como um código irreversível para reconhecer a mesma pessoa — nunca em texto legível.'],
+  ['Dá para entrar com a conta Google?', 'Sim. O facilitador registra o e-mail no convite e a pessoa entra com o Google desse e-mail; a conta é ativada na hora, sem cadastro nem senha. Login por e-mail e senha continua disponível.'],
   ['A IA recebe dados pessoais?', 'A análise é gerada no servidor a partir das pontuações. Chaves de IA nunca vão para o navegador e nada é vendido a terceiros.'],
   ['Como começo?', 'O acesso de facilitador é liberado pela Vianexx. Fale com a gente pelo botão desta página e mostramos a plataforma com dados de exemplo.'],
 ];

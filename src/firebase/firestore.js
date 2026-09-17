@@ -85,6 +85,9 @@ const CAMEL_TO_DB = {
   // consentimento precisa de snake_case explícito)
   cpfConsent: 'cpf_consent',
   cpfConsentAt: 'cpf_consent_at',
+  // DELTA 21: o banco guarda cpf = HMAC (64 hex) e cpf_mask = '***.***.*89-09'.
+  // Para MATCHING use cpf (igual para a mesma pessoa); para EXIBIR use cpfMask.
+  cpfMask: 'cpf_mask',
   // DELTA 19: avaliado de sessão convertido em conta de aluno (uid da conta)
   convertedUid: 'converted_uid',
   avaliadoId: 'avaliado_id',
@@ -370,6 +373,67 @@ export async function getAvulsosByAdmin(adminUid) {
   return rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row }));
 }
 
+// ─── Leituras em LOTE (performance, 17/09/2026) ──────────────────────────────
+// Painel, Alunos e Relatórios faziam 3 requisições POR GRUPO (membros,
+// avaliações, perfis). Com N grupos eram 3N chamadas em cascata; agora são 3
+// no total, com `in.(...)`. Os resultados vêm agrupados por groupId para os
+// consumidores manterem a mesma lógica de antes.
+function inList(ids) {
+  return `(${ids.map((id) => `"${String(id).replace(/"/g, '')}"`).join(',')})`;
+}
+
+function agruparPor(rows, campo) {
+  const mapa = new Map();
+  for (const r of rows) {
+    const k = r[campo] || null;
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(r);
+  }
+  return mapa;
+}
+
+/** Membros (app_users) de vários grupos → Map<groupId, rows[]>. */
+export async function getUsersByGroupIds(groupIds) {
+  const ids = [...new Set((groupIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const rows = await selectRows(COLLECTIONS.USERS, {
+    filters: [{ field: 'groupId', op: 'in', value: inList(ids) }],
+    orderBy: 'createdAt',
+    ascending: false,
+  });
+  return agruparPor(rows.map((row) => withDateWrapper({ id: row.id || row.uid, ...row })), 'groupId');
+}
+
+// Colunas "leves" de app_assessments: `answers` (jsonb com 78 respostas) só
+// interessa a quem recalcula — listagens não precisam trafegar isso.
+const ASSESSMENT_COLS_LEVES = 'id,uid,groupid,moduleid,status,createdat,updatedat,submittedat';
+
+/** Avaliações (sem `answers`) de vários grupos → Map<groupId, rows[]>. */
+export async function getAssessmentsByGroupIds(groupIds) {
+  const ids = [...new Set((groupIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const rows = await selectRows(COLLECTIONS.ASSESSMENTS, {
+    filters: [{ field: 'groupId', op: 'in', value: inList(ids) }],
+    columns: ASSESSMENT_COLS_LEVES,
+    orderBy: 'createdAt',
+    ascending: false,
+  });
+  return agruparPor(rows.map((row) => withDateWrapper({ id: row.id, ...row })), 'groupId');
+}
+
+/** Perfis (app_profiles) de vários grupos → Map<groupId, rows[]>. */
+export async function getProfilesByGroupIds(groupIds) {
+  const ids = [...new Set((groupIds || []).filter(Boolean))];
+  if (ids.length === 0) return new Map();
+  const rows = await selectRows(COLLECTIONS.PROFILES, {
+    filters: [{ field: 'groupId', op: 'in', value: inList(ids) }],
+  });
+  return agruparPor(
+    rows.map((row) => withDateWrapper(flattenProfile({ id: row.id || row.uid, ...row }))),
+    'groupId'
+  );
+}
+
 export function subscribeToUser(uid, callback) {
   getUser(uid).then(callback).catch(() => callback(null));
   return () => {};
@@ -648,6 +712,7 @@ export async function getAvaliadoLikeFromUid(uid) {
     telefone: u?.phoneNumber || u?.telefone || '',
     email: u?.email || null,
     cpf: u?.cpf || p?.cpf || null,
+    cpfMask: u?.cpfMask || null,
     status: 'concluido',
     sessaoTitulo: u?.groupName || 'Conta de aluno',
     criadoEm: p?.updatedAt || p?.createdAt || null,
@@ -677,13 +742,20 @@ export async function getAvaliadoLikeFromUid(uid) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // D5b: aceita expiryDays (padrão 7) — InviteLink.jsx passa 7/15/30
-export async function createInvite(groupId, adminUid, expiryDays = 7) {
+// DELTA 21: `email` amarra o convite a uma pessoa — quem entrar com Google usando
+// esse e-mail é ativado pelo banco (trigger em auth.users) sem precisar do link.
+// Convite com e-mail é pessoal (uso único), mesmo quando tem grupo.
+export async function createInvite(groupId, adminUid, expiryDays = 7, { email = null } = {}) {
   const token = crypto.randomUUID();
   const days = Number(expiryDays) > 0 ? Number(expiryDays) : 7;
+  const emailNorm = typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
   await insertRow(COLLECTIONS.INVITES, {
     token,
     groupId,
     adminUid,
+    // Só referencia a coluna (DELTA 21) quando há e-mail — convite sem e-mail
+    // continua funcionando mesmo antes da migration.
+    ...(emailNorm ? { email: emailNorm } : {}),
     used: false,
     createdAt: nowIso(),
     expiresAt: Timestamp.fromDate(new Date(Date.now() + days * 24 * 60 * 60 * 1000)),
@@ -713,7 +785,8 @@ export async function getActiveInviteForGroup(groupId) {
     limit: 5,
   });
   const agora = Date.now();
-  const ativo = rows.find((r) => !r.expiresAt || new Date(r.expiresAt).getTime() > agora);
+  // DELTA 21: convite com e-mail é pessoal — não serve como link do grupo.
+  const ativo = rows.find((r) => !r.email && (!r.expiresAt || new Date(r.expiresAt).getTime() > agora));
   return ativo ? withDateWrapper({ id: ativo.id || ativo.token, ...ativo }) : null;
 }
 
@@ -1121,15 +1194,17 @@ export async function getSugestoesVinculo(adminUid) {
   const porCpf = new Map();
   const add = (cpf, item) => {
     if (!cpf) return;
-    if (!porCpf.has(cpf)) porCpf.set(cpf, { cpf, avaliados: [], contas: [] });
-    porCpf.get(cpf)[item.tipo === 'conta' ? 'contas' : 'avaliados'].push(item);
+    if (!porCpf.has(cpf)) porCpf.set(cpf, { cpf, cpfMask: null, avaliados: [], contas: [] });
+    const g = porCpf.get(cpf);
+    if (item.cpfMask && !g.cpfMask) g.cpfMask = item.cpfMask;
+    g[item.tipo === 'conta' ? 'contas' : 'avaliados'].push(item);
   };
 
   for (const a of avaliados) {
-    if (a.cpf) add(a.cpf, { tipo: 'avaliacao', id: a.id, nome: a.nome, perfil: a.perfil?.perfilPrimario || null, criadoEm: a.criadoEm });
+    if (a.cpf) add(a.cpf, { tipo: 'avaliacao', id: a.id, nome: a.nome, perfil: a.perfil?.perfilPrimario || null, criadoEm: a.criadoEm, cpfMask: a.cpfMask || null });
   }
   for (const s of students) {
-    if (s.cpf) add(s.cpf, { tipo: 'conta', id: s.uid || s.id, nome: s.displayName || s.name || s.email, email: s.email });
+    if (s.cpf) add(s.cpf, { tipo: 'conta', id: s.uid || s.id, nome: s.displayName || s.name || s.email, email: s.email, cpfMask: s.cpfMask || null });
   }
 
   // Sugestões = CPFs com 2+ registros no total, ainda não confirmados
@@ -1315,14 +1390,14 @@ export async function getPessoas(adminUid) {
   const mapa = new Map(); // key → Pessoa em construção
   const garante = (key) => {
     if (!mapa.has(key)) {
-      mapa.set(key, { id: key, nome: '', cpf: null, conta: null, avaliacoes: [], origem: new Set() });
+      mapa.set(key, { id: key, nome: '', cpf: null, cpfMask: null, conta: null, avaliacoes: [], origem: new Set() });
     }
     return mapa.get(key);
   };
 
   for (const a of avaliados) {
     const p = garante(keyAvaliado(a));
-    if (a.cpf) p.cpf = a.cpf;
+    if (a.cpf) { p.cpf = a.cpf; p.cpfMask = a.cpfMask || p.cpfMask; }
     p.avaliacoes.push({
       avaliadoId: a.id,
       token: a.token || a.id,
@@ -1339,7 +1414,7 @@ export async function getPessoas(adminUid) {
 
   for (const s of students) {
     const p = garante(keyConta(s));
-    if (s.cpf) p.cpf = s.cpf;
+    if (s.cpf) { p.cpf = s.cpf; p.cpfMask = s.cpfMask || p.cpfMask; }
     p.conta = {
       uid: s.uid || s.id,
       nome: s.displayName || s.name || s.email || '',
@@ -1396,6 +1471,7 @@ export async function getPessoas(adminUid) {
       id: p.id,
       nome,
       cpf: p.cpf,
+      cpfMask: p.cpfMask,
       temCpf: !!p.cpf,
       conta: p.conta,
       avaliacoes: p.avaliacoes,
