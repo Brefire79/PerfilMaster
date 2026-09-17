@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import clsx from 'clsx';
+import { signInWithGoogle } from '@/firebase/auth.js';
 // Botão "Continuar com Google" (DELTA 21). Só aparece com VITE_ENABLE_GOOGLE_AUTH=true
 // (Netlify env / .env.local) — o provedor precisa estar ligado no Supabase
 // (Auth → Providers → Google) e /auth/callback nas Redirect URLs, senão o
