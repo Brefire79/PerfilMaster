@@ -1,5 +1,5 @@
 {
-  "version": "1.0.56",
-  "buildDate": "2026-07-29T17:49:48.636Z",
+  "version": "1.0.57",
+  "buildDate": "2026-09-17T19:35:44.545Z",
   "notes": "Mestre: chat local flutuante no Painel (sem IA externa; conversa persiste ate o logout) + consulta de contagem igual ao card do Painel. Fix: avaliado convertido nao conta 2x no Total de Alunos."
 }
