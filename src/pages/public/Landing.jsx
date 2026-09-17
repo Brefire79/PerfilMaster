@@ -110,7 +110,7 @@ function DemoFluxo() {
           Mensagem enviada
         </div>
         <div className="mt-3 rounded-2xl rounded-tl-sm bg-[#242736] px-4 py-3 text-sm leading-6 text-[#F7F8FC]">
-          Oi, Ana! Aqui está a sua avaliação. Leva uns 15 minutos e você pode pausar quando quiser:
+          Oi, Claudia! Aqui está a sua avaliação. Leva uns 15 minutos e você pode pausar quando quiser:
           <span className="mt-1 block font-mono text-xs text-[#818CF8] break-all">perfilmaster.netlify.app/avaliacao/…</span>
         </div>
       </div>
@@ -124,7 +124,7 @@ function DemoFluxo() {
       <div className={`rounded-2xl border border-[#2D3047] bg-[#1A1D2E] p-5 shadow-card transition-opacity duration-500 ${visivel ? 'opacity-100' : 'opacity-0'}`}>
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="font-heading text-base font-bold">Perfil de Ana</p>
+            <p className="font-heading text-base font-bold">Perfil de Claudia</p>
             <p className="text-xs text-[#A0A3B1]">Analítico com Dominante · 78 respostas</p>
           </div>
           <span className="rounded-full border border-[#2D3047] px-2 py-0.5 font-mono text-2xs uppercase tracking-widest text-[#A0A3B1]">exemplo fictício</span>
