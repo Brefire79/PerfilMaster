@@ -49,7 +49,7 @@ export default function LegalPage() {
   return (
     <main className="min-h-screen bg-[#0F1117] text-[#F7F8FC] px-5 py-10">
       <article className="mx-auto max-w-3xl">
-        <Link to="/login" className="text-sm text-[#818CF8] hover:text-[#A5B4FC]">← Voltar ao Perfil Master</Link>
+        <Link to="/" className="text-sm text-[#818CF8] hover:text-[#A5B4FC]">← Voltar ao Perfil Master</Link>
         <h1 className="mt-6 text-3xl font-heading font-bold">{document.title}</h1>
         <p className="mt-2 text-sm text-[#A0A3B1]">Última atualização: {document.updated}</p>
         <div className="mt-8 space-y-7">

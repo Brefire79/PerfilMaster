@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Perfil Master (profileai)
 
 > SaaS de avaliação comportamental DISC + PQ Sabotadores · Vianexx AI · Breno Luis
-> Deploy: perfilmaster.netlify.app · Repo: Brefire79/profileai (branch `main`)
+> Deploy: perfilmaster.netlify.app (conta Netlify **breno.luis@gmail.com**, team EstiloHouse — o CLI da máquina tem outras contas logadas: confira `npx netlify status` antes de `npm run deploy`) · Repo: Brefire79/PerfilMaster (branch `main`)
 > **Todo o código fica em `profileai/` — nunca edite fora desta pasta.**
 
 ---
@@ -127,6 +127,9 @@ Aba de topo (`/admin/central`, em `src/pages/admin/central/`), visível a admin/
 - Env vars do frontend com prefixo `VITE_` (`.env.local`, não commitado); segredos só em Supabase Secrets / Netlify env. Nunca colocar chave de IA no bundle.
 
 ---
+
+### Landing page (17/09/2026)
+`/` é a landing pública (`src/pages/public/Landing.jsx`) para quem não está logado; com sessão confirmada, `RootRedirect` manda ao painel (com sessão salva no `localStorage`, espera o auth para não piscar a landing). Renderiza sem depender do Supabase. Não há cadastro self-service (Register exige convite), então o CTA "Solicitar demonstração" leva a contato — `src/constants/landing.js` (`VITE_CONTATO_WHATSAPP` tem prioridade; fallback e-mail breno.luis@gmail.com). Copy sem depoimentos/números inventados; o perfil do hero está marcado "exemplo fictício". SEO/OG/Schema.org no `index.html`.
 
 ### Camada de rede (C1, 27/07/2026)
 Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12s banco/auth, 30s Edge) e `fetchComRetry` (só GET, 2 tentativas). Antes disso nenhuma requisição tinha prazo: com o Supabase pausado, `useAuth` pendurava e o app ficava em "Carregando..." eterno.

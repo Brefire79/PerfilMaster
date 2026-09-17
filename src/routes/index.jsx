@@ -23,6 +23,7 @@ const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
 const AvaliacaoPublica = lazy(() => import('@/pages/public/AvaliacaoPublica.jsx'));
 const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'));
 const LegalPage = lazy(() => import('@/pages/public/LegalPage.jsx'));
+const Landing = lazy(() => import('@/pages/public/Landing.jsx'));
 
 // ─── Lazy-loaded Admin Pages ──────────────────────────────────────────────────
 // FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
@@ -139,16 +140,28 @@ function AlreadyAuthRoute({ children }) {
   return children;
 }
 
-// ─── Root Redirect ─────────────────────────────────────────────────────────────
+// ─── Root: landing pública ou painel ──────────────────────────────────────────
+// A landing é estática: renderiza de imediato, sem esperar o auth e mesmo com o
+// backend fora (o visitante não precisa do Supabase para ler a página). Só
+// redireciona quando a sessão já está confirmada.
 function RootRedirect() {
   const { user, role, loading, initialized, initError } = useAuthStore();
 
-  if (initError) return <BackendIndisponivel mensagem={initError} />;
-  if (!initialized || loading) return <PageLoader />;
+  if (initialized && !loading && user) {
+    return <Navigate to={role === 'admin' ? '/admin/dashboard' : '/student/dashboard'} replace />;
+  }
+  // Quem tem sessão salva (PWA instalado, aba reaberta) veria a landing piscar
+  // antes do redirect — nesse caso espera o auth; sem sessão, vai direto.
+  if (!initialized && !initError && temSessaoSalva()) return <PageLoader />;
+  return <Landing />;
+}
 
-  if (!user) return <Navigate to="/login" replace />;
-  if (role === 'admin') return <Navigate to="/admin/dashboard" replace />;
-  return <Navigate to="/student/dashboard" replace />;
+function temSessaoSalva() {
+  try {
+    return Boolean(localStorage.getItem('profileai.supabase.session'));
+  } catch {
+    return false;
+  }
 }
 
 // ─── FIX A5: Wrapper passes onCompleted so student navigates to profile after wizard ───
