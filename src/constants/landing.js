@@ -6,7 +6,7 @@
 // cai para /suporte (não quebra, só não converte).
 //
 // Formato do WhatsApp: só dígitos com DDI, ex.: '5511999999999'.
-export const CONTATO_WHATSAPP = import.meta.env.VITE_CONTATO_WHATSAPP || '';
+export const CONTATO_WHATSAPP = import.meta.env.VITE_CONTATO_WHATSAPP || '5511954492253';
 export const CONTATO_EMAIL = import.meta.env.VITE_CONTATO_EMAIL || 'breno.luis@gmail.com';
 
 const MENSAGEM = 'Olá! Quero conhecer o Perfil Master para aplicar avaliações DISC + Sabotadores.';
