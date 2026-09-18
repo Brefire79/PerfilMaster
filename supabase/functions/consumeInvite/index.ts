@@ -15,6 +15,9 @@
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { getAuthenticatedUser, serviceClient } from '../_shared/auth.ts';
 import { logAuditEvent } from '../_shared/audit.ts';
+import {
+  temVagas, tomarVaga, devolverVaga, registrarUso, motivoRecusa, MENSAGEM_RECUSA, STATUS_HTTP,
+} from '../_shared/invites.ts';
 
 function cpfDigitsOnly(v: unknown): string {
   return String(v ?? '').replace(/\D/g, '');
@@ -84,11 +87,10 @@ Deno.serve(async (req) => {
     if (!invite) {
       return jsonResponse({ error: 'Convite não encontrado para esta conta. Peça ao facilitador um link ou o registro do seu e-mail.' }, 404, req);
     }
-    if (invite.used) {
-      return jsonResponse({ error: 'Convite já utilizado.' }, 409, req);
-    }
-    if (invite.expiresat && new Date(invite.expiresat).getTime() < Date.now()) {
-      return jsonResponse({ error: 'Convite expirado.' }, 410, req);
+    // DELTA 22: pausado/encerrado/esgotado além de usado/expirado.
+    const recusa = motivoRecusa(invite);
+    if (recusa) {
+      return jsonResponse({ error: MENSAGEM_RECUSA[recusa], code: `invite/${recusa}` }, STATUS_HTTP[recusa], req);
     }
 
     const agora = new Date().toISOString();
@@ -142,11 +144,31 @@ Deno.serve(async (req) => {
       );
     }
 
+    // DELTA 22: convite com vagas — toma a vaga ANTES de criar a conta (atômico).
+    // Reentrada da mesma conta não desconta de novo.
+    const comVagas = temVagas(invite);
+    let vagaTomada = false;
+    if (comVagas) {
+      const r = await tomarVaga(sb, token, { uid: user.id });
+      if (r.motivo) {
+        return jsonResponse({ error: MENSAGEM_RECUSA[r.motivo], code: `invite/${r.motivo}` }, STATUS_HTTP[r.motivo], req);
+      }
+      vagaTomada = !r.reentrada;
+      if (r.invite) invite = r.invite;
+    }
+
     const { error: upsertError } = await sb
       .from('app_users')
       .upsert(row, { onConflict: 'uid' });
     if (upsertError) {
+      if (vagaTomada) await devolverVaga(sb, token);
       return jsonResponse({ error: `Falha ao registrar aluno: ${upsertError.message}` }, 500, req);
+    }
+    if (comVagas && vagaTomada) {
+      await registrarUso(sb, invite, {
+        kind: 'conta', uid: user.id,
+        nome: row.displayname as string | null, email: row.email as string | null,
+      });
     }
 
     if (invite.groupid) {

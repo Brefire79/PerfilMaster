@@ -63,7 +63,7 @@ for (const nome of ['firestore.js', 'functions.js', 'auth.js']) {
 // A4 (Sprint 3): Edge públicas com rate limit e sem vazar erro interno.
 // Antes, o catch devolvia (err as Error).message para um chamador ANÔNIMO —
 // mensagem do Postgres com nome de tabela, coluna e constraint.
-for (const fn of ['buscarPorToken', 'atualizarStatus', 'validateInviteToken']) {
+for (const fn of ['buscarPorToken', 'atualizarStatus', 'validateInviteToken', 'consumeInviteAvulso']) {
   const source = await readFile(
     new URL(`../supabase/functions/${fn}/index.ts`, import.meta.url), 'utf8'
   );

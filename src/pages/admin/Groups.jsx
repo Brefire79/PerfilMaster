@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
@@ -56,6 +57,9 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
     moduleId: '',
     color: COLOR_PRESETS[0].value,
   });
+  // DELTA 22 — turma empresarial: cria o grupo E o convite com vagas num passo só.
+  const [empresa, setEmpresa] = useState(false);
+  const [emp, setEmp] = useState({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -63,6 +67,8 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
 
   const reset = () => {
     setForm({ name: '', description: '', moduleId: '', color: COLOR_PRESETS[0].value });
+    setEmpresa(false);
+    setEmp({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '' });
     setErrors({});
   };
 
@@ -75,6 +81,11 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
     const errs = {};
     if (!form.name.trim()) {
       errs.name = t('errors.requiredField', 'Este campo é obrigatório.');
+    }
+    if (empresa) {
+      const v = Number(emp.vagas);
+      if (!Number.isInteger(v) || v < 1 || v > 5000) errs.vagas = 'Informe o número de vagas (1 a 5000).';
+      if (emp.contatoEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emp.contatoEmail)) errs.contatoEmail = 'E-mail inválido.';
     }
     return errs;
   };
@@ -95,7 +106,16 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
         color: form.color,
         adminUid: user?.uid,
       });
-      onCreated?.({ id: newId, ...form, adminUid: user?.uid, memberIds: [] });
+      // Turma empresarial: convite com vagas já nasce junto com o grupo — a aba
+      // Convite do grupo mostra o link, o contador e quem entrou.
+      if (empresa) {
+        await createInvite(newId, user?.uid || null, emp.validade, {
+          maxUses: Number(emp.vagas),
+          label: form.name.trim(),
+          contact: { name: emp.contatoNome, email: emp.contatoEmail, phone: emp.contatoTelefone },
+        });
+      }
+      onCreated?.({ id: newId, ...form, adminUid: user?.uid, memberIds: [] }, { empresarial: empresa });
       handleClose();
     } catch (err) {
       console.error('Error creating group:', err);
@@ -178,6 +198,71 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* DELTA 22 — Turma empresarial (convite com vagas + contato da empresa) */}
+        <div className="rounded-xl border border-[#2D3047] bg-[#1A1D2E] p-4 space-y-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={empresa}
+              onChange={(e) => setEmpresa(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-[#6366F1]"
+            />
+            <span>
+              <span className="block text-sm font-medium text-[#F7F8FC]">Turma empresarial (convite com vagas)</span>
+              <span className="block text-xs text-[#A0A3B1] mt-0.5">
+                Uma empresa pediu N avaliações: o link nasce com limite de vagas, contador em tempo real e o contato de quem pediu.
+              </span>
+            </span>
+          </label>
+
+          {empresa && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  label="Vagas"
+                  type="number"
+                  min={1}
+                  max={5000}
+                  placeholder="Ex: 40"
+                  value={emp.vagas}
+                  onChange={(e) => { setEmp((x) => ({ ...x, vagas: e.target.value })); setErrors((er) => ({ ...er, vagas: '' })); }}
+                  error={errors.vagas}
+                  required
+                />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-[#F7F8FC]">Link válido por</label>
+                  <select
+                    value={emp.validade}
+                    onChange={(e) => setEmp((x) => ({ ...x, validade: Number(e.target.value) }))}
+                    className="h-11 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none"
+                  >
+                    {[7, 15, 30, 60, 90].map((d) => <option key={d} value={d}>{d} dias</option>)}
+                  </select>
+                </div>
+              </div>
+              <Input
+                label="Contato na empresa"
+                placeholder="Nome de quem solicitou"
+                value={emp.contatoNome}
+                onChange={(e) => setEmp((x) => ({ ...x, contatoNome: e.target.value }))}
+              />
+              <Input
+                label="E-mail do contato"
+                type="email"
+                placeholder="contato@empresa.com"
+                value={emp.contatoEmail}
+                onChange={(e) => { setEmp((x) => ({ ...x, contatoEmail: e.target.value })); setErrors((er) => ({ ...er, contatoEmail: '' })); }}
+                error={errors.contatoEmail}
+              />
+              <PhoneInput
+                label="Telefone do contato"
+                value={emp.contatoTelefone}
+                onChange={(v) => setEmp((x) => ({ ...x, contatoTelefone: v }))}
+              />
+            </div>
+          )}
         </div>
 
         {/* Color picker */}
@@ -344,6 +429,7 @@ function EditGroupModal({ isOpen, onClose, group, onUpdated, modules }) {
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Groups() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const { groups, setGroups, addGroup, updateGroup: updateGroupStore } = useGroupStore();
 
@@ -401,8 +487,10 @@ export default function Groups() {
     return groups.filter((g) => g.name?.toLowerCase().includes(q));
   }, [groups, search]);
 
-  const handleCreated = (newGroup) => {
+  const handleCreated = (newGroup, { empresarial = false } = {}) => {
     addGroup(newGroup);
+    // Turma empresarial: abre direto na aba Convite (link, vagas, quem entrou).
+    if (empresarial && newGroup?.id) navigate(`/admin/groups/${newGroup.id}?tab=invite`);
   };
 
   return (

@@ -93,10 +93,14 @@ export default function Register() {
         const res = await validateInviteToken({ token });
         if (!res?.valid) {
           const reason = res?.reason;
-          setInviteStatus(reason === 'used' || reason === 'expired' ? 'expired' : 'invalid');
+          setInviteStatus(['used', 'expired', 'paused', 'closed', 'full'].includes(reason) ? 'expired' : 'invalid');
+          // DELTA 22: paused/closed/full vêm do convite empresarial (vagas)
           setInviteMsg({
             used: 'Este convite já atingiu o limite de cadastros.',
             expired: 'Este convite expirou. Peça um novo ao seu facilitador.',
+            paused: 'Este convite está pausado. Fale com quem enviou o link.',
+            closed: 'Este convite foi encerrado.',
+            full: 'As vagas deste convite se esgotaram. Fale com quem enviou o link.',
             not_found: 'Convite não encontrado. Confira o link recebido.',
           }[reason] || 'Link inválido ou expirado.');
           return;
@@ -194,7 +198,9 @@ export default function Register() {
         'auth/invalid-email': t('errors.invalidEmail'),
         'auth/weak-password': t('errors.weakPassword'),
       };
-      setServerError(map[err.code] || t('errors.generic'));
+      // DELTA 22: convite esgotado/pausado no consumo — a mensagem do servidor é a certa
+      const doConvite = typeof err?.code === 'string' && err.code.startsWith('invite/');
+      setServerError(map[err.code] || (doConvite && err.message) || t('errors.generic'));
     } finally {
       setLoading(false);
     }

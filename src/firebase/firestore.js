@@ -17,6 +17,7 @@ export const COLLECTIONS = {
   ASSESSMENTS: import.meta.env.VITE_SB_TABLE_ASSESSMENTS || 'app_assessments',
   PROFILES: import.meta.env.VITE_SB_TABLE_PROFILES || 'app_profiles',
   INVITES: import.meta.env.VITE_SB_TABLE_INVITES || 'app_invites',
+  INVITE_USES: 'app_invite_uses', // DELTA 22: quem gastou cada vaga do convite
   SESSOES: import.meta.env.VITE_SB_TABLE_SESSOES || 'app_sessoes',
   AVALIADOS: import.meta.env.VITE_SB_TABLE_AVALIADOS || 'app_avaliados',
   SESSAO_RESPOSTAS: import.meta.env.VITE_SB_TABLE_SESSAO_RESPOSTAS || 'app_sessao_respostas',
@@ -90,6 +91,14 @@ const CAMEL_TO_DB = {
   cpfMask: 'cpf_mask',
   // DELTA 19: avaliado de sessão convertido em conta de aluno (uid da conta)
   convertedUid: 'converted_uid',
+  // DELTA 22: convite empresarial (vagas + contato) e app_invite_uses
+  maxUses: 'maxuses',
+  useCount: 'usecount',
+  contactName: 'contact_name',
+  contactEmail: 'contact_email',
+  contactPhone: 'contact_phone',
+  inviteId: 'inviteid',
+  avaliadoToken: 'avaliadotoken',
   avaliadoId: 'avaliado_id',
   userUid: 'user_uid',
   linkedBy: 'linked_by',
@@ -745,10 +754,25 @@ export async function getAvaliadoLikeFromUid(uid) {
 // DELTA 21: `email` amarra o convite a uma pessoa — quem entrar com Google usando
 // esse e-mail é ativado pelo banco (trigger em auth.users) sem precisar do link.
 // Convite com e-mail é pessoal (uso único), mesmo quando tem grupo.
-export async function createInvite(groupId, adminUid, expiryDays = 7, { email = null } = {}) {
+export async function createInvite(
+  groupId,
+  adminUid,
+  expiryDays = 7,
+  { email = null, maxUses = null, label = null, contact = null } = {},
+) {
   const token = crypto.randomUUID();
   const days = Number(expiryDays) > 0 ? Number(expiryDays) : 7;
   const emailNorm = typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null;
+  // DELTA 22: vagas/contato só entram no payload quando informados — convite
+  // simples continua funcionando mesmo antes da migration.
+  const vagas = Number.isFinite(Number(maxUses)) && Number(maxUses) > 0 ? Math.floor(Number(maxUses)) : null;
+  const empresarial = {
+    ...(vagas ? { maxUses: vagas } : {}),
+    ...(label ? { label: String(label).trim().slice(0, 120) } : {}),
+    ...(contact?.name ? { contactName: String(contact.name).trim().slice(0, 120) } : {}),
+    ...(contact?.email ? { contactEmail: String(contact.email).trim().toLowerCase().slice(0, 160) } : {}),
+    ...(contact?.phone ? { contactPhone: String(contact.phone).replace(/\D/g, '').slice(0, 20) } : {}),
+  };
   await insertRow(COLLECTIONS.INVITES, {
     token,
     groupId,
@@ -756,6 +780,7 @@ export async function createInvite(groupId, adminUid, expiryDays = 7, { email = 
     // Só referencia a coluna (DELTA 21) quando há e-mail — convite sem e-mail
     // continua funcionando mesmo antes da migration.
     ...(emailNorm ? { email: emailNorm } : {}),
+    ...empresarial,
     used: false,
     createdAt: nowIso(),
     expiresAt: Timestamp.fromDate(new Date(Date.now() + days * 24 * 60 * 60 * 1000)),
@@ -786,8 +811,46 @@ export async function getActiveInviteForGroup(groupId) {
   });
   const agora = Date.now();
   // DELTA 21: convite com e-mail é pessoal — não serve como link do grupo.
-  const ativo = rows.find((r) => !r.email && (!r.expiresAt || new Date(r.expiresAt).getTime() > agora));
+  // DELTA 22: encerrado sai da lista; pausado continua sendo "o" convite do grupo.
+  const ativo = rows.find((r) =>
+    !r.email && r.status !== 'encerrado' && (!r.expiresAt || new Date(r.expiresAt).getTime() > agora));
   return ativo ? withDateWrapper({ id: ativo.id || ativo.token, ...ativo }) : null;
+}
+
+// DELTA 22 — gestão do convite empresarial pelo facilitador (RLS: só o dono).
+// patch aceita: maxUses (null = sem limite), status ('ativo'|'pausado'|'encerrado'),
+// expiresAt, label, contactName/contactEmail/contactPhone.
+export async function updateInvite(token, patch) {
+  const permitido = ['maxUses', 'status', 'expiresAt', 'label', 'contactName', 'contactEmail', 'contactPhone'];
+  const payload = {};
+  for (const k of permitido) if (k in patch) payload[k] = patch[k];
+  if ('maxUses' in payload && payload.maxUses != null) {
+    payload.maxUses = Math.max(0, Math.floor(Number(payload.maxUses) || 0));
+  }
+  await updateRows(COLLECTIONS.INVITES, [{ field: 'token', op: 'eq', value: token }], payload);
+}
+
+// Todos os convites de um grupo (mais recente primeiro) — a aba Convite mostra
+// o ativo e permite ver o histórico.
+export async function getInvitesByGroup(groupId, { limit = 20 } = {}) {
+  const rows = await selectRows(COLLECTIONS.INVITES, {
+    filters: [{ field: 'groupId', op: 'eq', value: groupId }],
+    orderBy: 'createdAt',
+    ascending: false,
+    limit,
+  });
+  return rows.map((r) => withDateWrapper({ id: r.id || r.token, ...r }));
+}
+
+// Quem gastou vaga num convite (conta ou avulso), mais recente primeiro.
+export async function getInviteUses(inviteId) {
+  const rows = await selectRows(COLLECTIONS.INVITE_USES, {
+    filters: [{ field: 'inviteId', op: 'eq', value: inviteId }],
+    orderBy: 'usedAt',
+    ascending: false,
+    limit: 500,
+  });
+  return rows.map((r) => withDateWrapper({ id: r.id, ...r }));
 }
 
 export async function markInviteUsed(token) {

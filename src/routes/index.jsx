@@ -1,5 +1,5 @@
-import React, { lazy, Suspense, useEffect } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
+import React, { lazy, Suspense } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import { useAuth } from '@/hooks/useAuth.js';
 import RouteErrorBoundary from '@/components/ui/RouteErrorBoundary.jsx';
@@ -25,6 +25,8 @@ const AvaliacaoPublica = lazy(() => import('@/pages/public/AvaliacaoPublica.jsx'
 const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'));
 const LegalPage = lazy(() => import('@/pages/public/LegalPage.jsx'));
 const Landing = lazy(() => import('@/pages/public/Landing.jsx'));
+// DELTA 22: /join/:token — escolha "tenho e-mail" (conta) ou "não tenho" (avulso da empresa)
+const JoinConvite = lazy(() => import('@/pages/public/JoinConvite.jsx'));
 
 // ─── Lazy-loaded Admin Pages ──────────────────────────────────────────────────
 // FIX A2: removidos imports duplicados (AdminGroups, AdminStudents, etc.) — usam versão Safe* abaixo
@@ -111,20 +113,10 @@ function ProtectedRoute({ children, requiredRole }) {
 }
 
 // ─── Invite Token Handler ─────────────────────────────────────────────────────
+// DELTA 22: a decisão conta × avulso vive em JoinConvite (convite sem a porta
+// "sem e-mail" continua indo direto ao /register?token=).
 function JoinHandler() {
-  const navigate = useNavigate();
-  // P1-1: usa useParams() — extração robusta vs. location.pathname.split frágil
-  const { token } = useParams();
-
-  useEffect(() => {
-    if (token) {
-      navigate(`/register?token=${token}`, { replace: true });
-    } else {
-      navigate('/login', { replace: true });
-    }
-  }, [token, navigate]);
-
-  return <PageLoader />;
+  return <JoinConvite />;
 }
 
 // ─── Already-Auth Route — redireciona usuários logados fora das telas de auth ────

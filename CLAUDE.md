@@ -83,7 +83,8 @@ CPF opcional (com consentimento LGPD) liga avaliações esporádicas ↔ contas 
 |---|---|---|
 | `buscarPorToken` | pública (token = credencial) | dados do avaliado p/ link público (sem telefone/CPF) |
 | `atualizarStatus` | pública (token) | transição de status + **cálculo DISC server-side** (28 questões `q_*_01..07`) + grava respostas/perfil |
-| `validateInviteToken` | pública (token) | valida convite no cadastro |
+| `validateInviteToken` | pública (token) | valida convite no cadastro; DELTA 22: devolve vagas/status/`avulsoDisponivel` |
+| `consumeInviteAvulso` | pública (token, rate-limited) | DELTA 22: pessoa sem e-mail entra pelo link da empresa → cria `app_avaliados` na sessão do grupo, gasta 1 vaga |
 | `consumeInvite` | JWT obrigatório | consome convite: cria aluno (ou admin, se `invite.role='admin'`), entra no grupo, marca usado. **DELTA 21**: aceita `{ token }` ou `{ byEmail: true }` (acha o convite pelo e-mail do caller — só provedor OAuth); convite com `email` é uso único |
 | `generateInviteLink` | JWT + role admin | gera convite (grupo, avulso ou **admin** via `role:'admin'`) |
 | `manageTeamAdmins` | JWT + role admin | lista/revoga/reativa admins do caller (escopo `invitedby`) + `promoteByEmail` (promove conta existente) — DELTA 12 |
@@ -152,6 +153,14 @@ Ao concluir uma avaliação, **duas** mensagens saem via Resend (`_shared/email.
 - Secrets (Supabase → Edge Functions → Secrets): `RESEND_API_KEY`, `EMAIL_FROM` (`Perfil Master <devolutiva@dominio-verificado>` — `onboarding@resend.dev` só entrega ao dono da conta), `APP_URL` (default `https://perfilmaster.netlify.app`).
 - A antiga `send-result-email` (tabelas `test_students`/`tests`, de outro projeto) foi removida.
 
+### Convite empresarial — turma com vagas (DELTA 22, 18/09/2026)
+Empresa pede N avaliações → **Grupos › Novo Grupo › "Turma empresarial"** cria o grupo **e** um convite com `maxuses`, `label` (nome da empresa), contato (`contact_name/email/phone`) e `status` (`ativo|pausado|encerrado`), e abre a aba *Convite* (`?tab=invite`). Convite simples continua existindo (vagas em branco = sem limite).
+- **Vaga = cadastro** (não conclusão). Tomada **atomicamente** pelo RPC `invite_consume_seat(token)` (UPDATE condicional, só `service_role`); `invite_release_seat` devolve se um passo posterior falhar. Cada uso vai para **`app_invite_uses`** (`kind` = `conta`|`avulso`, uid ou `avaliadotoken`, nome/e-mail/telefone) — é a lista "quem entrou" e o contador. Reentrada da mesma conta não gasta vaga (índice único `inviteid+uid`).
+- **Duas portas no `/join/:token`** (`pages/public/JoinConvite.jsx`): *tenho e-mail* → `/register?token=` (fluxo clássico + Google); *não tenho e-mail* → nome + celular → Edge **`consumeInviteAvulso`** (pública, rate-limited 10/5min) cria `app_avaliados` na sessão do grupo (`app_sessoes` com `groupid`, título fixo "Avaliações do grupo" — mesma regra de `ensureSessaoAvulsa`) e manda direto para `/avaliacao/:token`. Convite pessoal (e-mail), avulso sem grupo ou de admin **não** oferece a porta (vai direto ao cadastro).
+- `validateInviteToken` devolve `reason` ∈ `used|expired|paused|closed|full` + `label/maxUses/useCount/vagasRestantes/avulsoDisponivel`; `consumeInvite` responde `409/410` com `code: invite/<motivo>` (helpers em `_shared/invites.ts`).
+- **Aba Convite** (`InviteLink` + `InviteSeats`): contador "12 de 40", barra, quem entrou com situação da avaliação (conta → `assessmentStatus`; avulso → `app_avaliados.status`), botões ±1/±5 vagas (nunca abaixo do usado), sem limite, pausar/reativar, encerrar, contato editável. Polling 30 s com a aba visível. **Regenerar** agora **encerra** o link anterior de verdade (antes só nascia outro). `getActiveInviteForGroup` ignora `encerrado` (pausado continua sendo o convite do grupo).
+- Fases seguintes (planejadas, não feitas): **janela de horário** (todos respondem ao mesmo tempo, trava no wizard + servidor) e **tabela comparativa** pessoa × D/I/S/C/PQ com CSV.
+
 ### Camada de rede (C1, 27/07/2026)
 Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12s banco/auth, 30s Edge) e `fetchComRetry` (só GET, 2 tentativas). Antes disso nenhuma requisição tinha prazo: com o Supabase pausado, `useAuth` pendurava e o app ficava em "Carregando..." eterno.
 
@@ -165,7 +174,8 @@ Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12
 
 ## Pendências conhecidas
 
-- [ ] **DELTA 21 — rodar no SQL Editor**: `supabase/migrations/20260917_delta21_google_login_cpf_pseudonimo.sql` (convite por e-mail + trigger em `auth.users` + Vault + CPF pseudonimizado com backfill). Depois **redeploy** de `consumeInvite` e `convertAvaliado` (esta lê `cpf_mask` — só depois do SQL). Configurar Google em *Auth → Providers* e `/auth/callback` em *Redirect URLs*. Passo a passo em `AUDITORIA-2026-09-17.md` §0.
+- [ ] **DELTA 22 — rodar no SQL Editor**: `supabase/migrations/20260918_delta22_convite_empresarial.sql` (vagas/contato/status em `app_invites`, `app_invite_uses`, RPCs `invite_consume_seat`/`invite_release_seat`). Depois **redeploy** de `consumeInvite`, `validateInviteToken` e a nova `consumeInviteAvulso` + `npm run deploy`. Sem o SQL: a UI de vagas falha ao salvar e o consumo cai no comportamento antigo (sem limite).
+- [x] **DELTA 21 — aplicado 18/09/2026** (SQL Editor + redeploy + Google configurado; convite por e-mail validado em produção). Era: `supabase/migrations/20260917_delta21_google_login_cpf_pseudonimo.sql` (convite por e-mail + trigger em `auth.users` + Vault + CPF pseudonimizado com backfill). Depois **redeploy** de `consumeInvite` e `convertAvaliado` (esta lê `cpf_mask` — só depois do SQL). Configurar Google em *Auth → Providers* e `/auth/callback` em *Redirect URLs*. Passo a passo em `AUDITORIA-2026-09-17.md` §0.
 - [ ] **(Psicometria) Itens invertidos no DISC** — hoje os 28 itens são todos "concordo = mais perfil"; quem concorda com tudo sai com 4 perfis altos. Adicionar 1–2 itens invertidos por dimensão (`6 − valor`) exige mudar `discScoring.js` + `atualizarStatus` + contrato e quebra comparabilidade com perfis antigos — decisão de produto (`AUDITORIA-2026-09-17.md` §4).
 - [ ] **(Modelos) Social Style / OCAI / Personalizado** — veredito em `AUDITORIA-2026-09-17.md` §5: Social Style = derivar do DISC (lente, sem questionário); Personalizado = motor genérico por dimensões (próximo com melhor custo-benefício, só com cliente); OCAI = outro produto (organizacional), adiar.
 

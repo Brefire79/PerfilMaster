@@ -7,7 +7,8 @@ import useAuthStore from '@/store/authStore.js';
 import Button from '@/components/ui/Button.jsx';
 import Card from '@/components/ui/Card.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
-import { createInvite, getActiveInviteForGroup } from '@/firebase/firestore.js';
+import { createInvite, getActiveInviteForGroup, updateInvite } from '@/firebase/firestore.js';
+import InviteSeats from '@/components/group/InviteSeats.jsx';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 const APP_URL = getPublicBaseUrl();
@@ -35,6 +36,9 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
   // O token NÃO fica salvo em app_groups — fica em app_invites. Mantém estado
   // local e recarrega o convite ativo do banco ao abrir a aba.
   const [token, setToken] = useState(inviteToken || null);
+  // DELTA 22: vagas do novo convite (vazio = sem limite) e versão para o painel recarregar
+  const [vagas, setVagas] = useState('');
+  const [seatsKey, setSeatsKey] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   // QR ampliado (tela cheia para leitura) + envio do QR por WhatsApp
@@ -58,8 +62,9 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
     try {
       // adminuid do convite = admin logado — sem isso o aluno cadastrado fica
       // órfão (sem vínculo) e o convite some da listagem do admin (RLS)
-      const newToken = await createInvite(groupId, user?.uid || null, expiry);
+      const newToken = await createInvite(groupId, user?.uid || null, expiry, { maxUses: vagas || null });
       setToken(newToken);
+      setSeatsKey((k) => k + 1);
       onRegenerateToken?.(newToken);
     } catch (err) {
       setGenError(err?.message || 'Erro ao gerar o convite. Tente novamente.');
@@ -77,8 +82,8 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
     const msg = encodeURIComponent(
       `Olá! 👋\n\n` +
       `Você foi convidado(a) para entrar no meu grupo de avaliação comportamental DISC no Perfil Master.\n\n` +
-      `Cadastre-se pelo link abaixo (vários cadastros, expira em ${expiry} dias):\n${inviteUrl}\n\n` +
-      `Depois do cadastro, sua avaliação é liberada no próprio app. 😊`
+      `Entre pelo link abaixo (expira em ${expiry} dias):\n${inviteUrl}\n\n` +
+      `Tem e-mail? Crie sua conta e acompanhe seu perfil no app. Não tem? Informe só nome e celular e responda na hora. 😊`
     );
     // Sem número: o WhatsApp abre e o admin escolhe o contato
     window.open(`https://wa.me/?text=${msg}`, '_blank', 'noopener,noreferrer');
@@ -173,8 +178,12 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
-      const newToken = await createInvite(groupId, user?.uid || null, expiry);
+      // DELTA 22: o link anterior é ENCERRADO de verdade (antes só nascia outro e o
+      // antigo seguia válido, apesar do aviso). best-effort: sem a migration, ignora.
+      if (token) await updateInvite(token, { status: 'encerrado' }).catch(() => {});
+      const newToken = await createInvite(groupId, user?.uid || null, expiry, { maxUses: vagas || null });
       setToken(newToken);
+      setSeatsKey((k) => k + 1);
       onRegenerateToken?.(newToken);
     } catch (err) {
       console.error('Error regenerating invite token:', err);
@@ -195,6 +204,18 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
                 {t('admin.groups.inviteLink', 'Link de Convite')}
               </span>
               <div className="flex items-center gap-2">
+                {/* DELTA 22: vagas do próximo convite gerado (vazio = sem limite) */}
+                <input
+                  type="number"
+                  min={1}
+                  max={5000}
+                  value={vagas}
+                  onChange={(e) => setVagas(e.target.value)}
+                  placeholder="Vagas"
+                  title="Limite de cadastros do próximo convite (vazio = sem limite)"
+                  className="h-8 w-20 px-2 text-xs rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-[#F7F8FC] placeholder:text-[#A0A3B1]/60 focus:border-[#6366F1] outline-none transition-colors"
+                  aria-label="Vagas do convite"
+                />
                 {/* Expiry selector */}
                 <select
                   value={expiry}
@@ -285,6 +306,9 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
             )}
           </div>
         </Card>
+
+        {/* DELTA 22: vagas em tempo real, contato da empresa, quem entrou */}
+        {token && <InviteSeats key={seatsKey} token={token} groupId={groupId} />}
 
         {/* QR Code */}
         {inviteUrl && (

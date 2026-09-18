@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
 import { createPortal } from 'react-dom';
@@ -594,7 +594,11 @@ export default function GroupDetail() {
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('members');
+  // DELTA 22: ?tab=invite abre direto na aba Convite (turma empresarial recém-criada)
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() =>
+    ['members', 'invite', 'settings'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'members'
+  );
   const [selectedMember, setSelectedMember] = useState(null);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
 

@@ -76,6 +76,12 @@ export async function consumeInvite(payload) {
   return callFunction('consumeInvite', payload);
 }
 
+/** DELTA 22: pessoa SEM e-mail entra pelo link do convite da empresa e responde
+ *  pelo celular (cria app_avaliados na sessão do grupo, gasta uma vaga). Pública. */
+export async function consumeInviteAvulso(payload) {
+  return callFunction('consumeInviteAvulso', payload);
+}
+
 export async function generateReport(payload) {
   return callFunction('generateReport', payload);
 }

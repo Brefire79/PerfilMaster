@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { checarRateLimit, CORPO_429 } from '../_shared/rateLimit.ts';
+import { motivoRecusa, temVagas, vagasRestantes } from '../_shared/invites.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -27,11 +28,10 @@ Deno.serve(async (req) => {
       .single();
 
     if (error || !invite) return jsonResponse({ valid: false, reason: 'not_found' }, 404, req);
-    if (invite.used) return jsonResponse({ valid: false, reason: 'used' }, 200, req);
-    // FIX: colunas do banco são lowercase (expiresat/groupid/adminuid), não camelCase
-    if (invite.expiresat && new Date(invite.expiresat).getTime() < Date.now()) {
-      return jsonResponse({ valid: false, reason: 'expired' }, 200, req);
-    }
+    // DELTA 22: used | expired | paused | closed | full — a tela de cadastro
+    // e a /join mostram a mensagem certa antes de a pessoa preencher algo.
+    const recusa = motivoRecusa(invite);
+    if (recusa) return jsonResponse({ valid: false, reason: recusa, label: invite.label || null }, 200, req);
 
     const { data: group } = invite.groupid
       ? await supabase
@@ -49,6 +49,13 @@ Deno.serve(async (req) => {
       groupName: group?.name || null,
       adminName: group?.adminname || null,
       expiresAt: invite.expiresat || null,
+      // DELTA 22 — convite empresarial (vagas). `avulsoDisponivel`: a pessoa
+      // sem e-mail pode responder pelo celular (consumeInviteAvulso).
+      label: invite.label || null,
+      maxUses: invite.maxuses ?? null,
+      useCount: invite.usecount ?? 0,
+      vagasRestantes: vagasRestantes(invite),
+      avulsoDisponivel: temVagas(invite),
     }, 200, req);
   } catch (err) {
     // A4: `reason` ia direto para a tela de cadastro com o texto interno do erro.
