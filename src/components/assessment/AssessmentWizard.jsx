@@ -699,7 +699,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           {t('wizard.completed.title', 'Avaliação enviada com sucesso!')}
         </h2>
         <p className="text-sm text-[#A0A3B1]">
-          {t('wizard.completed.subtitle', 'Seus resultados serão processados em breve.')}
+          {t('wizard.completed.subtitle', 'Seu perfil já está em "Meu Perfil". Um resumo da devolutiva também vai para o seu e-mail em alguns instantes.')}
         </p>
       </div>
     );

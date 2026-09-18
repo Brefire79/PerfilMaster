@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { logAuditEvent } from '../_shared/audit.ts';
 import { checarRateLimit, CORPO_429 } from '../_shared/rateLimit.ts';
+import { appUrl } from '../_shared/email.ts';
+import { notificarConclusao } from '../_shared/devolutiva.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -290,7 +292,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    return jsonResponse({ success: true, ...(perfil ? { perfil } : {}) }, 200, req);
+    // Devolutiva por e-mail: avaliado (se cadastrou e-mail) + facilitador.
+    // Best-effort — respostas e perfil já estão gravados.
+    let devolutiva = { avaliado: false, facilitador: false };
+    if (novoStatus === 'concluido' && perfil) {
+      const p = perfil as Record<string, unknown>;
+      try {
+        devolutiva = await notificarConclusao({
+          nome: avaliado.nome || 'Participante',
+          email: avaliado.email || null,
+          scores: {
+            D: Number(p.dominante) || 0, I: Number(p.influente) || 0,
+            S: Number(p.estavel) || 0, C: Number(p.analitico) || 0,
+          },
+          dominante: (p.perfilPrimario as 'D' | 'I' | 'S' | 'C') || 'D',
+          secundario: (p.perfilSecundario as 'D' | 'I' | 'S' | 'C' | undefined) ?? null,
+          pqScore: typeof p.pqScore === 'number' ? p.pqScore : null,
+          linkPerfil: `${appUrl()}/resultado/${encodeURIComponent(token)}`,
+          linkPainel: `${appUrl()}/admin/relatorio/${encodeURIComponent(token)}`,
+          adminUid: avaliado.adminuid || null,
+        });
+      } catch (e) {
+        console.error('[atualizarStatus] devolutiva por e-mail falhou:', e);
+      }
+    }
+
+    return jsonResponse({ success: true, ...(perfil ? { perfil, devolutiva } : {}) }, 200, req);
   } catch (err) {
     // A4: idem buscarPorToken — não vazar mensagem interna para anônimo.
     console.error('[atualizarStatus] erro inesperado:', err);

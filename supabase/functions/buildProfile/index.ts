@@ -2,6 +2,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { callAnthropic } from '../_shared/anthropic.ts';
 import { handleCors, jsonResponse } from '../_shared/response.ts';
 import { getAuthenticatedUser, canAccessAssessment } from '../_shared/auth.ts';
+import { appUrl } from '../_shared/email.ts';
+import { inferirPerfis, notificarConclusao } from '../_shared/devolutiva.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') || '',
@@ -89,6 +91,54 @@ Retorne SOMENTE o seguinte JSON:
 }`;
 }
 
+/**
+ * Devolutiva por e-mail (avaliado + facilitador). Descobre o facilitador pelo
+ * admin do grupo, senão `app_users.adminuid` (aluno avulso). Nunca lança — o
+ * perfil já está gravado quando isto roda, e-mail é best-effort.
+ */
+async function enviarDevolutiva(
+  user: any,
+  assessment: any,
+  scores: Record<string, number>,
+  dominant: string | null,
+  secondary: string | null,
+  pqScore: number | null | undefined,
+  profileData: any,
+) {
+  try {
+    if (!user?.uid) return { avaliado: false, facilitador: false };
+    const disc = { D: Number(scores?.D) || 0, I: Number(scores?.I) || 0, S: Number(scores?.S) || 0, C: Number(scores?.C) || 0 };
+    const inferido = inferirPerfis(disc);
+    const valido = (v: string | null) => !!v && ['D', 'I', 'S', 'C'].includes(v);
+    const dominante = (valido(dominant) ? dominant : inferido.dominante) as 'D' | 'I' | 'S' | 'C';
+    const secundario = (valido(secondary) ? secondary : inferido.secundario) as 'D' | 'I' | 'S' | 'C' | null;
+
+    let adminUid: string | null = user.adminuid || null;
+    const groupId = user.groupid || assessment?.groupid || null;
+    if (groupId) {
+      const { data: grupo } = await supabase.from('app_groups').select('adminuid').eq('id', groupId).maybeSingle();
+      if (grupo?.adminuid) adminUid = grupo.adminuid;
+    }
+
+    return await notificarConclusao({
+      nome: user.displayname || user.email || 'Participante',
+      email: user.email || null,
+      scores: disc,
+      dominante,
+      secundario,
+      pqScore: typeof pqScore === 'number' ? pqScore : null,
+      resumo: typeof profileData?.summary === 'string' ? profileData.summary : null,
+      forcas: Array.isArray(profileData?.strengths) ? profileData.strengths : null,
+      linkPerfil: `${appUrl()}/student/profile`,
+      linkPainel: `${appUrl()}/admin/relatorio/aluno/${encodeURIComponent(user.uid)}`,
+      adminUid,
+    });
+  } catch (e) {
+    console.error('[buildProfile] devolutiva por e-mail falhou:', e);
+    return { avaliado: false, facilitador: false };
+  }
+}
+
 Deno.serve(async (req) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -128,17 +178,29 @@ Deno.serve(async (req) => {
     // A IA enriquece texto, NÃO recalcula scores. Lê o profile existente p/ preservar.
     const { data: existingProfile } = await supabase
       .from('app_profiles')
-      .select('scores, dominantprofile, secondaryprofile')
+      .select('scores, dominantprofile, secondaryprofile, pq_score')
       .eq('uid', uid)
       .single();
     const scoresValidos = (s) => s && ['D','I','S','C'].some((k) => Number(s[k]) > 0);
     const existingScores = existingProfile?.scores;
 
-    const profileData = await callAnthropic(
-      buildSystemPrompt(language),
-      buildUserMessage(assessment, user || {}),
-      6000
-    );
+    let profileData: any;
+    try {
+      profileData = await callAnthropic(
+        buildSystemPrompt(language),
+        buildUserMessage(assessment, user || {}),
+        6000
+      );
+    } catch (aiErr) {
+      // A IA caiu, mas o perfil DISC/PQ do wizard já está em app_profiles:
+      // a devolutiva sai mesmo assim (sem o resumo), e o erro segue ao cliente.
+      console.error('[buildProfile] IA falhou — enviando devolutiva sem resumo:', aiErr);
+      await enviarDevolutiva(
+        user, assessment, existingScores || {}, existingProfile?.dominantprofile || null,
+        existingProfile?.secondaryprofile || null, existingProfile?.pq_score, null,
+      );
+      throw aiErr;
+    }
 
     if (profileData?.scores) {
       for (const key of ['D', 'I', 'S', 'C']) {
@@ -193,7 +255,11 @@ Deno.serve(async (req) => {
       .update({ profilebuilt: true, profilebuiltat: now })
       .eq('id', assessmentId);
 
-    return jsonResponse({ profile: profileData }, 200, req);
+    const devolutiva = await enviarDevolutiva(
+      user, assessment, finalScores, finalDominant, finalSecondary, existingProfile?.pq_score, profileData,
+    );
+
+    return jsonResponse({ profile: profileData, devolutiva }, 200, req);
   } catch (err) {
     return jsonResponse({ error: (err as Error).message || 'buildProfile failed' }, 500, req);
   }
