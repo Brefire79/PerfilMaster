@@ -179,16 +179,18 @@ function ScoreBars({ scores }) {
 
 // ─── Strengths & Challenges ───────────────────────────────────────────────────
 
-function StrengthsAndChallenges({ type }) {
+// Aceita listas personalizadas (da análise de IA do perfil); sem elas cai no
+// texto genérico do tipo DISC.
+function StrengthsAndChallenges({ type, strengths: proprias = null, challenges: propriosDesafios = null }) {
   const { t } = useTranslation();
 
   const strengthsKey = `profiles.${type}.strengths`;
   const challengesKey = `profiles.${type}.challenges`;
-  const strengths = t(strengthsKey, { returnObjects: true }) ?? [];
-  const challenges = t(challengesKey, { returnObjects: true }) ?? [];
+  const strengths = proprias?.length ? proprias : (t(strengthsKey, { returnObjects: true }) ?? []);
+  const challenges = propriosDesafios?.length ? propriosDesafios : (t(challengesKey, { returnObjects: true }) ?? []);
 
-  const displayStrengths = Array.isArray(strengths) ? strengths.slice(0, 4) : [];
-  const displayChallenges = Array.isArray(challenges) ? challenges.slice(0, 4) : [];
+  const displayStrengths = Array.isArray(strengths) ? strengths.slice(0, 5) : [];
+  const displayChallenges = Array.isArray(challenges) ? challenges.slice(0, 5) : [];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -379,29 +381,98 @@ function CommunicationCard({ type }) {
   );
 }
 
+// ─── Análise personalizada (texto da IA gravado em app_profiles) ─────────────
+
+function texto(v) {
+  // communicationtips é jsonb: pode vir string ou lista de dicas
+  if (Array.isArray(v)) v = v.filter((x) => typeof x === 'string').join('\n');
+  return typeof v === 'string' && v.trim() ? v.trim() : null;
+}
+
+function lista(v) {
+  return Array.isArray(v) ? v.filter((x) => typeof x === 'string' && x.trim()) : [];
+}
+
+// Bloco de texto da análise (funções ideais, estilo de trabalho, comunicação…)
+function TextoCard({ titulo, corpo, cor = '#6366F1' }) {
+  if (!corpo) return null;
+  return (
+    <Card variant="default">
+      <CardTitle className="mb-2" style={{ color: cor }}>{titulo}</CardTitle>
+      <p className="text-sm text-[#A0A3B1] leading-relaxed whitespace-pre-line">{corpo}</p>
+    </Card>
+  );
+}
+
+function ListaCard({ titulo, itens, cor = '#6366F1' }) {
+  if (!itens?.length) return null;
+  return (
+    <Card variant="default">
+      <CardTitle className="mb-3">{titulo}</CardTitle>
+      <ul className="space-y-2">
+        {itens.map((s, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm text-[#A0A3B1]">
+            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: cor }} />
+            {s}
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 // ─── Profile Tab ──────────────────────────────────────────────────────────────
 
 function ProfileTab({ profile }) {
   const { t } = useTranslation();
   const rawType = profile?.dominantProfile ?? profile?.primaryType ?? null;
   const type = (rawType && ['D','I','S','C'].includes(rawType)) ? rawType : 'D';
+  const secundario = ['D','I','S','C'].includes(profile?.secondaryProfile) && profile.secondaryProfile !== type
+    ? profile.secondaryProfile : null;
 
-  const summary = profile?.aiSummary ?? t(
+  // `summary` já vem achatado por getProfile (texto da IA ou null). `aiSummary`
+  // é o JSON cru — nunca vai direto ao JSX (era o React error #31).
+  const ai = profile?.aiSummary && typeof profile.aiSummary === 'object' ? profile.aiSummary : {};
+  const summary = texto(profile?.summary) || texto(profile?.aiSummary) || texto(ai.summary) || t(
     `profiles.${type}.description`,
     'Perfil comportamental identificado com base na sua avaliação DISC.'
   );
+  const personalizado = !!(texto(profile?.summary) || texto(ai.summary));
+  const pq = Number.isFinite(Number(profile?.pqScore)) ? Math.round(Number(profile.pqScore)) : null;
 
   return (
     <div className="space-y-4 py-4">
       {/* AI Summary */}
       <Card variant="default">
-        <CardTitle className="mb-3">
-          {t('report.summary', 'Resumo')}
-        </CardTitle>
-        <p className="text-sm text-[#A0A3B1] leading-relaxed">
+        <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+          <CardTitle>{t('report.summary', 'Resumo')}</CardTitle>
+          {secundario && (
+            <span className="text-xs text-[#A0A3B1]">
+              Perfil secundário: <strong className="text-[#F7F8FC]">{t(`profiles.${secundario}.name`, secundario)}</strong>
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-[#A0A3B1] leading-relaxed whitespace-pre-line">
           {summary}
         </p>
+        {!personalizado && (
+          <p className="mt-3 text-xs text-[#6B7280]">
+            A análise personalizada aparece aqui assim que for gerada — costuma levar menos de um minuto após concluir a avaliação.
+          </p>
+        )}
       </Card>
+
+      {pq != null && (
+        <Card variant="default">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <CardTitle>PQ Score</CardTitle>
+              <CardDescription>Inteligência Positiva — quanto maior, menos os sabotadores pesam nas suas decisões.</CardDescription>
+            </div>
+            <span className="text-3xl font-heading font-bold text-[#F7F8FC] tabular-nums">{pq}<span className="text-sm text-[#A0A3B1]">/100</span></span>
+          </div>
+        </Card>
+      )}
 
       {/* Score bars */}
       {profile?.scores && (
@@ -411,8 +482,18 @@ function ProfileTab({ profile }) {
         </Card>
       )}
 
-      {/* Strengths & Challenges */}
-      <StrengthsAndChallenges type={type} />
+      {/* Strengths & Challenges — personalizados quando a IA já gerou */}
+      <StrengthsAndChallenges type={type} strengths={lista(profile?.strengths)} challenges={lista(profile?.challenges)} />
+
+      {/* Análise personalizada (só o que existe no perfil) */}
+      <ListaCard titulo="O que te motiva" itens={lista(profile?.motivators)} cor="#22C55E" />
+      <ListaCard titulo="O que te desgasta" itens={lista(profile?.stressors)} cor="#EF4444" />
+      <TextoCard titulo="Em equipe" corpo={texto(profile?.teamBehavior)} />
+      <TextoCard titulo="Como você lida com conflitos" corpo={texto(profile?.conflictStyle)} />
+      <TextoCard titulo="Seu estilo de liderança" corpo={texto(profile?.leadershipStyle)} />
+      <ListaCard titulo="Sabotadores em ação" itens={lista(profile?.saboteurPatterns)} cor="#F59E0B" />
+      <ListaCard titulo="Áreas de desenvolvimento" itens={lista(profile?.developmentAreas)} cor="#6366F1" />
+      <TextoCard titulo="Caminho de evolução" corpo={texto(profile?.evolutionNotes)} cor="#22C55E" />
 
       {/* Radar chart placeholder */}
       {profile?.scores && (
@@ -424,14 +505,20 @@ function ProfileTab({ profile }) {
         </Card>
       )}
 
-      {/* Role recommendations */}
-      <RoleRecommendationsCard type={type} />
+      {/* Role recommendations — texto da IA quando existe, senão as tags genéricas */}
+      {texto(profile?.roleRecommendation)
+        ? <TextoCard titulo={t('profiles.idealRoles', 'Funções Ideais')} corpo={texto(profile.roleRecommendation)} />
+        : <RoleRecommendationsCard type={type} />}
 
       {/* Work style */}
-      <WorkStyleCard type={type} />
+      {texto(profile?.workStyleRecommendation)
+        ? <TextoCard titulo="Seu estilo de trabalho" corpo={texto(profile.workStyleRecommendation)} />
+        : <WorkStyleCard type={type} />}
 
       {/* Communication tips */}
-      <CommunicationCard type={type} />
+      {texto(profile?.communicationTips)
+        ? <TextoCard titulo={t('profile.comm.title', 'Dicas de Comunicação')} corpo={texto(profile.communicationTips)} />
+        : <CommunicationCard type={type} />}
     </div>
   );
 }

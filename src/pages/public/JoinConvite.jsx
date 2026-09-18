@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '@/components/ui/Button.jsx';
 import Input from '@/components/ui/Input.jsx';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
-import { validateInviteToken, consumeInviteAvulso } from '@/firebase/functions.js';
+import { validateInviteToken, consumeInviteAvulso, consumeInvite } from '@/firebase/functions.js';
+import useAuthStore from '@/store/authStore.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
 import { reportClientError } from '@/lib/clientErrors.js';
 
@@ -53,7 +54,11 @@ function Aviso({ titulo, texto }) {
 export default function JoinConvite() {
   const { token } = useParams();
   const navigate = useNavigate();
-  const [estado, setEstado] = useState({ tela: 'carregando' }); // carregando | invalido | escolha | avulso
+  // Quem já tem conta (ex.: fez uma avaliação antes) entra na turma com ela —
+  // /register recusaria a sessão ativa e a pessoa cairia no painel sem vínculo.
+  const { user, role, initialized } = useAuthStore();
+  const logado = initialized && !!user;
+  const [estado, setEstado] = useState({ tela: 'carregando' }); // carregando | invalido | escolha | avulso | entrando
   const [convite, setConvite] = useState(null);
   const [form, setForm] = useState({ nome: '', telefone: '' });
   const [erros, setErros] = useState({});
@@ -103,6 +108,23 @@ export default function JoinConvite() {
     if (digitos.length < 10 || digitos.length > 13) e.telefone = 'Informe um celular válido com DDD.';
     setErros(e);
     return Object.keys(e).length === 0;
+  };
+
+  const entrarComConta = async () => {
+    if (enviando) return;
+    setEnviando(true);
+    setErroServidor('');
+    try {
+      await consumeInvite({ token, userData: { displayName: user?.displayName, email: user?.email } });
+      navigate('/student/dashboard', { replace: true });
+    } catch (err) {
+      reportClientError(err, { source: 'join/conta' });
+      const code = err?.code || '';
+      const motivo = code.startsWith('invite/') ? code.slice(7) : null;
+      setErroServidor(isBackendDown(err) ? mensagemDeRede(err) : (MENSAGENS[motivo] || err?.message || 'Não foi possível entrar na turma.'));
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const entrarSemEmail = async () => {
@@ -160,16 +182,38 @@ export default function JoinConvite() {
 
         {estado.tela === 'escolha' && (
           <div className="space-y-3">
-            <button
-              type="button"
-              onClick={() => navigate(`/register?token=${encodeURIComponent(token)}`)}
-              className="w-full text-left bg-[#1A1D2E] border border-[#2D3047] hover:border-[#6366F1] rounded-2xl p-5 transition-colors"
-            >
-              <p className="text-base font-semibold text-[#F7F8FC]">Tenho e-mail — criar minha conta</p>
-              <p className="text-sm text-[#A0A3B1] mt-1">
-                Com conta você acompanha seu perfil no app e pode entrar com Google. Recomendado.
+            {logado && role === 'admin' && (
+              <p className="text-sm text-[#F59E0B] bg-[#F59E0B]/10 border border-[#F59E0B]/30 rounded-xl px-3 py-2">
+                Você está logado como facilitador. Para testar como participante, abra o link numa aba anônima ou em outro aparelho.
               </p>
-            </button>
+            )}
+            {logado && role !== 'admin' ? (
+              <button
+                type="button"
+                disabled={enviando}
+                onClick={entrarComConta}
+                className="w-full text-left bg-[#1A1D2E] border border-[#6366F1] rounded-2xl p-5 transition-colors disabled:opacity-60"
+              >
+                <p className="text-base font-semibold text-[#F7F8FC]">Entrar nesta turma com minha conta</p>
+                <p className="text-sm text-[#A0A3B1] mt-1">
+                  Você já está logado como {user?.email || user?.displayName}. Sua conta passa a fazer parte desta turma.
+                </p>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => navigate(`/register?token=${encodeURIComponent(token)}`)}
+                className="w-full text-left bg-[#1A1D2E] border border-[#2D3047] hover:border-[#6366F1] rounded-2xl p-5 transition-colors"
+              >
+                <p className="text-base font-semibold text-[#F7F8FC]">Tenho e-mail — criar minha conta</p>
+                <p className="text-sm text-[#A0A3B1] mt-1">
+                  Com conta você acompanha seu perfil no app e pode entrar com Google. Recomendado.
+                </p>
+              </button>
+            )}
+            {erroServidor && (
+              <p className="text-sm text-[#EF4444] bg-[#EF4444]/10 border border-[#EF4444]/30 rounded-xl px-3 py-2">{erroServidor}</p>
+            )}
             <button
               type="button"
               onClick={() => setEstado({ tela: 'avulso' })}

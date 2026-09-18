@@ -639,16 +639,23 @@ export async function createProfile(uid, data) {
 /** Merge aiSummary JSON fields into the top-level profile object for easier consumption */
 function flattenProfile(row) {
   if (!row) return row;
-  const ai = row.aiSummary || {};
+  const ai = row.aiSummary && typeof row.aiSummary === 'object' ? row.aiSummary : {};
+  // O wizard grava summary:'' e strengths:[] antes de a IA rodar; o texto rico
+  // fica em aisummary (jsonb). Por isso "vazio" cede a vez ao aisummary — com
+  // `??` o '' e o [] venciam e a tela ficava sem a análise (e o objeto
+  // aisummary cru chegava ao JSX: React error #31 em Meu Perfil).
+  const texto = (a, b) => (typeof a === 'string' && a.trim() ? a : (typeof b === 'string' ? b : null));
+  const lista = (a, b) => (Array.isArray(a) && a.length ? a : (Array.isArray(b) ? b : []));
   return {
     ...row,
-    summary: row.summary ?? ai.summary,
-    strengths: row.strengths ?? ai.strengths ?? [],
-    challenges: row.challenges ?? ai.challenges ?? [],
-    motivators: row.motivators ?? ai.motivators ?? [],
-    stressors: row.stressors ?? ai.stressors ?? [],
+    summary: texto(row.summary, ai.summary),
+    strengths: lista(row.strengths, ai.strengths),
+    challenges: lista(row.challenges, ai.challenges),
+    motivators: lista(row.motivators, ai.motivators),
+    stressors: lista(row.stressors, ai.stressors),
     scores: row.scores ?? ai.scores ?? {},
     adminStrategy: row.adminStrategy ?? ai.adminStrategy ?? null,
+    roleRecommendation: texto(row.roleRecommendation, ai.roleRecommendation),
   };
 }
 
