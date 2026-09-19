@@ -29,7 +29,7 @@ supabase functions deploy nome-da-function --project-ref <ref>
 **Contratos automatizados** (não é suíte de testes de unidade — são *contratos* que travam invariantes):
 
 ```bash
-npm test    # scoring + security + testes-dirigidos + mestre (4 contratos)
+npm test    # scoring + security + testes-dirigidos + mestre + social-style (5 contratos)
 npm run check   # test + build — é o gate antes de qualquer deploy
 ```
 
@@ -96,6 +96,8 @@ CPF opcional (com consentimento LGPD) liga avaliações esporádicas ↔ contas 
 | `generateRecoveryLink` | JWT + role admin | Caminho B: gera link de reset de senha (`auth.admin.generateLink` type=recovery) de um aluno do caller p/ enviar por WhatsApp — sem SMTP. Aponta p/ `/reset-password` |
 | `cicloPorToken` | pública (token, rate-limited 60/5min) | DELTA 26: dados de um Teste Dirigido pelo link `/teste/:token` (1º nome, itens sem o flag `invertido`, resultado só se concluído) |
 | `cicloResponder` | pública (token, rate-limited 20/5min) | DELTA 26: envio do Teste Dirigido — sanitiza (só ids do teste, 1..5, completo), **pontua no servidor** com `_shared/testesDirigidos.ts` (GERADO do JS), grava `app_ciclos`; 409 se já concluído |
+| `enviarLembretesCiclos` | `CRON_TOKEN` (cron) ou JWT admin | Fase 4: lembrete por e-mail de Teste Dirigido aguardando (prazo ≤ 7 d ou vencido), `lembrete_em` evita repetição |
+| `mestreAprofundar` | JWT + role admin | Fase 4: aprofundamento opcional do Mestre com IA sobre dados agregados anonimizados no servidor |
 | `assistenteCentral` | JWT + role admin | Central (DELTA 16): Assistente IA — camada semântica fixa, anonimização, cache + rate limit. **Obsoleta desde jul/2026**: o chat "Mestre" virou motor local (`src/lib/mestreLocal.js`) e não a chama mais |
 
 Padrões: `handleCors(req)` no início, erros via `jsonResponse({ error }, status, req)`, CORS com allowlist em `_shared/response.ts` (adicione novos domínios lá), helpers de autorização em `_shared/auth.ts`.
@@ -190,6 +192,12 @@ Antes, refazer a avaliação **sobrescrevia** `app_profiles` (upsert por `uid`).
   - Linha do Tempo (Central) mostra os testes como eventos; Trilha de Auditoria rotula os `cycle_*`.
   - **Requer deploy** de `cicloPorToken` e `cicloResponder` + `npm run deploy`.
 
+### Fase 4 (19/09/2026) — Social Style, lembretes, Mestre com IA
+- **Social Style** = lente derivada do DISC, sem questionário (`src/lib/socialStyle.js`, puro; contrato `verify-social-style-contract.mjs`): assertividade = (D+I)−(S+C), responsividade = (I+S)−(D+C), ambos −100..+100 → Condutor/Expressivo/Amigável/Analítico; |eixo| ≤ 10 = zona central (avisa "tende a X", não força rótulo). Versatilidade **não** é derivada. UI: `components/profile/SocialStyleCard.jsx` — § 2.1 do Relatório Oficial e card no Meu Perfil › Perfil.
+- **Lembrete de Teste Dirigido por e-mail** — Edge `enviarLembretesCiclos`: cron (header `x-cron-token` = secret **`CRON_TOKEN`** do Supabase → todos os facilitadores) **ou** JWT admin (`{ groupId?, simular? }` → só os dele). Regra: ciclo `aplicado` com `prazo_em` em até 7 dias ou vencido há até 30, pessoa com e-mail, sem lembrete há 7 dias (`app_ciclos.lembrete_em`, DELTA 28 aplicado). Resend best-effort; resumo ao facilitador. Workflow `.github/workflows/lembretes.yml` (segundas 12:00 UTC) — precisa dos secrets `SUPABASE_ANON_KEY` + `CRON_TOKEN` no GitHub. Botão "Lembrar por e-mail" no card *Próximo foco da turma*.
+- **Mestre › "Aprofundar com IA"** (opcional, por mensagem com dados) — Edge `mestreAprofundar` (JWT admin, rate limit 30/h em `app_central_ai`): recebe pergunta + `dados` já calculados localmente, **anonimiza no servidor** (`PII_KEYS` + listas nominais viram contagens + nome do grupo vira "a turma"), DeepSeek redige interpretação e 2–4 ações; a narrativa local (com nomes) **não** é enviada. Substitui `assistenteCentral` (obsoleta, pode ser removida). O chat continua local por padrão.
+- `_shared/devolutiva.ts` exporta `layout`/`botao`/`esc` para outros e-mails.
+
 ### Camada de rede (C1, 27/07/2026)
 Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12s banco/auth, 30s Edge) e `fetchComRetry` (só GET, 2 tentativas). Antes disso nenhuma requisição tinha prazo: com o Supabase pausado, `useAuth` pendurava e o app ficava em "Carregando..." eterno.
 
@@ -203,6 +211,7 @@ Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12
 
 ## Pendências conhecidas
 
+- [ ] **Fase 4 — deploy**: Edge `enviarLembretesCiclos` + `mestreAprofundar`; secret `CRON_TOKEN` no Supabase (Edge Functions → Secrets) **e** no GitHub (Actions) com o mesmo valor; `npm run deploy`. Sem `RESEND_API_KEY` os lembretes só contam.
 - [ ] **Mestre v2 — redeploy de `logAudit`** (allowlist com `mestre_miss`); sem isso o miss-log fica só no `localStorage` (o chat funciona normalmente).
 - [x] **DELTA 26 + 27 — banco aplicado 19/09/2026** (via conector: `delta26_ciclos_testes_dirigidos`, `delta27_fix_bypass_security_definer`, `delta27b_fix_protect_admin_deletion`). Falta **deploy** das Edge novas `cicloPorToken` e `cicloResponder` (canal link não funciona sem elas) + `npm run deploy`. Canais conta e turma verificados em dev com dados reais.
 - [x] **DELTA 25 — banco aplicado 19/09/2026** (via conector, migrations `delta25_historico_perfis` + `delta25_historico_perfis_grants`): `supabase/migrations/20260919_delta25_historico_perfis.sql`. 14 perfis em `ciclo=1`, histórico vazio até a primeira reavaliação; `authenticated` só com SELECT. Falta `npm run deploy` (front com `getProfileHistory`). Próximo passo da Fase 1: Linha do Tempo em Pessoas & Histórico consumindo `getProfileHistory`.

@@ -11,6 +11,7 @@ import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge, { ProfileBadge } from '@/components/ui/Badge.jsx';
 import RadarChart from '@/components/ui/RadarChart.jsx';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
+import SocialStyleCard from '@/components/profile/SocialStyleCard.jsx';
 
 // ─── Profile colors ───────────────────────────────────────────────────────────
 
@@ -461,6 +462,9 @@ function ProfileTab({ profile }) {
           </p>
         )}
       </Card>
+
+      {/* Fase 4: Social Style como lente do DISC */}
+      {profile?.scores && <SocialStyleCard perfil={profile} estilo="app" />}
 
       {pq != null && (
         <Card variant="default">

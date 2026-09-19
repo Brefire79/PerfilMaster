@@ -4,6 +4,7 @@ import Button from '@/components/ui/Button.jsx';
 import { sugerirAbordagem, sugerirAbordagemTurma } from '@/lib/abordagem.js';
 import { TESTES_DIRIGIDOS, getTesteDirigido } from '@/constants/testesDirigidos.js';
 import { criarCiclo, getCiclosByAdmin } from '@/firebase/firestore.js';
+import { enviarLembretesCiclos } from '@/firebase/functions.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 // Canal TURMA (DELTA 26) — Grupos › Comparativo. Agrega as sugestões
@@ -19,6 +20,18 @@ export default function AbordagemTurma({ linhas, groupId, groupName, adminUid })
   const [resumo, setResumo] = useState(null);
   const [erro, setErro] = useState('');
   const [copiado, setCopiado] = useState(null);
+  const [lembrete, setLembrete] = useState({ enviando: false, msg: '' });
+
+  // Fase 4: lembrete por e-mail a quem tem teste desta turma aguardando (prazo em 7 dias ou vencido).
+  const lembrar = async () => {
+    setLembrete({ enviando: true, msg: '' });
+    try {
+      const r = await enviarLembretesCiclos({ groupId });
+      setLembrete({ enviando: false, msg: r?.enviados ? `${r.enviados} lembrete${r.enviados === 1 ? '' : 's'} enviado${r.enviados === 1 ? '' : 's'}${r.semEmail ? ` · ${r.semEmail} sem e-mail (use o link)` : ''}.` : `Ninguém elegível agora${r?.semEmail ? ` (${r.semEmail} sem e-mail)` : ''} — só entram testes com prazo em até 7 dias ou vencidos, sem lembrete recente.` });
+    } catch (e) {
+      setLembrete({ enviando: false, msg: e?.message || 'Não foi possível enviar.' });
+    }
+  };
 
   const recarregar = async () => {
     if (!adminUid || !groupId) return;
@@ -102,9 +115,17 @@ export default function AbordagemTurma({ linhas, groupId, groupName, adminUid })
           </CardDescription>
         </div>
         {ciclos.length > 0 && (
-          <p className="text-xs text-[#A0A3B1]">
-            {aguardando.length} aguardando · {concluidos.length} concluído{concluidos.length === 1 ? '' : 's'}
-          </p>
+          <div className="text-right">
+            <p className="text-xs text-[#A0A3B1]">
+              {aguardando.length} aguardando · {concluidos.length} concluído{concluidos.length === 1 ? '' : 's'}
+            </p>
+            {aguardando.length > 0 && (
+              <button type="button" onClick={lembrar} disabled={lembrete.enviando} className="mt-1 text-xs text-[#6366F1] hover:underline disabled:opacity-60">
+                {lembrete.enviando ? 'Enviando…' : 'Lembrar por e-mail'}
+              </button>
+            )}
+            {lembrete.msg && <p className="text-[11px] text-[#6B6F80] mt-0.5 max-w-[220px]">{lembrete.msg}</p>}
+          </div>
         )}
       </div>
 

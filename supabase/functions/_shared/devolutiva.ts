@@ -41,7 +41,7 @@ const PERFIS: Record<Disc, { nome: string; cor: string; tagline: string }> = {
   C: { nome: 'Analítico',  cor: '#3B82F6', tagline: 'Preciso, criterioso e orientado à qualidade.' },
 };
 
-function esc(v: unknown): string {
+export function esc(v: unknown): string {
   return String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -110,7 +110,7 @@ function blocoResumo(d: DadosDevolutiva): string {
   return `<div style="background:#F9FAFB;border-left:4px solid #6366F1;border-radius:10px;padding:16px 18px;margin:0 0 24px;">${paras}${forcas}</div>`;
 }
 
-function layout(titulo: string, corpo: string, rodape: string): string {
+export function layout(titulo: string, corpo: string, rodape: string): string {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(titulo)}</title></head>
 <body style="margin:0;padding:0;background:#F3F4F6;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#F3F4F6;"><tr><td align="center" style="padding:32px 12px;">
@@ -126,7 +126,7 @@ function layout(titulo: string, corpo: string, rodape: string): string {
 </body></html>`;
 }
 
-function botao(href: string, label: string): string {
+export function botao(href: string, label: string): string {
   return `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:4px 0 8px;"><tr><td style="background:#6366F1;border-radius:10px;">
     <a href="${esc(href)}" style="display:inline-block;padding:12px 22px;font:700 14px/1 Inter,Arial,sans-serif;color:#FFFFFF;text-decoration:none;">${esc(label)}</a>
   </td></tr></table>`;

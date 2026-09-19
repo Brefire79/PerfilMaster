@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import useAuthStore from '@/store/authStore.js';
 import useMestreStore from '@/store/mestreStore.js';
 import { responderMestre, registrarErroMestre } from '@/lib/mestreLocal.js';
-import { logAudit } from '@/firebase/functions.js';
+import { logAudit, mestreAprofundar } from '@/firebase/functions.js';
 import { getUser } from '@/firebase/firestore.js';
 import usePwaUpdate from '@/hooks/usePwaUpdate.js';
 import { playBeep, showOsNotification } from '@/lib/notify.js';
@@ -230,6 +230,22 @@ export default function MestreChatFlutuante() {
     }
   };
 
+  // Fase 4: aprofundamento opcional com IA. Manda só a pergunta + os dados
+  // agregados (o servidor anonimiza; a narrativa local com nomes NÃO vai).
+  const [aprofundando, setAprofundando] = useState(null);
+  const aprofundar = async (msg) => {
+    if (!msg?.dados || !msg?.queryUsada || aprofundando) return;
+    setAprofundando(msg.id || msg.pergunta);
+    try {
+      const r = await mestreAprofundar({ pergunta: msg.pergunta, consulta: msg.queryUsada, dados: msg.dados });
+      addMensagem({ autor: 'ia', texto: r?.narrativa || 'Sem aprofundamento.', modo: 'ia', pergunta: msg.pergunta, queryUsada: msg.queryUsada, dados: null });
+    } catch (e) {
+      addMensagem({ autor: 'ia', texto: e?.message || 'Não foi possível aprofundar agora.', modo: 'conversa', pergunta: msg.pergunta });
+    } finally {
+      setAprofundando(null);
+    }
+  };
+
   const baixarPdf = async (msg) => {
     // Import dinâmico: o jsPDF só baixa quando o facilitador exporta.
     const { gerarPdfCentral } = await import('@/lib/centralPdf.js');
@@ -293,9 +309,15 @@ export default function MestreChatFlutuante() {
         {mensagens.map((msg, i) => (
           <div key={i} className={`mfc-msg mfc-msg--${msg.autor}`}>
             <div className="mfc-bubble">
-              {msg.autor === 'ia' && <span className="mfc-bubble__who">Mestre</span>}
+              {msg.autor === 'ia' && <span className="mfc-bubble__who">{msg.modo === 'ia' ? 'Mestre · aprofundado com IA' : 'Mestre'}</span>}
               <p className="mfc-bubble__txt">{msg.texto}</p>
               {msg.autor === 'ia' && msg.modo === 'dado' && <DadosBlock d={msg.dados} />}
+              {msg.autor === 'ia' && msg.modo === 'dado' && (
+                <button type="button" onClick={() => aprofundar(msg)} disabled={!!aprofundando} className="mfc-export" title="Envia só números agregados e anonimizados à IA (DeepSeek), nunca nomes">
+                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8z" /></svg>
+                  {aprofundando ? 'Aprofundando…' : 'Aprofundar com IA'}
+                </button>
+              )}
               {msg.autor === 'ia' && msg.modo === 'dado' && (
                 <button type="button" onClick={() => baixarPdf(msg)} className="mfc-export">
                   <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>

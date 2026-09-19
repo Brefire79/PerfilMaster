@@ -1,0 +1,41 @@
+name: lembretes-testes-dirigidos
+
+# Fase 4 (19/09/2026): toda segunda 12:00 UTC (09:00 Brasília) chama a Edge
+# enviarLembretesCiclos com o token de cron. Ela envia e-mail (Resend) a quem
+# tem Teste Dirigido aguardando resposta com prazo em até 7 dias ou vencido,
+# sem repetir em menos de 7 dias, e um resumo ao facilitador.
+#
+# Requer os secrets do repositório:
+#   SUPABASE_ANON_KEY  (já usado pelo keepalive)
+#   CRON_TOKEN         (o MESMO valor cadastrado em Supabase → Edge Functions → Secrets)
+# Sem RESEND_API_KEY no Supabase a função só conta o que enviaria (sem erro).
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'
+  workflow_dispatch:
+
+jobs:
+  lembretes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enviar lembretes
+        env:
+          ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+          PROJECT_URL: https://zlbynxjeefqxcgrsmkjp.supabase.co
+        run: |
+          if [ -z "$ANON_KEY" ] || [ -z "$CRON_TOKEN" ]; then
+            echo "::error::Configure os secrets SUPABASE_ANON_KEY e CRON_TOKEN no repositório."
+            exit 1
+          fi
+          STATUS=$(curl -s -o /tmp/resposta -w "%{http_code}" --max-time 60 \
+            -X POST \
+            -H "apikey: $ANON_KEY" \
+            -H "Authorization: Bearer $ANON_KEY" \
+            -H "x-cron-token: $CRON_TOKEN" \
+            -H "Content-Type: application/json" \
+            -d '{}' \
+            "$PROJECT_URL/functions/v1/enviarLembretesCiclos")
+          echo "HTTP $STATUS"; cat /tmp/resposta || true; echo
+          [ "$STATUS" = "200" ] || exit 1

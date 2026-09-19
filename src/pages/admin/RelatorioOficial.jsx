@@ -14,6 +14,7 @@ import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
 import ProximaAbordagem from '@/components/profile/ProximaAbordagem.jsx';
 import AplicarTesteDirigido from '@/components/profile/AplicarTesteDirigido.jsx';
+import SocialStyleCard from '@/components/profile/SocialStyleCard.jsx';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -523,6 +524,9 @@ export default function RelatorioOficial() {
               </tbody>
             </table>
           </div>
+
+          {/* ══ SEÇÃO 2.1: SOCIAL STYLE (lente derivada do DISC, Fase 4) ══ */}
+          {perfil && <SocialStyleCard perfil={perfil} />}
 
           {/* ══ SEÇÃO 3: ANÁLISE IA ══ */}
           {insight && (

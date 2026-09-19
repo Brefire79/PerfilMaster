@@ -104,6 +104,18 @@ export async function cicloResponder(payload) {
   return callFunction('cicloResponder', payload);
 }
 
+// Fase 4 — lembrete por e-mail dos Testes Dirigidos aguardando resposta (JWT admin;
+// { groupId?, simular? }). O cron semanal chama a mesma Edge com CRON_TOKEN.
+export async function enviarLembretesCiclos(payload = {}) {
+  return callFunction('enviarLembretesCiclos', payload);
+}
+
+// Fase 4 — Mestre "Aprofundar com IA": manda a pergunta + os dados agregados que o
+// chat local já calculou; o servidor anonimiza e a IA redige a interpretação.
+export async function mestreAprofundar(payload) {
+  return callFunction('mestreAprofundar', payload);
+}
+
 // Central de Gestão (DELTA 14) — registra evento de auditoria originado no
 // frontend do admin (best-effort; nunca deve quebrar o fluxo do chamador).
 export async function logAudit(payload) {
