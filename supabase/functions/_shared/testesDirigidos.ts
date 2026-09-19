@@ -76,14 +76,14 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "posicao",
         "invertido": true,
         "weight": 1,
-        "texto": "Prefiro concordar em público e reclamar em particular."
+        "texto": "Costumo concordar em público mesmo quando, por dentro, discordo."
       },
       {
         "id": "td_assert_conflito_01",
         "subescala": "conflito",
         "invertido": false,
         "weight": 1,
-        "texto": "Encaro uma conversa difícil como parte normal do trabalho, não como algo a evitar."
+        "texto": "Encaro uma conversa difícil como parte normal do trabalho."
       },
       {
         "id": "td_assert_conflito_02",
@@ -97,7 +97,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "conflito",
         "invertido": false,
         "weight": 1,
-        "texto": "Depois de um desentendimento, consigo retomar a relação sem guardar mágoa nem me culpar."
+        "texto": "Depois de um desentendimento, consigo retomar a relação sem guardar mágoa."
       },
       {
         "id": "td_assert_conflito_04",
@@ -251,7 +251,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "descanso",
         "invertido": false,
         "weight": 1,
-        "texto": "Tiro folgas e pausas de verdade, sem checar mensagens de trabalho."
+        "texto": "Nas folgas e pausas, consigo me desligar do trabalho de verdade."
       },
       {
         "id": "td_equil_descanso_02",
@@ -300,7 +300,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "proposito",
         "invertido": true,
         "weight": 1,
-        "texto": "Quando paro para pensar, não sei bem para onde estou correndo."
+        "texto": "Quando paro para pensar, tenho a sensação de estar correndo sem saber para onde."
       }
     ]
   },
@@ -321,7 +321,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "agilidade",
         "invertido": false,
         "weight": 1,
-        "texto": "Consigo decidir com 70% da informação quando esperar custaria mais."
+        "texto": "Consigo decidir com informação incompleta quando esperar custaria mais caro."
       },
       {
         "id": "td_decis_agilidade_02",
@@ -433,7 +433,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "conclusao",
         "invertido": false,
         "weight": 1,
-        "texto": "Entrego a versão final, não fico só na ideia ou no protótipo."
+        "texto": "Levo o que começo até a versão final, em vez de parar na ideia ou no protótipo."
       },
       {
         "id": "td_foco_conclusao_04",
@@ -468,7 +468,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "atencao",
         "invertido": true,
         "weight": 1,
-        "texto": "Aceito qualquer interrupção como desculpa para sair da tarefa."
+        "texto": "Uma interrupção pequena costuma bastar para eu sair da tarefa."
       },
       {
         "id": "td_foco_rotina_01",
@@ -482,7 +482,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "rotina",
         "invertido": true,
         "weight": 1,
-        "texto": "Fico inquieto e ansioso quando o dia não tem nada novo."
+        "texto": "Fico inquieto quando o dia não tem nada novo."
       },
       {
         "id": "td_foco_rotina_03",
@@ -538,7 +538,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "autocompaixao",
         "invertido": true,
         "weight": 1,
-        "texto": "Exijo de mim um padrão que eu jamais exigiria de outra pessoa."
+        "texto": "Exijo de mim um padrão bem mais alto do que exijo dos outros."
       },
       {
         "id": "td_feedb_receber_01",
@@ -664,7 +664,7 @@ export const TESTES_DIRIGIDOS: TesteDirigido[] = [
         "subescala": "recuperacao",
         "invertido": true,
         "weight": 1,
-        "texto": "Quando estou tenso, não sei o que fazer para sair disso."
+        "texto": "Quando estou tenso, fico sem saber como sair disso."
       },
       {
         "id": "td_pqbase_resposta_01",
