@@ -5,7 +5,7 @@ import clsx from 'clsx';
 import useAuthStore from '@/store/authStore.js';
 import useProfileStore from '@/store/profileStore.js';
 // FIX B3: consolidado em um único import
-import { getProfile, getAssessmentsByUser } from '@/firebase/firestore.js';
+import { getProfile, getProfileHistory } from '@/firebase/firestore.js';
 import Button from '@/components/ui/Button.jsx';
 import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Badge, { ProfileBadge } from '@/components/ui/Badge.jsx';
@@ -524,28 +524,100 @@ function ProfileTab({ profile }) {
 }
 
 // ─── History Tab ──────────────────────────────────────────────────────────────
+// DELTA 25: lê os ciclos reais (perfil atual em app_profiles + anteriores em
+// app_profiles_historico) — antes a aba listava app_assessments sem perfil e o
+// gráfico de evolução ficava sempre vazio (FIX M3).
+
+const CICLO_NOMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
+
+function isoDeData(v) {
+  if (!v) return null;
+  if (typeof v === 'string') return v;
+  if (v.raw) return v.raw;
+  if (typeof v.toDate === 'function') { try { return v.toDate().toISOString(); } catch { return null; } }
+  return null;
+}
+
+function montarCiclos(atual, anteriores) {
+  const lista = (anteriores || [])
+    .filter((h) => h?.scores)
+    .map((h) => ({
+      ciclo: h.ciclo,
+      atual: false,
+      data: isoDeData(h.criadoEm) || isoDeData(h.createdAt),
+      scores: h.scores,
+      dominantProfile: h.dominantProfile,
+      secondaryProfile: h.secondaryProfile || null,
+      pqScore: h.pqScore ?? null,
+    }))
+    .sort((a, b) => a.ciclo - b.ciclo);
+  if (atual?.scores && atual.dominantProfile) {
+    lista.push({
+      ciclo: atual.ciclo || lista.length + 1,
+      atual: true,
+      data: isoDeData(atual.createdAt),
+      scores: atual.scores,
+      dominantProfile: atual.dominantProfile,
+      secondaryProfile: atual.secondaryProfile || null,
+      pqScore: atual.pqScore ?? null,
+    });
+  }
+  // Δ em relação ao ciclo anterior
+  const n = (v) => Math.round(Number(v) || 0);
+  for (let i = 0; i < lista.length; i++) {
+    const ant = lista[i - 1];
+    const cur = lista[i];
+    cur.delta = ant ? {
+      D: n(cur.scores.D) - n(ant.scores.D),
+      I: n(cur.scores.I) - n(ant.scores.I),
+      S: n(cur.scores.S) - n(ant.scores.S),
+      C: n(cur.scores.C) - n(ant.scores.C),
+      pq: (ant.pqScore != null && cur.pqScore != null) ? Math.round(cur.pqScore - ant.pqScore) : null,
+      mudouPerfil: ant.dominantProfile !== cur.dominantProfile,
+    } : null;
+  }
+  return lista;
+}
+
+function DeltaChip({ valor }) {
+  if (valor == null || valor === 0) return <span className="text-[#6B6F80]">—</span>;
+  const pos = valor > 0;
+  return (
+    <span className={pos ? 'text-[#22C55E]' : 'text-[#EF4444]'}>
+      {pos ? '▲' : '▼'} {Math.abs(valor)}
+    </span>
+  );
+}
+
+function fmtDataCiclo(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return isNaN(d) ? '—' : d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 
 function HistoryTab({ userId }) {
   const { t } = useTranslation();
-  const [history, setHistory] = useState([]);
+  const [ciclos, setCiclos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
+    let ativo = true;
     const load = async () => {
       try {
-        const assessments = await getAssessmentsByUser(userId);
-        const completed = assessments.filter(
-          (a) => a.status === 'analyzed' || a.status === 'submitted' || a.status === 'completed'
-        );
-        setHistory(completed);
+        const [atual, anteriores] = await Promise.all([
+          getProfile(userId),
+          getProfileHistory(userId), // [] se o DELTA 25 não estiver aplicado
+        ]);
+        if (ativo) setCiclos(montarCiclos(atual, anteriores));
       } catch {
-        setHistory([]);
+        if (ativo) setCiclos([]);
       } finally {
-        setLoading(false);
+        if (ativo) setLoading(false);
       }
     };
     load();
+    return () => { ativo = false; };
   }, [userId]);
 
   if (loading) {
@@ -558,7 +630,7 @@ function HistoryTab({ userId }) {
     );
   }
 
-  if (history.length === 0) {
+  if (ciclos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
         <div className="w-14 h-14 rounded-2xl bg-[#242736] border border-[#2D3047] flex items-center justify-center">
@@ -585,60 +657,77 @@ function HistoryTab({ userId }) {
     );
   }
 
-  // FIX M3: app_assessments não embute dados de profile — o gráfico de evolução
-  // ficava sempre vazio pois a.profile?.dominantProfile não existe nessa entidade.
-  // Para exibir evolução real seria necessário cruzar com app_profiles por assessmentId.
-  // Por ora ocultamos o gráfico (sem dados = sem ruído visual).
-  const chartHistory = [];
+  const chartHistory = ciclos.map((c) => ({
+    moduleTitle: `Ciclo ${c.ciclo}`,
+    completedAt: c.data,
+    scores: c.scores,
+    dominantProfile: c.dominantProfile,
+  }));
+  const ultimo = ciclos[ciclos.length - 1];
 
   return (
     <div className="py-4 space-y-3">
-      {/* Evolution chart */}
-      {chartHistory.length > 0 && (
+      {/* Evolução: gráfico D/I/S/C por ciclo */}
+      <Card variant="default">
+        <CardTitle className="mb-1">{t('report.evolution', 'Sua evolução')}</CardTitle>
+        <CardDescription className="mb-3">
+          {ciclos.length === 1
+            ? 'Você concluiu 1 avaliação. Quando refizer, o antes e o depois aparecem aqui.'
+            : `${ciclos.length} avaliações concluídas — compare cada ciclo com o anterior.`}
+        </CardDescription>
+        <EvolutionChart history={chartHistory} />
+      </Card>
+
+      {/* Resumo da última mudança */}
+      {ultimo?.delta && (
         <Card variant="default">
-          <CardTitle className="mb-3">
-            {t('report.evolution', 'Evolução')}
-          </CardTitle>
-          <EvolutionChart history={chartHistory} />
+          <CardTitle className="mb-2">O que mudou desde a avaliação anterior</CardTitle>
+          <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
+            {['D', 'I', 'S', 'C'].map((k) => (
+              <span key={k} className="text-[#A0A3B1]">
+                <span className={PROFILE_COLORS[k].text}>{CICLO_NOMES[k]}</span>{' '}
+                <DeltaChip valor={ultimo.delta[k]} />
+              </span>
+            ))}
+            {ultimo.delta.pq != null && (
+              <span className="text-[#A0A3B1]">PQ <DeltaChip valor={ultimo.delta.pq} /></span>
+            )}
+          </div>
+          {ultimo.delta.mudouPerfil && (
+            <p className="text-xs text-[#F59E0B] mt-2">Seu perfil dominante mudou nesta avaliação.</p>
+          )}
         </Card>
       )}
 
-      {/* Timeline */}
+      {/* Lista de ciclos, do mais recente ao mais antigo */}
       <div className="space-y-2">
         <h3 className="text-sm font-heading font-semibold text-[#A0A3B1] uppercase tracking-wider">
           {t('assessment.history', 'Histórico de Avaliações')}
         </h3>
-        {history.map((assessment) => {
-          // FIX M3: app_assessments não tem campo profile — usa fallback 'D'
-          const type = 'D';
+        {ciclos.slice().reverse().map((c) => {
+          const type = c.dominantProfile;
           const colors = PROFILE_COLORS[type] ?? PROFILE_COLORS.D;
-          const rawDate = assessment?.submittedAt?.toDate?.()
-            ?? (assessment?.submittedAt ? new Date(assessment.submittedAt) : null);
-          const dateStr = rawDate && !isNaN(rawDate)
-            ? rawDate.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' })
-            : '—';
-
           return (
             <div
-              key={assessment.id}
+              key={c.ciclo}
               className="flex items-center gap-3 p-3 rounded-xl bg-[#242736] border border-[#2D3047]"
             >
               <div
                 className={clsx(
                   'w-10 h-10 rounded-xl flex items-center justify-center text-lg font-heading font-black flex-shrink-0 border',
-                  colors.bg,
-                  colors.border,
-                  colors.text
+                  colors.bg, colors.border, colors.text
                 )}
               >
                 {type}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-[#F7F8FC] truncate">
-                  {assessment?.moduleName ?? t('assessment.title', 'Avaliação DISC')}
+                  Ciclo {c.ciclo}{c.atual ? ' · atual' : ''}
+                  {c.pqScore != null && <span className="text-[#A0A3B1] font-normal"> · PQ {c.pqScore}</span>}
                 </p>
                 <p className="text-xs text-[#A0A3B1]">
-                  {t('assessment.completedOn', 'Concluída em')} {dateStr}
+                  {t('assessment.completedOn', 'Concluída em')} {fmtDataCiclo(c.data)}
+                  {' · '}D {Math.round(c.scores.D)} · I {Math.round(c.scores.I)} · S {Math.round(c.scores.S)} · C {Math.round(c.scores.C)}
                 </p>
               </div>
               <ProfileBadge type={type} size="sm" />
