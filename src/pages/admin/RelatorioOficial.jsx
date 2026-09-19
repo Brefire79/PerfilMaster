@@ -12,6 +12,7 @@ import { cpfParaExibir } from '@/lib/cpf.js';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
+import ProximaAbordagem from '@/components/profile/ProximaAbordagem.jsx';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -636,6 +637,9 @@ export default function RelatorioOficial() {
               </div>
             </div>
           )}
+
+          {/* ══ SEÇÃO 3.3: PRÓXIMA ABORDAGEM SUGERIDA (motor determinístico, Fase 2) ══ */}
+          {perfil && <ProximaAbordagem perfil={perfil} />}
 
           {/* ══ SEÇÃO 4: INDICADORES CLÍNICOS (ADMIN ONLY) ══ */}
           {flagClinica && (

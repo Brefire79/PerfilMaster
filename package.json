@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node scripts/verify-scoring-contract.mjs && node scripts/verify-security-contract.mjs",
+    "test": "node scripts/verify-scoring-contract.mjs && node scripts/verify-security-contract.mjs && node scripts/verify-testes-dirigidos-contract.mjs",
     "check": "npm run test && npm run build",
     "bump": "node bump-version.mjs",
     "bump:minor": "node bump-version.mjs --minor",

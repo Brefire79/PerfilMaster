@@ -813,6 +813,13 @@ export async function getAvaliadoLikeFromUid(uid) {
       estavel: num(scores.S),
       analitico: num(scores.C),
       pqScore: p.pqScore ?? scores.pqScore ?? null,
+      // DELTA 17: intensidade 0-100 por sabotador (AssessmentWizard grava via
+      // saboteurScoring.js). Sem isto a § 3.2 e o motor de abordagem viam a
+      // conta como DISC-only. Top-3 derivado aqui (não é persistido na conta).
+      saboteurScores: p.saboteurScores && typeof p.saboteurScores === 'object' ? p.saboteurScores : null,
+      saboteurTop3: p.saboteurScores && typeof p.saboteurScores === 'object'
+        ? Object.entries(p.saboteurScores).sort((a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0)).slice(0, 3).map(([k]) => k)
+        : null,
     },
     // Dados ricos do app_profiles (gerados pela IA buildProfile a partir das 78
     // questões do AssessmentWizard). Só existem para CONTAS de aluno — avaliados
