@@ -184,6 +184,26 @@ Deno.serve(async (req) => {
     const statusAtual = avaliado.status;
     if (!TRANSICOES_VALIDAS[statusAtual]?.includes(novoStatus))
       return jsonResponse({ error: `Transição inválida: ${statusAtual} -> ${novoStatus}` }, 400, req);
+
+    // DELTA 23: janela de horário da turma. Iniciar só dentro da janela;
+    // concluir vale até fim + 2 h (mesma regra de janela_permite_envio no banco).
+    if (novoStatus === 'em_andamento' || novoStatus === 'concluido') {
+      const { data: sess } = await supabase.from('app_sessoes').select('groupid').eq('id', avaliado.sessaoid).maybeSingle();
+      if (sess?.groupid) {
+        const { data: grupo } = await supabase
+          .from('app_groups').select('janela_inicio, janela_fim').eq('id', sess.groupid).maybeSingle();
+        const agoraMs = Date.now();
+        const ini = grupo?.janela_inicio ? new Date(grupo.janela_inicio).getTime() : null;
+        const fim = grupo?.janela_fim ? new Date(grupo.janela_fim).getTime() : null;
+        const TOLERANCIA = 2 * 60 * 60 * 1000;
+        if (ini != null && agoraMs < ini) {
+          return jsonResponse({ error: 'A avaliação desta turma ainda não abriu.', code: 'janela/antes', abreEm: grupo!.janela_inicio }, 409, req);
+        }
+        if (fim != null && agoraMs > fim + (novoStatus === 'concluido' ? TOLERANCIA : 0)) {
+          return jsonResponse({ error: 'O prazo da avaliação desta turma terminou.', code: 'janela/depois', fechouEm: grupo!.janela_fim }, 409, req);
+        }
+      }
+    }
     const agora = new Date().toISOString();
     const payload: Record<string, unknown> = { status: novoStatus, atualizadoem: agora };
     if (novoStatus === 'em_andamento') payload.iniciadoem = agora;

@@ -9,6 +9,7 @@ import Card from '@/components/ui/Card.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
 import { createInvite, getActiveInviteForGroup, updateInvite } from '@/firebase/firestore.js';
 import InviteSeats from '@/components/group/InviteSeats.jsx';
+import JanelaAvaliacao from '@/components/group/JanelaAvaliacao.jsx';
 import { getPublicBaseUrl } from '@/lib/appUrl.js';
 
 const APP_URL = getPublicBaseUrl();
@@ -309,6 +310,9 @@ export default function InviteLink({ groupId, inviteToken, onRegenerateToken }) 
 
         {/* DELTA 22: vagas em tempo real, contato da empresa, quem entrou */}
         {token && <InviteSeats key={seatsKey} token={token} groupId={groupId} />}
+
+        {/* DELTA 23: janela de horário (todos respondem juntos) */}
+        {groupId && <JanelaAvaliacao groupId={groupId} />}
 
         {/* QR Code */}
         {inviteUrl && (

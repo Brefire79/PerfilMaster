@@ -12,6 +12,7 @@ import Input from '@/components/ui/Input.jsx';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
 import GroupCard from '@/components/group/GroupCard.jsx';
 import InviteStudentModal from '@/components/group/InviteStudentModal.jsx';
+import { deInputLocal } from '@/lib/janela.js';
 
 // ─── Preset group colors ───────────────────────────────────────────────────────
 const COLOR_PRESETS = [
@@ -59,7 +60,7 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
   });
   // DELTA 22 — turma empresarial: cria o grupo E o convite com vagas num passo só.
   const [empresa, setEmpresa] = useState(false);
-  const [emp, setEmp] = useState({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '' });
+  const [emp, setEmp] = useState({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '', janelaInicio: '', janelaFim: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -68,7 +69,7 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
   const reset = () => {
     setForm({ name: '', description: '', moduleId: '', color: COLOR_PRESETS[0].value });
     setEmpresa(false);
-    setEmp({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '' });
+    setEmp({ vagas: '', validade: 30, contatoNome: '', contatoEmail: '', contatoTelefone: '', janelaInicio: '', janelaFim: '' });
     setErrors({});
   };
 
@@ -86,6 +87,8 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
       const v = Number(emp.vagas);
       if (!Number.isInteger(v) || v < 1 || v > 5000) errs.vagas = 'Informe o número de vagas (1 a 5000).';
       if (emp.contatoEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emp.contatoEmail)) errs.contatoEmail = 'E-mail inválido.';
+      const ji = deInputLocal(emp.janelaInicio); const jf = deInputLocal(emp.janelaFim);
+      if (ji && jf && new Date(jf) <= new Date(ji)) errs.janela = 'O fechamento precisa ser depois da abertura.';
     }
     return errs;
   };
@@ -105,6 +108,8 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
         moduleId: form.moduleId || null,
         color: form.color,
         adminUid: user?.uid,
+        // DELTA 23: janela de horário (opcional) — só na turma empresarial
+        ...(empresa ? { janelaInicio: deInputLocal(emp.janelaInicio), janelaFim: deInputLocal(emp.janelaFim) } : {}),
       });
       // Turma empresarial: convite com vagas já nasce junto com o grupo — a aba
       // Convite do grupo mostra o link, o contador e quem entrou.
@@ -261,6 +266,25 @@ function CreateGroupModal({ isOpen, onClose, onCreated, modules }) {
                 value={emp.contatoTelefone}
                 onChange={(v) => setEmp((x) => ({ ...x, contatoTelefone: v }))}
               />
+
+              {/* DELTA 23: janela de horário — todos respondem juntos */}
+              <div className="pt-2 border-t border-[#2D3047]">
+                <p className="text-sm font-medium text-[#F7F8FC]">Janela da avaliação <span className="text-xs text-[#A0A3B1]">(opcional)</span></p>
+                <p className="text-xs text-[#A0A3B1] mt-0.5 mb-2">Fora da janela ninguém inicia; quem começou dentro pode terminar. Dá para ajustar depois na aba Convite.</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs text-[#A0A3B1]">Abre em</span>
+                    <input type="datetime-local" value={emp.janelaInicio} onChange={(e) => { setEmp((x) => ({ ...x, janelaInicio: e.target.value })); setErrors((er) => ({ ...er, janela: '' })); }}
+                      className="h-11 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none [color-scheme:dark]" />
+                  </label>
+                  <label className="flex flex-col gap-1.5">
+                    <span className="text-xs text-[#A0A3B1]">Fecha em</span>
+                    <input type="datetime-local" value={emp.janelaFim} onChange={(e) => { setEmp((x) => ({ ...x, janelaFim: e.target.value })); setErrors((er) => ({ ...er, janela: '' })); }}
+                      className="h-11 px-3 rounded-lg bg-[#1A1D2E] border border-[#2D3047] text-sm text-[#F7F8FC] focus:border-[#6366F1] outline-none [color-scheme:dark]" />
+                  </label>
+                </div>
+                {errors.janela && <p className="text-xs text-[#EF4444] mt-1">{errors.janela}</p>}
+              </div>
             </div>
           )}
         </div>

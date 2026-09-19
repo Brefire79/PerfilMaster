@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from '@/lib/i18n.js';
 import clsx from 'clsx';
-import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser } from '@/firebase/firestore.js';
+import { createAssessment, submitAssessment, updateUser, createProfile, getUser, getAssessmentsByUser, getGroup } from '@/firebase/firestore.js';
+import JanelaGate, { useJanela } from '@/components/assessment/JanelaGate.jsx';
 import { computeSaboteurs } from '@/lib/saboteurScoring.js';
 // FIX (auditoria 07/07/2026): motor DISC canônico compartilhado — mesma
 // fórmula ponderada do Edge atualizarStatus (antes o wizard usava média
@@ -82,7 +83,7 @@ function ProgressBar({ answered, total, etapaLabel }) {
   );
 }
 
-function IntroScreen({ onStart, blocked, blockedUntil, respondidas = 0, t }) {
+function IntroScreen({ onStart, blocked, blockedUntil, respondidas = 0, janela = null, nomeTurma = null, t }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 px-4 animate-fade-in">
       <div className="w-20 h-20 rounded-2xl bg-[#6366F1]/10 border border-[#6366F1]/30 flex items-center justify-center">
@@ -123,7 +124,10 @@ function IntroScreen({ onStart, blocked, blockedUntil, respondidas = 0, t }) {
           </p>
         )}
 
-        {blocked ? (
+        {/* DELTA 23: fora da janela da turma — contagem regressiva ou encerrada */}
+        {janela && !janela.liberado ? (
+          <JanelaGate janela={janela} nomeTurma={nomeTurma} />
+        ) : blocked ? (
           <div className="text-center space-y-1">
             <p className="text-sm text-[#EF4444] font-medium">
               {t('wizard.intro.blocked', 'Avaliação bloqueada temporariamente')}
@@ -367,6 +371,24 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
   const assessmentBloqueado =
     proximaAvaliacao != null && new Date(proximaAvaliacao) > new Date();
 
+  // ─── DELTA 23: janela de horário da turma ─────────────────────────────────
+  // Lê o grupo do aluno; sem grupo ou sem janela, `liberado` é true.
+  const [grupoJanela, setGrupoJanela] = useState({ inicio: null, fim: null, nome: null });
+  useEffect(() => {
+    if (!user?.uid) return undefined;
+    let cancel = false;
+    (async () => {
+      try {
+        const gid = user.groupId || (await getUser(user.uid))?.groupId || null;
+        if (!gid) return;
+        const g = await getGroup(gid);
+        if (!cancel && g) setGrupoJanela({ inicio: g.janelaInicio || null, fim: g.janelaFim || null, nome: g.name || null });
+      } catch { /* sem janela */ }
+    })();
+    return () => { cancel = true; };
+  }, [user?.uid, user?.groupId]);
+  const janela = useJanela(grupoJanela.inicio, grupoJanela.fim, { emAndamento: totalRespondidas > 0 });
+
   // ─── Load questions ───────────────────────────────────────────────────────
   useEffect(() => {
     let cancelled = false;
@@ -584,8 +606,12 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
       setEtapa('completed');
       onCompleted?.({ assessmentId: assessmentDocId });
     } catch (err) {
+      // DELTA 23: o banco recusa envio fora da janela da turma (trigger)
+      const foraDaJanela = /janela_fechada/i.test(String(err?.message || ''));
       setErroSubmissao(
-        err?.message ?? t('wizard.error.submitFailed', 'Falha ao enviar. Tente novamente.'),
+        foraDaJanela
+          ? 'O prazo da avaliação desta turma terminou. Suas respostas ficaram salvas neste aparelho — fale com o facilitador para reabrir.'
+          : (err?.message ?? t('wizard.error.submitFailed', 'Falha ao enviar. Tente novamente.')),
       );
       // Roll back to last saboteur question so user can retry
       setEtapa('saboteurs');
@@ -661,6 +687,8 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
           blocked={assessmentBloqueado}
           blockedUntil={proximaAvaliacao}
           respondidas={totalRespondidas}
+          janela={janela}
+          nomeTurma={grupoJanela.nome}
           t={t}
         />
       </div>

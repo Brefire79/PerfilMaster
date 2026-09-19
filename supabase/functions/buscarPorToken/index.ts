@@ -36,9 +36,23 @@ Deno.serve(async (req) => {
 
     const { data: sessao } = await supabase
       .from('app_sessoes')
-      .select('titulo, descricao')
+      .select('titulo, descricao, groupid')
       .eq('id', avaliado.sessaoid)
       .single();
+
+    // DELTA 23: janela de horário da turma (app_groups) — a tela mostra a
+    // contagem regressiva / encerrada; atualizarStatus trava no servidor.
+    let janela: { inicio: string | null; fim: string | null; turma: string | null } | null = null;
+    if (sessao?.groupid) {
+      const { data: grupo } = await supabase
+        .from('app_groups')
+        .select('name, janela_inicio, janela_fim')
+        .eq('id', sessao.groupid)
+        .maybeSingle();
+      if (grupo && (grupo.janela_inicio || grupo.janela_fim)) {
+        janela = { inicio: grupo.janela_inicio, fim: grupo.janela_fim, turma: grupo.name || null };
+      }
+    }
 
     return jsonResponse({
       nome: avaliado.nome,
@@ -48,6 +62,7 @@ Deno.serve(async (req) => {
       perfil: avaliado.perfil || null,
       // DELTA 7: só informa SE há CPF (boolean), nunca o valor — privacidade LGPD
       temCpf: Boolean(avaliado.cpf),
+      janela,
     }, 200, req);
   } catch (err) {
     // A4: antes devolvia a mensagem crua do erro para um chamador ANÔNIMO —

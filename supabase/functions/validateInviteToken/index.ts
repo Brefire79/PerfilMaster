@@ -36,7 +36,7 @@ Deno.serve(async (req) => {
     const { data: group } = invite.groupid
       ? await supabase
           .from('app_groups')
-          .select('id,name,adminname')
+          .select('id,name,adminname,janela_inicio,janela_fim')
           .eq('id', invite.groupid)
           .single()
       : { data: null };
@@ -56,6 +56,10 @@ Deno.serve(async (req) => {
       useCount: invite.usecount ?? 0,
       vagasRestantes: vagasRestantes(invite),
       avulsoDisponivel: temVagas(invite),
+      // DELTA 23: janela de horário da turma (null = sem janela)
+      janela: group && (group.janela_inicio || group.janela_fim)
+        ? { inicio: group.janela_inicio, fim: group.janela_fim }
+        : null,
     }, 200, req);
   } catch (err) {
     // A4: `reason` ia direto para a tela de cadastro com o texto interno do erro.

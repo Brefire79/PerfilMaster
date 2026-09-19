@@ -99,6 +99,9 @@ const CAMEL_TO_DB = {
   contactPhone: 'contact_phone',
   inviteId: 'inviteid',
   avaliadoToken: 'avaliadotoken',
+  // DELTA 23: janela de horário da avaliação do grupo
+  janelaInicio: 'janela_inicio',
+  janelaFim: 'janela_fim',
   avaliadoId: 'avaliado_id',
   userUid: 'user_uid',
   linkedBy: 'linked_by',

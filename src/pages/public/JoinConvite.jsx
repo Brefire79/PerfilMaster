@@ -7,6 +7,7 @@ import { validateInviteToken, consumeInviteAvulso, consumeInvite } from '@/fireb
 import useAuthStore from '@/store/authStore.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
 import { reportClientError } from '@/lib/clientErrors.js';
+import { resumoJanela } from '@/lib/janela.js';
 
 // DELTA 22 — porta de entrada do link /join/:token.
 //
@@ -176,6 +177,11 @@ export default function JoinConvite() {
           {typeof vagas === 'number' && (
             <p className="text-xs text-[#A0A3B1]">
               {vagas === 1 ? 'Resta 1 vaga' : `Restam ${vagas} vagas`}
+            </p>
+          )}
+          {convite?.janela && (
+            <p className="text-xs text-[#6366F1] mt-1">
+              Avaliação: {resumoJanela(convite.janela.inicio, convite.janela.fim).replace(/^Abre em/, 'abre em').replace(/^Aberta/, 'aberta').replace(/^Encerrada/, 'encerrada')}
             </p>
           )}
         </div>

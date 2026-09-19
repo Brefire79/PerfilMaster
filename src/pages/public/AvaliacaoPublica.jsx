@@ -18,6 +18,7 @@ import { formatCpf, cleanCpf, isValidCpf } from '@/lib/cpf.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
 import BackendIndisponivel from '@/components/ui/BackendIndisponivel.jsx';
 import { reportClientError } from '@/lib/clientErrors.js';
+import JanelaGate, { useJanela } from '@/components/assessment/JanelaGate.jsx';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -276,7 +277,7 @@ function TelaConcluido({ avaliado }) {
   );
 }
 
-function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentChange, cpfErro }) {
+function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentChange, cpfErro, janela = null }) {
   // Só oferece o campo se o admin ainda não registrou CPF (temCpf vem do backend
   // como booleano — o valor do CPF nunca é exposto na resposta pública)
   const ofereceCpf = !avaliado?.temCpf;
@@ -298,6 +299,11 @@ function TelaBoasVindas({ avaliado, cpf, onCpfChange, cpfConsent, onCpfConsentCh
           <p className="text-xs text-[#A0A3B1] mt-1">{avaliado.sessaoDescricao}</p>
         )}
       </div>
+
+      {/* DELTA 23: fora da janela da turma — contagem regressiva ou encerrada */}
+      {janela && !janela.liberado && (
+        <div className="flex justify-center"><JanelaGate janela={janela} nomeTurma={avaliado.janela?.turma || null} /></div>
+      )}
 
       {/* Sobre o DISC */}
       <div className="bg-[#1A1D2E] rounded-2xl p-4 border border-[#2D3047]">
@@ -600,7 +606,14 @@ export default function AvaliacaoPublica() {
   const cpfJaRegistrado = Boolean(state.avaliado?.temCpf);
   const cpfDigits = cleanCpf(cpf);
 
+  // DELTA 23: janela de horário da turma (vem de buscarPorToken). Já tem
+  // respostas em rascunho = pode terminar dentro da tolerância.
+  const janela = useJanela(state.avaliado?.janela?.inicio, state.avaliado?.janela?.fim, {
+    emAndamento: Object.keys(state.respostas || {}).length > 0,
+  });
+
   const handleIniciar = useCallback(async () => {
+    if (!janela.liberado) return;
     // Se preencheu CPF, valida antes de prosseguir (opcional, mas se digitou tem que ser válido)
     if (!cpfJaRegistrado && cpfDigits) {
       if (!isValidCpf(cpfDigits)) { setCpfErro('CPF inválido. Verifique os números ou deixe em branco.'); return; }
@@ -618,7 +631,7 @@ export default function AvaliacaoPublica() {
       // ignora falha de em_andamento; o concluido ainda vai funcionar com as transições liberadas
     }
     dispatch({ type: 'INICIAR' });
-  }, [token, cpfJaRegistrado, cpfDigits, cpfConsent]);
+  }, [token, cpfJaRegistrado, cpfDigits, cpfConsent, janela.liberado]);
 
   const handleTentarNovamente = useCallback(() => {
     dispatch({ type: 'TENTAR_NOVAMENTE' });
@@ -640,12 +653,19 @@ export default function AvaliacaoPublica() {
   // CTA fixo (definido por tela)
   let cta = null;
   if (state.tela === TELAS.BOAS_VINDAS) {
-    cta = (
+    cta = janela.liberado ? (
       <button
         onClick={handleIniciar}
         className="w-full py-4 rounded-2xl surface-brand text-white font-semibold text-base transition-transform active:scale-[0.98] shadow-card"
       >
         Iniciar avaliação →
+      </button>
+    ) : (
+      <button
+        disabled
+        className="w-full py-4 rounded-2xl bg-[#1A1D2E] border border-[#2D3047] text-[#A0A3B1] font-semibold text-base cursor-not-allowed"
+      >
+        {janela.estado === 'antes' ? 'Aguardando abertura…' : 'Avaliação encerrada'}
       </button>
     );
   } else if (state.tela === TELAS.AVALIANDO && questaoAtual) {
@@ -711,6 +731,7 @@ export default function AvaliacaoPublica() {
                 cpfConsent={cpfConsent}
                 onCpfConsentChange={(v) => { setCpfConsent(v); setCpfErro(''); }}
                 cpfErro={cpfErro}
+                janela={janela}
               />
             </div>
           </main>
