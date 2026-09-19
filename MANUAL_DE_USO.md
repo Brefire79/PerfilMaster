@@ -1,4 +1,6 @@
 # ProfileAI — Manual de Uso
+
+> **Documento histórico (mai/2026).** Descreve a versão anterior do produto (menu *Sessões*, chave do Gemini, idiomas). O manual atual é o [`MANUAL-OFICIAL.md`](MANUAL-OFICIAL.md) (funcionamento) e o [`manual_usuario.md`](manual_usuario.md) (passo a passo). Mantido só como referência da evolução.
 **Versão 2.0 · Maio 2026 · AmbFusi AI / Vianexx AI**
 
 ---

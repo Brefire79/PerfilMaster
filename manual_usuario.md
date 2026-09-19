@@ -84,10 +84,10 @@ A funcionalidade central é a **Avaliação Comportamental**. Ela tem **2 etapas
 
 ### 🧑‍🏫 Modo B — Você é o facilitador (avaliando outras pessoas)
 
-O fluxo mais usado é por **Sessões** (avaliar pessoas que **não têm conta**):
+O fluxo mais usado é a **avaliação avulsa** (avaliar pessoas que **não têm conta**):
 
-1. Acesse **Sessões** no menu lateral.
-2. Clique em **criar uma nova sessão** (ex.: *"Processo Seletivo — Vendas"*).
+1. Acesse **Alunos** (ou **Grupos › Membros**) e clique em **Avaliação avulsa**.
+2. Não é preciso criar sessão — o app cuida disso.
 3. **Cadastre os avaliados** (nome + telefone com DDD).
 4. Cada avaliado recebe um **link único**. Clique em **enviar pelo WhatsApp** 📱 — abre o WhatsApp com a mensagem e o link prontos.
 5. Acompanhe o **status** de cada um:
@@ -99,12 +99,22 @@ O fluxo mais usado é por **Sessões** (avaliar pessoas que **não têm conta**)
    - 📄 **Relatório Oficial** imprimível (Imprimir / PDF)
 7. Para entregar ao avaliado, clique em **Liberar** — abre o WhatsApp com um **resumo amigável** + link do relatório completo (`/resultado/:token`). *As anotações internas nunca são enviadas ao avaliado.*
 
-> Há também os modos **Grupos** (alunos com conta) e **Central de Pessoas** (unifica avaliações da mesma pessoa pelo CPF) no menu do facilitador.
+> Há também o modo **Grupos** (alunos com conta) — com **Turma empresarial** (convite com vagas), **janela de horário** para todos responderem juntos e a aba **Comparativo** (tabela da turma com D/I/S/C e PQ, exportável para Excel) — e a **Central de Gestão** (Pessoas & Histórico, Inteligência de Grupos, Diagnóstico).
+
+### 🔁 Próximo passo e testes dirigidos
+
+Depois que alguém conclui, o Relatório Oficial mostra em **§ 3.3** o **próximo passo sugerido**: um foco de desenvolvimento e um **teste dirigido** (12 perguntas, ~3 min) para aprofundá-lo. Clique em **Aplicar**: quem tem conta vê o teste no Início do app; quem não tem recebe um link para o WhatsApp. Na aba **Comparativo** da turma, o card **Próximo foco da turma** aplica um teste a todos de uma vez, e **Lembrar por e-mail** avisa quem ainda não respondeu.
+
+Refazer a avaliação **não apaga** a anterior: em **Central › Pessoas & Histórico**, a **Linha do Tempo** mostra cada ciclo com o quanto cada dimensão mudou, os testes aplicados e o resultado de cada um.
+
+### 🧭 Mestre — pergunte em português
+
+No Painel, o botão **Perguntar ao Mestre** abre um chat que responde com os seus dados, sem enviar nomes a nenhuma IA: *"quem ainda não concluiu?"*, *"o que trabalhar com a minha turma?"*, *"o que fazer com o Carlos?"*, *"como a Ana evoluiu?"*, *"quem está em reavaliação?"*. Se faltar o nome, ele pergunta de volta. **Aprofundar com IA** manda só números agregados e anonimizados para uma leitura mais longa.
 
 ### 🔗 Modo C — Avaliação sem conta (link do WhatsApp)
 
 1. Abra o link recebido (`.../avaliacao/SEU-TOKEN`).
-2. Responda as **28 perguntas DISC** (esse fluxo público usa só a etapa DISC).
+2. Responda as **78 perguntas** (28 DISC + 50 Sabotadores). Pode fechar e voltar: o app guarda de onde parou.
 3. Ao enviar, seu perfil é calculado.
 4. Quando o facilitador liberar, você recebe **outro link** (`.../resultado/SEU-TOKEN`) com seu relatório completo.
 
@@ -120,7 +130,7 @@ Acesse **Configurações** (menu do facilitador). As seções disponíveis:
 |---|---|
 | 👤 **Perfil** | Alterar seu **nome**. *(O e-mail não pode ser alterado.)* |
 | 🏢 **Empresa** | Definir **nome da empresa** e **URL do logo** (aparece nos relatórios) |
-| 🌐 **Preferências** | Trocar o **idioma** (Português, English, Español) |
+| 🌐 **Preferências** | O app é em português (PT-BR); tema claro/escuro fica no botão do topo |
 | 🔔 **Notificações** | Ligar/desligar avisos (novo membro, avaliação concluída, resumo semanal, novidades) |
 | 🤖 **Inteligência Artificial** | Apenas informativo — a IA é **gerenciada pelo servidor** (DeepSeek). Não há chave para configurar. |
 | ⚠️ **Zona de Perigo** | **Excluir conta** (encerra a sessão) |

@@ -4,6 +4,8 @@
 
 As abas visíveis possuem implementação real: Painel, Central, Grupos, Alunos, Módulos DiSC, Relatórios e Configurações. Sessões e Pessoas foram incorporadas a Alunos, Grupos, Relatórios e Central; não devem voltar como telas duplicadas.
 
+**19/09/2026 — Plano de evolução entregue** (`PLANO-EVOLUCAO-2026-09-19.md`): histórico de avaliações por ciclo com linha do tempo; motor de abordagem + 7 testes dirigidos aplicáveis por conta, link ou turma, com auditoria por trigger; Mestre v2 (intenção + entidades, pessoas pelo nome, miss-log no servidor, aprofundamento opcional com IA anonimizada); Social Style derivado do DISC; lembretes por e-mail com cron semanal; DISC‑V2 com 8 itens invertidos; hotfix de segurança no bypass de triggers SECURITY DEFINER (DELTA 27). A Fase 3 abaixo foi parcialmente cumprida (Social Style como lente); OCAI e construtor Custom seguem adiados.
+
 ## Fase 1 — Release segura
 
 - Publicar migração de hardening e Edge `deleteAccount`.

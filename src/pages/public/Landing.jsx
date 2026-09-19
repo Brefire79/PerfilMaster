@@ -27,8 +27,8 @@ const PASSOS = [
     texto: 'Cada avaliado recebe um link único. Ele responde as 78 questões no celular, no seu tempo, e pode retomar de onde parou.',
   },
   {
-    titulo: 'Receba o perfil pronto',
-    texto: 'DISC e PQ/Sabotadores calculados no servidor, relatório oficial para você e um resumo para quem respondeu.',
+    titulo: 'Receba o perfil e o próximo passo',
+    texto: 'DISC e PQ/Sabotadores calculados no servidor, relatório oficial para você, devolutiva por e-mail para quem respondeu e a sugestão do próximo teste de desenvolvimento.',
   },
 ];
 
@@ -36,12 +36,12 @@ const MODOS = [
   {
     cor: CORES.C,
     titulo: 'Grupos e turmas',
-    texto: 'Convide alunos por link, acompanhe quem já concluiu e compare o perfil coletivo com agregados anonimizados.',
+    texto: 'Convite com vagas para a empresa, janela de horário para todos responderem juntos, comparativo da turma e um teste dirigido aplicado a todos de uma vez.',
   },
   {
     cor: CORES.I,
     titulo: 'Atendimento individual',
-    texto: 'Mentorado ou coachee com conta própria, histórico de avaliações e evolução ao longo do processo.',
+    texto: 'Mentorado ou coachee com conta própria: refazer a avaliação não apaga a anterior, e a linha do tempo mostra o antes e o depois.',
   },
   {
     cor: CORES.S,
@@ -51,11 +51,14 @@ const MODOS = [
 ];
 
 const RECURSOS = [
-  ['DISC + PQ/Sabotadores em uma só aplicação', '28 questões DISC e 50 de Sabotadores, todas em escala de 5 pontos, com pontuação calculada no servidor.'],
-  ['Relatório oficial do facilitador', 'Perfil, gráficos, sabotadores predominantes e espaço para a sua observação. Exportável em PDF.'],
-  ['Análise assistida por IA', 'Um texto de leitura do perfil gerado a partir dos resultados, para apoiar a conversa de devolutiva.'],
-  ['Inteligência de grupos', 'Distribuição de perfis e médias por turma, com supressão automática de grupos pequenos.'],
+  ['DISC + PQ/Sabotadores em uma só aplicação', '28 questões DISC (com itens invertidos, para não inflar quem tende a concordar com tudo) e 50 de Sabotadores, pontuadas no servidor.'],
+  ['Ciclo de desenvolvimento', 'A cada resultado, um motor de regras sugere o próximo foco e o teste dirigido correspondente — assertividade, delegação, foco, decisão, feedback, equilíbrio ou fundamentos. Você aplica com um clique, no app ou por link.'],
+  ['Histórico e evolução', 'Cada avaliação vira um ciclo. A linha do tempo da pessoa mostra a variação de cada dimensão e do PQ entre uma avaliação e outra, e os testes aplicados no caminho.'],
+  ['Relatório oficial do facilitador', 'Perfil DISC, Social Style derivado, sabotadores, análise assistida por IA, próximo passo sugerido e espaço para a sua observação. Exportável em PDF.'],
+  ['Mestre, o assistente da Central', 'Pergunte em português: "quem ainda não concluiu?", "o que trabalhar com a turma?", "como a Ana evoluiu?". Responde com os seus dados, no seu aparelho, sem enviar nomes a nenhuma IA.'],
+  ['Inteligência de grupos e auditoria', 'Distribuição de perfis por turma com supressão de grupos pequenos, e trilha de auditoria de tudo o que foi aplicado, concluído ou descartado.'],
   ['Convites pelo WhatsApp ou pelo Google', 'Links de convite e de redefinição de senha prontos para enviar pelo WhatsApp. Quem tem o e-mail registrado no convite entra direto com a conta Google, sem senha.'],
+  ['Lembretes e devolutiva por e-mail', 'Quem conclui recebe o resumo do perfil por e-mail; quem tem um teste pendente recebe lembrete. Você recebe o aviso de conclusão.'],
   ['Funciona no celular', 'Interface pensada para a tela do telefone, onde o avaliado realmente responde.'],
 ];
 
@@ -64,7 +67,8 @@ const FAQ = [
   ['Quem responde precisa criar conta?', 'Não. Na avaliação avulsa o link enviado por WhatsApp é a credencial. Contas são opcionais e servem para acompanhar a pessoa ao longo do tempo.'],
   ['Quem vê os dados dos meus avaliados?', 'Só você. Cada facilitador enxerga apenas os próprios grupos, alunos e avaliações. Não existe visão cruzada entre facilitadores. O CPF, quando informado, é guardado apenas como um código irreversível para reconhecer a mesma pessoa — nunca em texto legível.'],
   ['Dá para entrar com a conta Google?', 'Sim. O facilitador registra o e-mail no convite e a pessoa entra com o Google desse e-mail; a conta é ativada na hora, sem cadastro nem senha. Login por e-mail e senha continua disponível.'],
-  ['A IA recebe dados pessoais?', 'A análise é gerada no servidor a partir das pontuações. Chaves de IA nunca vão para o navegador e nada é vendido a terceiros.'],
+  ['O que é um teste dirigido?', 'Um questionário curto (12 perguntas, cerca de 3 minutos) que aprofunda um único foco de desenvolvimento apontado pelo perfil. Metade das perguntas é invertida, então concordar com tudo não infla o resultado. O facilitador aplica pelo app, por link ou à turma inteira.'],
+  ['A IA recebe dados pessoais?', 'A análise é gerada no servidor a partir das pontuações, e o assistente da Central só envia números agregados e anonimizados quando você pede um aprofundamento. Chaves de IA nunca vão para o navegador e nada é vendido a terceiros.'],
   ['Como começo?', 'O acesso de facilitador é liberado pela Vianexx. Fale com a gente pelo botão desta página e mostramos a plataforma com dados de exemplo.'],
 ];
 

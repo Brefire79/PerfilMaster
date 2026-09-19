@@ -391,3 +391,24 @@ Fluxo no código: `signInWithGoogle()` → `/auth/v1/authorize?provider=google&r
 ---
 
 *Perfil Master · Vianexx AI · Manual Técnico · atualizado 17/09/2026 (auditoria: Google + convite por e-mail, CPF pseudonimizado, lotes)*
+
+---
+
+## 8. 🔁 Ciclo de desenvolvimento, Testes Dirigidos, Mestre v2 e DISC‑V2 (19/09/2026)
+
+Resumo técnico do que entrou com o `PLANO-EVOLUCAO-2026-09-19.md` (detalhes por DELTA no `CLAUDE.md`):
+
+| Peça | Onde | Observação |
+|---|---|---|
+| Histórico de perfis | `app_profiles.ciclo`, `app_profiles_historico`, trigger `app_profiles_snapshot` (DELTA 25) | Snapshot só quando o `assessmentid` muda; `createProfile` sempre com `assessmentId`. Leitura: `getProfileHistory(uid)` / `getProfileHistoryByUids`. |
+| Motor de abordagem | `src/lib/abordagem.js` | Regras R1–R6 versionadas; `sugerirAbordagem` / `sugerirAbordagemTurma`. Contrato em `verify-testes-dirigidos-contract.mjs`. |
+| Testes Dirigidos | `src/constants/testesDirigidos.js` → `_shared/testesDirigidos.ts` **gerado** (`node scripts/gen-testes-dirigidos-edge.mjs`) | Mudou item → rode o gerador (o contrato falha se estiver desatualizado). Scoring: `src/lib/testeDirigidoScoring.js` (front) = espelho no `.ts` (Edge). |
+| Ciclos | `app_ciclos` (DELTA 26) | RLS por facilitador; aluno só responde (trigger `app_ciclos_protege_colunas`); auditoria por trigger `app_ciclos_audit` → `audit_log`. Helpers `criarCiclo`, `getCiclosDaPessoa`, `getCiclosByAdmin`, `responderCiclo`, `descartarCiclo`. |
+| Canais | `/student/teste/:id`, `/teste/:token` (Edge `cicloPorToken`/`cicloResponder`), Grupos › Comparativo (`AbordagemTurma.jsx`), Relatório § 3.3 (`AplicarTesteDirigido.jsx`) | Edge públicas com rate limit e erro neutro (contrato de segurança). |
+| Lembretes | Edge `enviarLembretesCiclos`, `app_ciclos.lembrete_em` (DELTA 28), `.github/workflows/lembretes.yml` | Cron: header `x-cron-token` = secret `CRON_TOKEN` (Supabase e GitHub). Admin: JWT, `{ groupId?, simular? }`. |
+| Mestre v2 | `src/lib/mestreIntencao.js` (puro), `src/lib/mestreConsultas.js`, `src/lib/mestreLocal.js` | Contrato `verify-mestre-contract.mjs`. Miss-log via `logAudit` (`mestre_miss`). Aprofundamento: Edge `mestreAprofundar` (anonimiza no servidor). |
+| Social Style | `src/lib/socialStyle.js`, `SocialStyleCard.jsx` | Lente derivada do DISC; contrato `verify-social-style-contract.mjs`. |
+| DISC‑V2 | `sampleQuestions.js` (`invertido: true`, `DISC_VERSAO = 2`), `discScoring.js`, `atualizarStatus`, `_shared/disc.ts`; `app_profiles.disc_versao` (DELTA 29) | Chaves de rascunho versionadas; Linha do Tempo avisa comparação entre versões. |
+| Segurança | DELTA 27 | Em função `SECURITY DEFINER`, `current_user` é o dono — use **`session_user`** + `auth.role()` no bypass. O contrato de segurança rejeita `current_user IN (` em migrations novas. |
+
+`npm test` roda cinco contratos: scoring, segurança, testes dirigidos, Mestre e Social Style.

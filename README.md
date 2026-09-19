@@ -50,6 +50,7 @@ Fluxos públicos por token passam por Edge Functions com `service_role`; o clien
 - [Checklist de publicação](DEPLOY-READY.md)
 - [Auditoria 27/07/2026 + plano de sprints](AUDITORIA-2026-07-27.md)
 - [Auditoria 17/09/2026 — Google, convite por e-mail, CPF pseudonimizado, performance, questões, módulos](AUDITORIA-2026-09-17.md)
+- [Plano de evolução 19/09/2026 — ciclo de desenvolvimento, testes dirigidos, Mestre v2, DISC‑V2 (entregue)](PLANO-EVOLUCAO-2026-09-19.md)
 - [Deploy das Edge Functions](SUPABASE_FUNCTIONS_DEPLOY.md)
 
 Documentos públicos do aplicativo:
