@@ -1,5 +1,5 @@
 {
-  "version": "1.0.75",
-  "buildDate": "2026-09-19T14:06:07.985Z",
-  "notes": "Histórico de avaliações (refazer não apaga o anterior) com linha do tempo e evolução, Testes Dirigidos de desenvolvimento aplicados pelo facilitador (no app, por link ou à turma toda), Social Style no relatório, Mestre que entende nomes de pessoas e turmas e lembretes por e-mail."
+  "version": "1.0.77",
+  "buildDate": "2026-09-19T17:22:12.950Z",
+  "notes": "Histórico de avaliações com linha do tempo e evolução, Testes Dirigidos aplicados pelo facilitador (no app, por link ou à turma), Social Style no relatório, Mestre que entende nomes de pessoas e turmas, lembretes por e-mail e questionário DISC v2 com itens invertidos (resultado mais fiel para quem tende a concordar com tudo)."
 }
