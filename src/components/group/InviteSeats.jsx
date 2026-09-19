@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input.jsx';
 import PhoneInput from '@/components/ui/PhoneInput.jsx';
 import { ConfirmModal } from '@/components/ui/Modal.jsx';
 import {
-  getInvite, getInviteUses, updateInvite, getUsersByGroup, getAvaliadosByAdmin,
+  getInvite, getInviteUses, updateInvite, getUsersByGroup, getAvaliadosByAdmin, getAssessmentsByGroupIds,
 } from '@/firebase/firestore.js';
 import useAuthStore from '@/store/authStore.js';
 
@@ -41,13 +41,16 @@ function formatarTelefone(v) {
   return d;
 }
 
-// Situação da avaliação de quem entrou (conta → app_users.assessmentStatus;
-// avulso → app_avaliados.status). Só leitura, para o facilitador cobrar quem falta.
+// Situação da avaliação de quem entrou — o que conta é a avaliação DESTA turma
+// (app_assessments.groupid = grupo do convite). Quem já tinha perfil de antes
+// (conta antiga) aparece como "Perfil anterior", não como concluído: para a
+// empresa, ele ainda não respondeu. Avulso → app_avaliados.status.
 function situacao(uso, mapaContas, mapaAvaliados) {
   if (uso.kind === 'conta') {
     const s = mapaContas.get(uso.uid);
-    if (s === 'completed') return { texto: 'Concluiu', variant: 'success' };
-    if (s === 'in_progress') return { texto: 'Em andamento', variant: 'info' };
+    if (s === 'concluiu') return { texto: 'Concluiu', variant: 'success' };
+    if (s === 'em_andamento') return { texto: 'Em andamento', variant: 'info' };
+    if (s === 'anterior') return { texto: 'Perfil anterior', variant: 'warning' };
     return { texto: 'Não iniciou', variant: 'neutral' };
   }
   const s = mapaAvaliados.get(uso.avaliadoToken);
@@ -78,13 +81,27 @@ export default function InviteSeats({ token, groupId, onInviteChange }) {
       const inv = await getInvite(token);
       setInvite(inv);
       if (inv?.id) {
-        const [lista, membros, avaliados] = await Promise.all([
+        const [lista, membros, avaliados, porGrupo] = await Promise.all([
           getInviteUses(inv.id).catch(() => []),
           groupId ? getUsersByGroup(groupId).catch(() => []) : [],
           user?.uid ? getAvaliadosByAdmin(user.uid).catch(() => []) : [],
+          groupId ? getAssessmentsByGroupIds([groupId]).catch(() => new Map()) : new Map(),
         ]);
         setUsos(lista);
-        setMapaContas(new Map((membros || []).map((m) => [m.uid, m.assessmentStatus])));
+        // Avaliações feitas NESTE grupo decidem; o status geral da conta só
+        // distingue "perfil anterior" de "não iniciou".
+        const doGrupo = porGrupo.get(groupId) || [];
+        const porUid = new Map();
+        for (const a of doGrupo) {
+          const fez = ['submitted', 'analyzed', 'completed'].includes(a.status);
+          const atual = porUid.get(a.uid);
+          if (fez) porUid.set(a.uid, 'concluiu');
+          else if (atual !== 'concluiu') porUid.set(a.uid, 'em_andamento');
+        }
+        for (const m of membros || []) {
+          if (!porUid.has(m.uid) && m.assessmentStatus === 'completed') porUid.set(m.uid, 'anterior');
+        }
+        setMapaContas(porUid);
         setMapaAvaliados(new Map((avaliados || []).map((a) => [a.token, a.status])));
       }
       setAtualizadoEm(new Date());
