@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import useAuthStore from '@/store/authStore.js';
 import { getPessoas, getAuditLog } from '@/firebase/firestore.js';
 import { logAudit } from '@/firebase/functions.js';
+import LinhaDoTempo from '@/components/central/LinhaDoTempo.jsx';
 
 // ─── Config de perfil ────────────────────────────────────────────────────────────
 const PROFILE = {
@@ -219,6 +220,11 @@ function PessoaRow({ pessoa, aberta, onToggle }) {
           {pessoa.concluiu ? 'Concluída' : 'Em aberto'}
         </span>
 
+        {(pessoa.conta?.ciclos?.length || 0) >= 2 && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-[#6366F1]/15 text-[#6366F1]" title="Reavaliada — veja a evolução na linha do tempo">
+            {pessoa.conta.ciclos.length} ciclos
+          </span>
+        )}
         {diag && (
           <span className="hidden sm:inline text-xs text-[#A0A3B1]">
             {diag.perfilPrimarioNome}
@@ -233,48 +239,14 @@ function PessoaRow({ pessoa, aberta, onToggle }) {
       </button>
 
       {aberta && (
-        <div className="px-4 pb-4 pt-1 border-t border-[#2D3047]">
-          <p className="text-xs text-[#6B6F80] uppercase tracking-wide mb-2">
-            Histórico de avaliações
-          </p>
-          {pessoa.avaliacoes.length === 0 && !pessoa.conta ? (
-            <p className="text-sm text-[#6B6F80]">Sem avaliações registradas.</p>
+        <div className="px-4 pb-4 pt-3 border-t border-[#2D3047]">
+          {/* Conta sem nenhum ciclo ainda: mostra o status da avaliação pendente */}
+          {pessoa.conta && !(pessoa.conta.ciclos?.length) && pessoa.avaliacoes.length === 0 ? (
+            <p className="text-sm text-[#6B6F80]">
+              Conta de aluno · {pessoa.conta.assessmentStatus === 'completed' ? 'Concluída' : 'Avaliação pendente'}
+            </p>
           ) : (
-            <ul className="space-y-2">
-              {pessoa.conta && (
-                <li className="flex items-center gap-3 text-sm">
-                  <span className="text-[#6B6F80] text-xs w-28 flex-shrink-0">Conta de aluno</span>
-                  <span className="text-[#F7F8FC]">
-                    {pessoa.conta.diagnostico
-                      ? `${PROFILE[pessoa.conta.diagnostico.perfilPrimario]?.nome || ''}`
-                      : (pessoa.conta.assessmentStatus === 'completed' ? 'Concluída' : 'Pendente')}
-                  </span>
-                </li>
-              )}
-              {pessoa.avaliacoes
-                .slice()
-                .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0))
-                .map((av) => (
-                  <li key={av.avaliadoId} className="flex items-center gap-3 text-sm">
-                    <span className="text-[#6B6F80] text-xs w-28 flex-shrink-0">
-                      {fmtData(av.concluidoEm || av.criadoEm)}
-                    </span>
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded-full ${
-                        av.status === 'concluido'
-                          ? 'bg-[#22C55E]/15 text-[#22C55E]'
-                          : 'bg-[#F59E0B]/15 text-[#F59E0B]'
-                      }`}
-                    >
-                      {av.status || '—'}
-                    </span>
-                    <span className="text-[#A0A3B1]">
-                      {av.sessaoTitulo || 'Avaliação avulsa'}
-                      {av.diagnostico && ` · ${av.diagnostico.perfilPrimarioNome}`}
-                    </span>
-                  </li>
-                ))}
-            </ul>
+            <LinhaDoTempo pessoa={pessoa} />
           )}
         </div>
       )}

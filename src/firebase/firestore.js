@@ -1518,13 +1518,45 @@ export async function getPessoas(adminUid) {
     getIdentityLinksByAdmin(adminUid),
   ]);
 
-  // Enriquece contas de aluno com o perfil (app_profiles) numa única query.
+  // Enriquece contas de aluno com o perfil (app_profiles) numa única query,
+  // e com os perfis anteriores (app_profiles_historico, DELTA 25) em outra.
   const studentUids = students.map((s) => s.uid || s.id).filter(Boolean);
   let profileByUid = new Map();
+  let historicoByUid = new Map();
   try {
-    const profs = await getProfilesByUids(studentUids);
+    const [profs, hist] = await Promise.all([
+      getProfilesByUids(studentUids),
+      getProfileHistoryByUids(studentUids), // devolve Map vazio se o DELTA 25 não estiver aplicado
+    ]);
     profileByUid = new Map(profs.map((p) => [p.uid || p.id, p]));
+    historicoByUid = hist;
   } catch { /* sem perfis — segue sem diagnóstico de conta */ }
+
+  // Ciclos de avaliação da conta, do mais antigo ao atual (Linha do Tempo).
+  const ciclosDaConta = (uid) => {
+    const atual = profileByUid.get(uid);
+    const anteriores = (historicoByUid.get(uid) || [])
+      .map((h) => ({
+        ciclo: h.ciclo,
+        atual: false,
+        criadoEm: isoDe(h.criadoEm) || isoDe(h.createdAt),
+        substituidoEm: isoDe(h.substituidoEm),
+        diagnostico: diagnosticoDoProfileConta(h),
+      }))
+      .filter((c) => c.diagnostico);
+    const lista = anteriores.sort((a, b) => a.ciclo - b.ciclo);
+    const diagAtual = diagnosticoDoProfileConta(atual);
+    if (diagAtual) {
+      lista.push({
+        ciclo: atual.ciclo || (lista.length + 1),
+        atual: true,
+        criadoEm: isoDe(atual.createdAt),
+        substituidoEm: null,
+        diagnostico: diagAtual,
+      });
+    }
+    return lista;
+  };
 
   // Chave de agrupamento: CPF (forte) quando existe; senão chave sintética por registro.
   const keyAvaliado = (a) => (a.cpf ? `cpf:${a.cpf}` : `av:${a.id}`);
@@ -1565,6 +1597,7 @@ export async function getPessoas(adminUid) {
       groupId: s.groupId || null,
       assessmentStatus: s.assessmentStatus || null,
       diagnostico: diagnosticoDoProfileConta(profileByUid.get(s.uid || s.id)),
+      ciclos: ciclosDaConta(s.uid || s.id), // DELTA 25: [ciclo 1, ciclo 2, …, atual]
     };
     p.origem.add(s.groupId ? 'grupo' : 'aluno');
   }
