@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Perfil Master (profileai)
 
 > SaaS de avaliação comportamental DISC + PQ Sabotadores · Vianexx AI · Breno Luis
-> Deploy: perfilmaster.netlify.app (conta Netlify **breno.luis@gmail.com**, team EstiloHouse — o CLI da máquina tem outras contas logadas: confira `npx netlify status` antes de `npm run deploy`) · Repo: Brefire79/PerfilMaster (branch `main`)
+> Deploy: perfilmaster.netlify.app (conta Netlify **breno.luis@gmail.com**, team EstiloHouse). O CLI da máquina tem outras contas logadas, por isso `npm run deploy` **não usa a sessão do CLI**: `scripts/netlify-deploy.mjs` lê `NETLIFY_AUTH_TOKEN` do `.env.local` (Personal Access Token da conta breno.luis), confere que o token é dessa conta e só então publica. Sem o token, o deploy aborta com instruções. · Repo: Brefire79/PerfilMaster (branch `main`)
 > **Todo o código fica em `profileai/` — nunca edite fora desta pasta.**
 
 ---
@@ -17,7 +17,7 @@ cd profileai
 
 npm run dev              # dev server local (porta 3000 via .claude/launch.json)
 npm run build            # build de produção (Vite → dist/)
-npm run deploy           # bump de versão + build + netlify deploy --prod
+npm run deploy           # test + bump + build + deploy prod (token do .env.local, ver acima)
 npm run deploy:preview   # build + deploy de preview no Netlify
 npm run bump             # bump patch (bump:minor / bump:major)
 npm run cap:sync         # sync Capacitor (mobile)
