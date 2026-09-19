@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { getTesteDirigido } from '@/constants/testesDirigidos.js';
 
 // Linha do Tempo de uma pessoa (Central › Pessoas & Histórico, DELTA 25).
 // Junta, em ordem cronológica, os ciclos da CONTA (app_profiles + histórico)
@@ -42,6 +43,25 @@ export function montarLinhaDoTempo(pessoa) {
       data: av.concluidoEm || av.criadoEm,
       concluido: av.status === 'concluido' || !!av.diagnostico,
       diagnostico: av.diagnostico || null,
+    });
+  }
+
+  // DELTA 26: testes dirigidos aplicados (conta e avulso) — eventos sem Δ DISC.
+  const testes = [
+    ...(pessoa?.conta?.testes || []),
+    ...(pessoa?.avaliacoes || []).flatMap((av) => av.testes || []),
+  ];
+  for (const c of testes) {
+    if (c.status === 'descartado') continue;
+    const t = getTesteDirigido(c.moduloCodigo);
+    eventos.push({
+      id: `teste-${c.id}`,
+      origem: 'teste',
+      rotulo: t?.titulo || c.moduloCodigo,
+      data: c.concluidoEm || c.criadoEm,
+      concluido: c.status === 'concluido',
+      diagnostico: null,
+      teste: { ...c, subescalas: t?.subescalas || {} },
     });
   }
 
@@ -136,7 +156,7 @@ export default function LinhaDoTempo({ pessoa }) {
       <ol className="relative border-l border-[#2D3047] ml-2 space-y-4">
         {eventos.map((ev) => {
           const diag = ev.diagnostico;
-          const cor = diag ? PROFILE[diag.perfilPrimario]?.hex || '#6B6F80' : '#2D3047';
+          const cor = diag ? PROFILE[diag.perfilPrimario]?.hex || '#6B6F80' : ev.origem === 'teste' ? '#6366F1' : '#2D3047';
           return (
             <li key={ev.id} className="pl-5 relative">
               <span
@@ -147,7 +167,7 @@ export default function LinhaDoTempo({ pessoa }) {
                 <div className="flex items-center gap-2 flex-wrap text-xs">
                   <span className="text-[#F7F8FC] font-medium">{ev.rotulo}</span>
                   <span className="px-2 py-0.5 rounded-full bg-[#2D3047] text-[#A0A3B1]">
-                    {ev.origem === 'conta' ? 'conta' : 'link'}
+                    {ev.origem === 'conta' ? 'conta' : ev.origem === 'teste' ? 'teste dirigido' : 'link'}
                   </span>
                   <span className="text-[#6B6F80]">{fmtData(ev.data)}</span>
                   {!ev.concluido && (
@@ -155,7 +175,23 @@ export default function LinhaDoTempo({ pessoa }) {
                   )}
                 </div>
 
-                {diag ? (
+                {ev.origem === 'teste' ? (
+                  <div className="mt-2 text-xs text-[#A0A3B1] space-y-1">
+                    {ev.teste.status === 'concluido' && ev.teste.resultado ? (
+                      <>
+                        <p>Resultado geral <span className="text-[#F7F8FC] font-semibold">{ev.teste.resultado.geral}</span>/100</p>
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {Object.entries(ev.teste.resultado.subescalas || {}).map(([k, v]) => (
+                            <span key={k}>{ev.teste.subescalas[k] || k}: <span className="text-[#F7F8FC]">{v ?? '—'}</span></span>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p>Aguardando resposta{ev.teste.prazoEm ? ` · prazo ${fmtData(ev.teste.prazoEm)}` : ''}</p>
+                    )}
+                    <p className="text-[10px] text-[#6B6F80]">regra {ev.teste.regraId}{ev.teste.motorVersao ? ` · motor v${ev.teste.motorVersao}` : ''}</p>
+                  </div>
+                ) : diag ? (
                   <>
                     <div className="mt-2 flex items-center gap-2 text-sm">
                       <span className="font-semibold" style={{ color: cor }}>

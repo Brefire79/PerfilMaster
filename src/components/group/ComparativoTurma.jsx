@@ -4,6 +4,7 @@ import clsx from 'clsx';
 import Card, { CardTitle, CardDescription } from '@/components/ui/Card.jsx';
 import Button from '@/components/ui/Button.jsx';
 import Badge from '@/components/ui/Badge.jsx';
+import AbordagemTurma from '@/components/group/AbordagemTurma.jsx';
 import {
   getUsersByGroup, getProfilesByUids, getSessoesByAdmin, getAvaliadosByAdmin,
 } from '@/firebase/firestore.js';
@@ -55,6 +56,9 @@ function montarLinhas({ membros, perfis, avaliados, groupId }) {
     const inf = inferir(scores);
     linhas.push({
       chave: `conta:${m.uid}`,
+      // DELTA 26: identidade + sabotadores para aplicar Testes Dirigidos à turma
+      pessoa: { tipo: 'conta', uid: m.uid, nome: m.displayName || m.name || m.email || '—', telefone: m.phoneNumber || m.telefone || '', perfilBaseId: p.id || null },
+      saboteurScores: p.saboteurScores || null,
       nome: m.displayName || m.name || m.email || '—',
       contato: m.email || '',
       origem: 'Conta',
@@ -74,6 +78,8 @@ function montarLinhas({ membros, perfis, avaliados, groupId }) {
     const inf = inferir(scores);
     linhas.push({
       chave: `avulso:${a.token}`,
+      pessoa: { tipo: 'avulso', avaliadoId: a.id, nome: a.nome || '—', telefone: a.telefone ? String(a.telefone) : '' },
+      saboteurScores: pf.saboteurScores || null,
       nome: a.nome || '—',
       contato: a.telefone ? String(a.telefone) : (a.email || ''),
       origem: 'Celular',
@@ -200,6 +206,9 @@ export default function ComparativoTurma({ groupId, groupName, adminUid }) {
 
   return (
     <div className="space-y-4">
+      {/* DELTA 26: próximo foco da turma + aplicação em lote */}
+      <AbordagemTurma linhas={base} groupId={groupId} groupName={groupName} adminUid={adminUid} />
+
       {/* Distribuição + ações */}
       <Card variant="default">
         <div className="flex items-start justify-between gap-3 flex-wrap">

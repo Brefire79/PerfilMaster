@@ -3,7 +3,8 @@ import { useTranslation } from '@/lib/i18n.js';
 import { Link } from 'react-router-dom';
 import useAuthStore from '@/store/authStore.js';
 import useProfileStore from '@/store/profileStore.js';
-import { getProfile } from '@/firebase/firestore.js';
+import { getProfile, getCiclosDaPessoa } from '@/firebase/firestore.js';
+import { getTesteDirigido } from '@/constants/testesDirigidos.js';
 import Card from '@/components/ui/Card.jsx';
 import { ProfileBadge } from '@/components/ui/Badge.jsx';
 import Button from '@/components/ui/Button.jsx';
@@ -137,17 +138,44 @@ function PendingAssessmentCard() {
   );
 }
 
+// DELTA 26 — Testes Dirigidos aplicados pelo facilitador (aguardando resposta).
+function TestesPendentesCard({ ciclos }) {
+  const pendentes = ciclos.filter((c) => c.status === 'aplicado' && getTesteDirigido(c.moduloCodigo));
+  if (pendentes.length === 0) return null;
+  return (
+    <Card variant="elevated" className="animate-slide-up border border-[#6366F1]/40">
+      <p className="text-xs text-[#6366F1] uppercase tracking-wide font-semibold mb-1">Próximo passo do seu desenvolvimento</p>
+      <div className="space-y-2">
+        {pendentes.map((c) => {
+          const t = getTesteDirigido(c.moduloCodigo);
+          return (
+            <Link key={c.id} to={`/student/teste/${c.id}`} className="flex items-center gap-3 rounded-xl bg-[#0F1117] border border-[#2D3047] p-3 hover:border-[#6366F1]/60 transition-colors">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-[#F7F8FC] truncate">{t.titulo}</p>
+                <p className="text-xs text-[#A0A3B1]">12 perguntas · ~3 min{c.prazoEm ? ` · até ${new Date(c.prazoEm).toLocaleDateString('pt-BR')}` : ''}</p>
+              </div>
+              <span className="text-xs font-semibold text-[#6366F1]">Responder →</span>
+            </Link>
+          );
+        })}
+      </div>
+    </Card>
+  );
+}
+
 export default function StudentDashboard() {
   const { t } = useTranslation();
   const { user } = useAuthStore();
   const { currentProfile, setProfile } = useProfileStore();
   const [loading, setLoading] = useState(true);
+  const [ciclos, setCiclos] = useState([]);
 
   useEffect(() => {
     if (!user?.uid) return;
     const loadProfile = async () => {
       try {
-        const profile = await getProfile(user.uid);
+        const [profile, lista] = await Promise.all([getProfile(user.uid), getCiclosDaPessoa({ uid: user.uid })]);
+        setCiclos(lista || []);
         if (profile) setProfile(profile);
       } catch (err) {
         console.error('[StudentDashboard] Failed to load profile:', err);
@@ -188,6 +216,9 @@ export default function StudentDashboard() {
           </div>
         </div>
       )}
+
+      {/* DELTA 26: testes dirigidos aguardando resposta */}
+      {!loading && <TestesPendentesCard ciclos={ciclos} />}
 
       {/* Perfil ou CTA de avaliação */}
       {loading ? (

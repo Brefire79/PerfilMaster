@@ -3,6 +3,8 @@
 // em toda subescala, ids únicos), extremos do scoring (0/100 com inversão
 // aplicada), e que toda regra do motor aponta para um teste que existe.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { TESTES_DIRIGIDOS, TESTES_POR_CODIGO } from '../src/constants/testesDirigidos.js';
 import { pontuarTesteDirigido, testeDirigidoCompleto } from '../src/lib/testeDirigidoScoring.js';
 import { sugerirAbordagem, sugerirAbordagemTurma, LIMIARES } from '../src/lib/abordagem.js';
@@ -94,5 +96,9 @@ const agg = sugerirAbordagemTurma(turma, 5);
 assert.equal(agg.suppressed, false); assert.equal(agg.modulo.codigo, 'TD-ASSERTIVIDADE'); assert.equal(agg.distribuicao[0].pct, 100);
 
 assert.ok(LIMIARES.sabotadorAlto > 0 && LIMIARES.pqBaixo > 0);
+
+// Espelho do catálogo no Edge (Deno) é GERADO a partir do JS — falha se estiver desatualizado.
+const gen = spawnSync(process.execPath, [fileURLToPath(new URL('./gen-testes-dirigidos-edge.mjs', import.meta.url)), '--check'], { stdio: 'inherit' });
+assert.equal(gen.status, 0, 'supabase/functions/_shared/testesDirigidos.ts desatualizado — rode node scripts/gen-testes-dirigidos-edge.mjs');
 
 console.log(`Contrato dos Testes Dirigidos validado: ${TESTES_DIRIGIDOS.length} testes × 12 itens + motor de abordagem (v${s.versao}).`);

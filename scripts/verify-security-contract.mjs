@@ -63,7 +63,7 @@ for (const nome of ['firestore.js', 'functions.js', 'auth.js']) {
 // A4 (Sprint 3): Edge públicas com rate limit e sem vazar erro interno.
 // Antes, o catch devolvia (err as Error).message para um chamador ANÔNIMO —
 // mensagem do Postgres com nome de tabela, coluna e constraint.
-for (const fn of ['buscarPorToken', 'atualizarStatus', 'validateInviteToken', 'consumeInviteAvulso']) {
+for (const fn of ['buscarPorToken', 'atualizarStatus', 'validateInviteToken', 'consumeInviteAvulso', 'cicloPorToken', 'cicloResponder']) {
   const source = await readFile(
     new URL(`../supabase/functions/${fn}/index.ts`, import.meta.url), 'utf8'
   );
@@ -91,3 +91,14 @@ for (const padrao of ['[email]', '[documento]', '[uuid]']) {
 }
 
 console.log('Contrato de segurança validado.');
+
+// DELTA 27 (19/09/2026): dentro de função SECURITY DEFINER, current_user é o DONO
+// (postgres) — um bypass "current_user IN ('postgres', …)" é sempre verdadeiro e
+// anula a trava. Nenhuma migration nova pode reintroduzir esse padrão; as
+// antigas (DELTA 8.x) ficam como histórico, corrigidas pelo DELTA 27.
+for (const f of migrations) {
+  if (!f.endsWith('.sql') || f < '20260919_delta26') continue;
+  const sql = await readFile(new URL(`../supabase/migrations/${f}`, import.meta.url), 'utf8');
+  const semComentarios = sql.replace(/--[^\n]*/g, '');
+  assert.ok(!/current_user\s+IN\s*\(/i.test(semComentarios), `${f}: use session_user (não current_user) no bypass de SECURITY DEFINER.`);
+}

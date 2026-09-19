@@ -13,6 +13,7 @@ import { getPublicBaseUrl } from '@/lib/appUrl.js';
 import EvolutionChart from '@/components/profile/EvolutionChart.jsx';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
 import ProximaAbordagem from '@/components/profile/ProximaAbordagem.jsx';
+import AplicarTesteDirigido from '@/components/profile/AplicarTesteDirigido.jsx';
 
 // ─── Configuração DISC ────────────────────────────────────────────────────────
 const DISC = {
@@ -202,6 +203,7 @@ export default function RelatorioOficial() {
   }, [ref, user?.uid]);
 
   const perfil   = avaliado?.perfil;
+  const [ciclosAplicados, setCiclosAplicados] = useState([]); // DELTA 26: códigos já aplicados (rotação do motor)
   const nome     = avaliado?.nome || '';
   const telefone = avaliado?.telefone || '';
   // DELTA 21: o banco não guarda mais o CPF em claro (só pseudônimo + máscara).
@@ -639,7 +641,17 @@ export default function RelatorioOficial() {
           )}
 
           {/* ══ SEÇÃO 3.3: PRÓXIMA ABORDAGEM SUGERIDA (motor determinístico, Fase 2) ══ */}
-          {perfil && <ProximaAbordagem perfil={perfil} />}
+          {perfil && <ProximaAbordagem perfil={perfil} jaAplicados={ciclosAplicados} />}
+          {/* DELTA 26: aplicação do teste (conta → aluno vê no app; avulso → link WhatsApp). Não imprime. */}
+          {perfil && avaliado && (
+            <AplicarTesteDirigido
+              perfil={perfil}
+              onCiclosChange={(lista) => setCiclosAplicados(lista.filter((c) => c.status !== 'descartado').map((c) => c.moduloCodigo))}
+              pessoa={uid
+                ? { tipo: 'conta', uid, nome, telefone, groupId: avaliado.groupId || null, perfilBaseId: avaliado.perfilId || null }
+                : { tipo: 'avulso', avaliadoId: avaliado.id, nome, telefone }}
+            />
+          )}
 
           {/* ══ SEÇÃO 4: INDICADORES CLÍNICOS (ADMIN ONLY) ══ */}
           {flagClinica && (

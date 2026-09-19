@@ -94,6 +94,16 @@ export async function atualizarStatus(payload) {
   return callFunction('atualizarStatus', payload);
 }
 
+// DELTA 26 — Teste Dirigido pelo link público (/teste/:token). Ambas públicas
+// (token = credencial), rate-limited e com scoring no servidor.
+export async function cicloPorToken(payload) {
+  return callFunction('cicloPorToken', payload);
+}
+
+export async function cicloResponder(payload) {
+  return callFunction('cicloResponder', payload);
+}
+
 // Central de Gestão (DELTA 14) — registra evento de auditoria originado no
 // frontend do admin (best-effort; nunca deve quebrar o fluxo do chamador).
 export async function logAudit(payload) {

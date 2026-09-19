@@ -797,6 +797,8 @@ export async function getAvaliadoLikeFromUid(uid) {
 
   return {
     uid,
+    groupId: u?.groupId || null,     // DELTA 26: turma, para o ciclo aplicado pelo relatório
+    perfilId: p?.id || null,          // DELTA 26: app_profiles.id que originou a sugestão
     nome: u?.displayName || u?.name || u?.email || 'Aluno',
     telefone: u?.phoneNumber || u?.telefone || '',
     email: u?.email || null,
@@ -1331,11 +1333,20 @@ export async function deleteIdentityLink(linkId) {
  * Puro de I/O: faz 3 fetches e cruza em memória. Não grava nada.
  */
 export async function getSugestoesVinculo(adminUid) {
-  const [avaliados, students, links] = await Promise.all([
+  const [avaliados, students, links, ciclosTd] = await Promise.all([
     getAvaliadosByAdmin(adminUid),
     getStudentsByAdmin(adminUid),
     getIdentityLinksByAdmin(adminUid),
+    getCiclosByAdmin(adminUid), // DELTA 26: testes dirigidos aplicados (uma query, distribuída abaixo)
   ]);
+  const ciclosPorUid = new Map();
+  const ciclosPorAvaliado = new Map();
+  for (const c of ciclosTd) {
+    const mapa = c.pessoaTipo === 'conta' ? ciclosPorUid : ciclosPorAvaliado;
+    const k = c.pessoaTipo === 'conta' ? c.uid : c.avaliadoId;
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(c);
+  }
 
   // CPFs que já têm vínculo confirmado → não sugerir de novo
   const cpfsVinculados = new Set(links.map((l) => l.cpf).filter(Boolean));
@@ -1519,11 +1530,20 @@ function diagnosticoDoProfileConta(prof) {
 }
 
 export async function getPessoas(adminUid) {
-  const [avaliados, students, links] = await Promise.all([
+  const [avaliados, students, links, ciclosTd] = await Promise.all([
     getAvaliadosByAdmin(adminUid),
     getStudentsByAdmin(adminUid),
     getIdentityLinksByAdmin(adminUid),
+    getCiclosByAdmin(adminUid), // DELTA 26: testes dirigidos aplicados (uma query, distribuída abaixo)
   ]);
+  const ciclosPorUid = new Map();
+  const ciclosPorAvaliado = new Map();
+  for (const c of ciclosTd) {
+    const mapa = c.pessoaTipo === 'conta' ? ciclosPorUid : ciclosPorAvaliado;
+    const k = c.pessoaTipo === 'conta' ? c.uid : c.avaliadoId;
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(c);
+  }
 
   // Enriquece contas de aluno com o perfil (app_profiles) numa única query,
   // e com os perfis anteriores (app_profiles_historico, DELTA 25) em outra.
@@ -1590,6 +1610,7 @@ export async function getPessoas(adminUid) {
       criadoEm: isoDe(a.criadoEm),
       concluidoEm: isoDe(a.concluidoEm),
       diagnostico: diagnosticoDoPerfil(a.perfil),
+      testes: ciclosPorAvaliado.get(a.id) || [], // DELTA 26
     });
     p.origem.add(a.groupId ? 'grupo' : 'sessao');
   }
@@ -1605,6 +1626,7 @@ export async function getPessoas(adminUid) {
       assessmentStatus: s.assessmentStatus || null,
       diagnostico: diagnosticoDoProfileConta(profileByUid.get(s.uid || s.id)),
       ciclos: ciclosDaConta(s.uid || s.id), // DELTA 25: [ciclo 1, ciclo 2, …, atual]
+      testes: ciclosPorUid.get(s.uid || s.id) || [], // DELTA 26: testes dirigidos
     };
     p.origem.add(s.groupId ? 'grupo' : 'aluno');
   }
@@ -1699,11 +1721,20 @@ export async function getPessoas(adminUid) {
  * @returns {{ criados: number }}
  */
 export async function autoVincularPorCpf(adminUid) {
-  const [avaliados, students, links] = await Promise.all([
+  const [avaliados, students, links, ciclosTd] = await Promise.all([
     getAvaliadosByAdmin(adminUid),
     getStudentsByAdmin(adminUid),
     getIdentityLinksByAdmin(adminUid),
+    getCiclosByAdmin(adminUid), // DELTA 26: testes dirigidos aplicados (uma query, distribuída abaixo)
   ]);
+  const ciclosPorUid = new Map();
+  const ciclosPorAvaliado = new Map();
+  for (const c of ciclosTd) {
+    const mapa = c.pessoaTipo === 'conta' ? ciclosPorUid : ciclosPorAvaliado;
+    const k = c.pessoaTipo === 'conta' ? c.uid : c.avaliadoId;
+    if (!mapa.has(k)) mapa.set(k, []);
+    mapa.get(k).push(c);
+  }
 
   // Agrupa registros COM cpf por CPF.
   const porCpf = new Map();
@@ -1835,3 +1866,137 @@ export async function getClientErrorsLog({ origem = null, codigo = null, limit =
 
 // Keep named export compatibility.
 export const db = { provider: 'supabase-rest' };
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CICLOS — Testes Dirigidos aplicados (DELTA 26)
+// Colunas em snake_case explícito (modulo_codigo, concluido_em…) — não passam
+// pelo CAMEL_TO_DB de propósito, para não colidir com `concluidoem` de outras tabelas.
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const CICLOS = import.meta.env.VITE_SB_TABLE_CICLOS || 'app_ciclos';
+
+function mapCiclo(r) {
+  if (!r) return null;
+  return {
+    id: r.id,
+    adminUid: r.adminuid,
+    groupId: r.groupid || null,
+    pessoaTipo: r.pessoa_tipo,
+    uid: r.uid || null,
+    avaliadoId: r.avaliado_id || null,
+    pessoaNome: r.pessoa_nome || null,
+    token: r.token,
+    moduloCodigo: r.modulo_codigo,
+    moduloVersao: r.modulo_versao,
+    regraId: r.regra_id || null,
+    motorVersao: r.motor_versao ?? null,
+    justificativa: Array.isArray(r.justificativa) ? r.justificativa : [],
+    perfilBaseId: r.perfil_base_id || null,
+    status: r.status,
+    prazoEm: r.prazo_em || null,
+    respostas: r.respostas || null,
+    resultado: r.resultado || null,
+    concluidoEm: r.concluido_em || null,
+    criadoEm: isoDe(r.criadoEm) || r.criadoem || null,
+    atualizadoEm: isoDe(r.atualizadoEm) || r.atualizadoem || null,
+  };
+}
+
+/**
+ * Cria um ciclo (aplica um Teste Dirigido a uma pessoa). O facilitador logado é o dono.
+ * @param {object} c  { adminUid, pessoaTipo:'conta'|'avulso', uid?, avaliadoId?, pessoaNome?, groupId?,
+ *                      moduloCodigo, moduloVersao, regraId?, motorVersao?, justificativa?, perfilBaseId?, prazoDias? }
+ */
+export async function criarCiclo(c) {
+  const prazo = c.prazoDias ? new Date(Date.now() + c.prazoDias * 86400000).toISOString() : null;
+  const row = await insertRow(CICLOS, {
+    adminuid: c.adminUid,
+    groupid: c.groupId || null,
+    pessoa_tipo: c.pessoaTipo,
+    uid: c.pessoaTipo === 'conta' ? c.uid : null,
+    avaliado_id: c.pessoaTipo === 'avulso' ? c.avaliadoId : null,
+    pessoa_nome: c.pessoaNome || null,
+    modulo_codigo: c.moduloCodigo,
+    modulo_versao: c.moduloVersao || 1,
+    regra_id: c.regraId || 'MANUAL',
+    motor_versao: c.motorVersao ?? null,
+    justificativa: Array.isArray(c.justificativa) ? c.justificativa : [],
+    perfil_base_id: c.perfilBaseId || null,
+    status: 'aplicado',
+    prazo_em: prazo,
+  });
+  return mapCiclo(row);
+}
+
+/** Ciclos de uma pessoa (conta por uid OU avulso por avaliadoId), do mais recente ao mais antigo. */
+export async function getCiclosDaPessoa({ uid = null, avaliadoId = null } = {}) {
+  const filters = [];
+  if (uid) filters.push({ field: 'uid', op: 'eq', value: uid });
+  else if (avaliadoId) filters.push({ field: 'avaliado_id', op: 'eq', value: avaliadoId });
+  else return [];
+  try {
+    const rows = await selectRows(CICLOS, { filters, orderBy: 'criadoem', ascending: false });
+    return rows.map(mapCiclo);
+  } catch (err) {
+    console.warn('[getCiclosDaPessoa] indisponível:', err?.message || err);
+    return [];
+  }
+}
+
+/** Todos os ciclos do facilitador (Central / turma). */
+export async function getCiclosByAdmin(adminUid, { groupId = null } = {}) {
+  const filters = [{ field: 'adminuid', op: 'eq', value: adminUid }];
+  if (groupId) filters.push({ field: 'groupid', op: 'eq', value: groupId });
+  try {
+    const rows = await selectRows(CICLOS, { filters, orderBy: 'criadoem', ascending: false });
+    return rows.map(mapCiclo);
+  } catch (err) {
+    console.warn('[getCiclosByAdmin] indisponível:', err?.message || err);
+    return [];
+  }
+}
+
+/** Ciclos em lote por uids (Linha do Tempo da Central) → Map<uid, ciclos[]>. */
+export async function getCiclosByUids(uids) {
+  const list = (Array.isArray(uids) ? uids : []).filter(Boolean);
+  const map = new Map();
+  if (list.length === 0) return map;
+  try {
+    const rows = await selectRows(CICLOS, {
+      filters: [{ field: 'uid', op: 'in', value: `(${list.join(',')})` }],
+      orderBy: 'criadoem', ascending: false,
+    });
+    for (const r of rows) {
+      const c = mapCiclo(r);
+      if (!map.has(c.uid)) map.set(c.uid, []);
+      map.get(c.uid).push(c);
+    }
+  } catch (err) {
+    console.warn('[getCiclosByUids] indisponível:', err?.message || err);
+  }
+  return map;
+}
+
+export async function getCiclo(id) {
+  const row = await selectRows(CICLOS, { filters: [{ field: 'id', op: 'eq', value: id }], single: true });
+  return mapCiclo(row);
+}
+
+/**
+ * Canal CONTA: o aluno logado responde. Scoring no cliente (mesmo motor
+ * canônico usado no contrato) — a RLS + trigger só deixam mexer em
+ * respostas/resultado/status→concluido.
+ */
+export async function responderCiclo(id, { respostas, resultado }) {
+  await updateRows(CICLOS, [{ field: 'id', op: 'eq', value: id }], {
+    respostas,
+    resultado,
+    status: 'concluido',
+    concluido_em: nowIso(),
+  }, { returning: false });
+}
+
+/** Facilitador descarta um ciclo (não apaga — fica na trilha). */
+export async function descartarCiclo(id) {
+  await updateRows(CICLOS, [{ field: 'id', op: 'eq', value: id }], { status: 'descartado' }, { returning: false });
+}

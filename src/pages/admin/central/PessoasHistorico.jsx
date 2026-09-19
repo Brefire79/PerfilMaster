@@ -20,6 +20,9 @@ const ACAO_LABEL = {
   admin_viewed_history: 'Histórico acessado',
   report_generated: 'Relatório gerado',
   report_exported: 'Relatório exportado',
+  cycle_applied: 'Teste dirigido aplicado',
+  cycle_completed: 'Teste dirigido concluído',
+  cycle_discarded: 'Teste dirigido descartado',
 };
 const ACAO_COR = {
   assessment_completed: '#22C55E',
@@ -28,6 +31,9 @@ const ACAO_COR = {
   admin_viewed_history: '#A0A3B1',
   report_generated: '#6366F1',
   report_exported: '#6366F1',
+  cycle_applied: '#6366F1',
+  cycle_completed: '#22C55E',
+  cycle_discarded: '#6B6F80',
 };
 
 function fmtData(iso) {

@@ -23,6 +23,8 @@ const NotFound = lazy(() => import('@/pages/shared/NotFound.jsx'));
 // ─── Lazy-loaded Public Pages (sem login) ────────────────────────────────────
 const AvaliacaoPublica = lazy(() => import('@/pages/public/AvaliacaoPublica.jsx'));
 const ResultadoPublico = lazy(() => import('@/pages/public/ResultadoPublico.jsx'));
+const TesteDirigidoPublico = lazy(() => import('@/pages/public/TesteDirigidoPublico.jsx')); // DELTA 26
+const TesteDirigidoAluno = lazy(() => import('@/pages/student/TesteDirigido.jsx')); // DELTA 26
 const LegalPage = lazy(() => import('@/pages/public/LegalPage.jsx'));
 const Landing = lazy(() => import('@/pages/public/Landing.jsx'));
 // DELTA 22: /join/:token — escolha "tenho e-mail" (conta) ou "não tenho" (avulso da empresa)
@@ -185,6 +187,8 @@ export default function AppRoutes() {
 
         {/* Resultado público para o avaliado ver seu perfil — sem login */}
         <Route path="/resultado/:token" element={<ResultadoPublico />} />
+        {/* Teste Dirigido pelo link (DELTA 26) — sem login, token = credencial */}
+        <Route path="/teste/:token" element={<TesteDirigidoPublico />} />
         <Route path="/privacidade" element={<LegalPage />} />
         <Route path="/termos" element={<LegalPage />} />
         <Route path="/suporte" element={<LegalPage />} />
@@ -252,6 +256,7 @@ export default function AppRoutes() {
           <Route path="assessment/:id" element={<SafeAssessment />} />
           <Route path="assessment-wizard" element={<AssessmentWizardPage />} />
           <Route path="profile" element={<SafeMyProfile />} />
+          <Route path="teste/:id" element={<TesteDirigidoAluno />} />
         </Route>
 
         {/* 404 */}
