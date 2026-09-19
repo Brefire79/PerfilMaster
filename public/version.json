@@ -1,5 +1,5 @@
 {
-  "version": "1.0.73",
-  "buildDate": "2026-09-19T01:36:25.309Z",
-  "notes": "Login com Google (por convite: link ou e-mail registrado pelo facilitador), CPF guardado só como código protegido, painel e lista de alunos mais rápidos, avaliação retoma de onde parou e questões revisadas."
+  "version": "1.0.75",
+  "buildDate": "2026-09-19T14:06:07.985Z",
+  "notes": "Histórico de avaliações (refazer não apaga o anterior) com linha do tempo e evolução, Testes Dirigidos de desenvolvimento aplicados pelo facilitador (no app, por link ou à turma toda), Social Style no relatório, Mestre que entende nomes de pessoas e turmas e lembretes por e-mail."
 }
