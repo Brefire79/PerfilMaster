@@ -168,6 +168,9 @@ Empresa pede N avaliações → **Grupos › Novo Grupo › "Turma empresarial"*
 - **Trava no servidor**: trigger `app_assessments_janela` (BEFORE INSERT/UPDATE, quando `status` vira `submitted` com `groupid`) lança `janela_fechada` (o wizard traduz); `atualizarStatus` responde `409` com `code: janela/antes|depois` para `em_andamento`/`concluido`.
 - Sem janela (ambos NULL) nada muda. `janela_fim > janela_inicio` é CHECK.
 
+### Histórico de perfis / reavaliação (DELTA 25, 19/09/2026)
+Antes, refazer a avaliação **sobrescrevia** `app_profiles` (upsert por `uid`). Agora `app_profiles` continua sendo o **perfil atual** (1 linha por uid — telas, RPCs e Edge inalterados) e ganha `ciclo` (1, 2, 3…); o trigger `app_profiles_snapshot` (BEFORE UPDATE) copia a linha anterior para **`app_profiles_historico`** (colunas-chave + `snapshot` jsonb integral) **só quando o `assessmentid` muda** — `buildProfile` (mesmo `assessmentid`) e `updateProfile` (sem `assessmentid`) não geram histórico. `createProfile` **sempre deve receber `assessmentId`**. Leitura: `getProfileHistory(uid)` / `getProfileHistoryByUids(uids)` em `firestore.js` (mesma RLS do `app_profiles`; só leitura — INSERT vem do trigger, SECURITY DEFINER). Apagar a conta leva o histórico (FK CASCADE). Migration: `supabase/migrations/20260919_delta25_historico_perfis.sql`. Plano completo da fase: `PLANO-EVOLUCAO-2026-09-19.md`.
+
 ### Camada de rede (C1, 27/07/2026)
 Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12s banco/auth, 30s Edge) e `fetchComRetry` (só GET, 2 tentativas). Antes disso nenhuma requisição tinha prazo: com o Supabase pausado, `useAuth` pendurava e o app ficava em "Carregando..." eterno.
 
@@ -181,6 +184,7 @@ Todo fetch do app passa por **`src/firebase/http.js`** — `fetchComTimeout` (12
 
 ## Pendências conhecidas
 
+- [x] **DELTA 25 — banco aplicado 19/09/2026** (via conector, migrations `delta25_historico_perfis` + `delta25_historico_perfis_grants`): `supabase/migrations/20260919_delta25_historico_perfis.sql`. 14 perfis em `ciclo=1`, histórico vazio até a primeira reavaliação; `authenticated` só com SELECT. Falta `npm run deploy` (front com `getProfileHistory`). Próximo passo da Fase 1: Linha do Tempo em Pessoas & Histórico consumindo `getProfileHistory`.
 - [x] **DELTA 23 — banco aplicado 19/09/2026** (`20260919_delta23_janela_avaliacao.sql`, via conector). Requer redeploy de `buscarPorToken`, `atualizarStatus`, `validateInviteToken` + `npm run deploy`.
 - [x] **DELTA 22 — banco aplicado 18/09/2026** (via conector Supabase, migration registrada como `delta22_convite_empresarial`): `supabase/migrations/20260918_delta22_convite_empresarial.sql`. Falta **redeploy** de `consumeInvite`, `validateInviteToken` e a nova `consumeInviteAvulso` + `npm run deploy`. Sem o SQL: a UI de vagas falha ao salvar e o consumo cai no comportamento antigo (sem limite).
 - [x] **DELTA 21 — aplicado 18/09/2026** (SQL Editor + redeploy + Google configurado; convite por e-mail validado em produção). Era: `supabase/migrations/20260917_delta21_google_login_cpf_pseudonimo.sql` (convite por e-mail + trigger em `auth.users` + Vault + CPF pseudonimizado com backfill). Depois **redeploy** de `consumeInvite` e `convertAvaliado` (esta lê `cpf_mask` — só depois do SQL). Configurar Google em *Auth → Providers* e `/auth/callback` em *Redirect URLs*. Passo a passo em `AUDITORIA-2026-09-17.md` §0.

@@ -103,6 +103,10 @@ const CAMEL_TO_DB = {
   janelaInicio: 'janela_inicio',
   janelaFim: 'janela_fim',
   avaliadoId: 'avaliado_id',
+  // DELTA 25: histórico de perfis (app_profiles_historico). criadoem/substituidoem
+  // NÃO entram aqui: 'criadoem' existe em várias tabelas e várias telas leem o
+  // nome cru — o helper getProfileHistory converte só as suas.
+  profileId: 'profile_id',
   userUid: 'user_uid',
   linkedBy: 'linked_by',
   linkedAt: 'linked_at',
@@ -630,13 +634,79 @@ export async function submitAssessment(assessmentId, answers) {
 // PROFILES
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Grava o perfil ATUAL da pessoa (uma linha por uid). Continua sendo upsert:
+// desde o DELTA 25, quando o `assessmentId` enviado é diferente do que está
+// gravado, o trigger `app_profiles_snapshot` copia o perfil anterior para
+// app_profiles_historico e incrementa `ciclo` — a reavaliação não apaga mais
+// o resultado anterior. Retry com o mesmo assessmentId não gera histórico.
+// Sempre envie `assessmentId`: sem ele a linha anterior é sobrescrita como antes.
 export async function createProfile(uid, data) {
+  if (!data?.assessmentId) {
+    console.warn('[createProfile] sem assessmentId — o perfil anterior será sobrescrito sem histórico');
+  }
   await upsertRow(COLLECTIONS.PROFILES, {
     uid,
     ...data,
     createdAt: nowIso(),
     updatedAt: nowIso(),
   }, 'uid');
+}
+
+const PROFILES_HISTORICO = import.meta.env.VITE_SB_TABLE_PROFILES_HISTORICO || 'app_profiles_historico';
+
+function mapHistoricoRow(r) {
+  return withDateWrapper(flattenProfile({
+    id: r.id,
+    ...r,
+    // colunas próprias do histórico (não passam pelo CAMEL_TO_DB global)
+    criadoEm: r.criadoem ?? null,
+    substituidoEm: r.substituidoem ?? null,
+    createdAt: r.criadoem ?? null,
+    // o snapshot integral fica disponível para quem precisar de campos não colunados
+    snapshot: r.snapshot ?? null,
+  }));
+}
+
+/**
+ * Perfis anteriores de uma pessoa (DELTA 25), do mais recente para o mais antigo.
+ * O perfil atual continua em getProfile(uid) — combine os dois para a linha do tempo:
+ *   [ ...await getProfileHistory(uid), atual ]  (ciclo crescente)
+ * Devolve [] se a tabela ainda não existir (migration não aplicada).
+ */
+export async function getProfileHistory(uid) {
+  if (!uid) return [];
+  try {
+    const rows = await selectRows(PROFILES_HISTORICO, {
+      filters: [{ field: 'uid', op: 'eq', value: uid }],
+      orderBy: 'ciclo',
+      ascending: false,
+    });
+    return rows.map(mapHistoricoRow);
+  } catch (err) {
+    console.warn('[getProfileHistory] indisponível:', err?.message || err);
+    return [];
+  }
+}
+
+/** Histórico de vários uids numa query só → Map<uid, rows[]> (ciclo decrescente). */
+export async function getProfileHistoryByUids(uids) {
+  const list = (Array.isArray(uids) ? uids : []).filter(Boolean);
+  const map = new Map();
+  if (list.length === 0) return map;
+  try {
+    const rows = await selectRows(PROFILES_HISTORICO, {
+      filters: [{ field: 'uid', op: 'in', value: `(${list.join(',')})` }],
+      orderBy: 'ciclo',
+      ascending: false,
+    });
+    for (const r of rows) {
+      if (!map.has(r.uid)) map.set(r.uid, []);
+      map.get(r.uid).push(mapHistoricoRow(r));
+    }
+  } catch (err) {
+    console.warn('[getProfileHistoryByUids] indisponível:', err?.message || err);
+  }
+  return map;
 }
 
 /** Merge aiSummary JSON fields into the top-level profile object for easier consumption */
