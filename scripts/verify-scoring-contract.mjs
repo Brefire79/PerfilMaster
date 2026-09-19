@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { SAMPLE_QUESTIONS } from '../src/constants/sampleQuestions.js';
-import { calcularPerfilDisc } from '../src/lib/discScoring.js';
+import { calcularPerfilDisc, DISC_VERSAO } from '../src/lib/discScoring.js';
 import { computeSaboteurs, SAB_DIMENSION_TO_KEY } from '../src/lib/saboteurScoring.js';
 
 const disc = SAMPLE_QUESTIONS.filter((q) => ['D', 'I', 'S', 'C'].includes(q.dimension));
@@ -14,8 +14,22 @@ assert.ok(disc.every((q) => q.type === 'likert5'), 'Todas as questões DISC deve
 
 const allMin = Object.fromEntries(SAMPLE_QUESTIONS.map((q) => [q.id, 1]));
 const allMax = Object.fromEntries(SAMPLE_QUESTIONS.map((q) => [q.id, 5]));
-assert.deepEqual(calcularPerfilDisc(allMin).scores, { D: 0, I: 0, S: 0, C: 0 });
-assert.deepEqual(calcularPerfilDisc(allMax).scores, { D: 100, I: 100, S: 100, C: 100 });
+// DISC-V2 (19/09/2026): 8 itens invertidos (2 por dimensão) — extremos agora são
+// "melhor resposta" (5 nos diretos, 1 nos invertidos) → 100 e o oposto → 0.
+const invertidos = disc.filter((q) => q.invertido);
+assert.equal(invertidos.length, 8, 'DISC-V2 exige 8 itens invertidos.');
+for (const dim of ['D', 'I', 'S', 'C']) {
+  assert.equal(invertidos.filter((q) => q.dimension === dim).length, 2, `Dimensão ${dim} precisa de 2 itens invertidos.`);
+}
+assert.equal(DISC_VERSAO, 2, 'DISC_VERSAO deve ser 2 com itens invertidos.');
+const melhor = Object.fromEntries(disc.map((q) => [q.id, q.invertido ? 1 : 5]));
+const pior = Object.fromEntries(disc.map((q) => [q.id, q.invertido ? 5 : 1]));
+assert.deepEqual(calcularPerfilDisc(melhor).scores, { D: 100, I: 100, S: 100, C: 100 });
+assert.deepEqual(calcularPerfilDisc(pior).scores, { D: 0, I: 0, S: 0, C: 0 });
+assert.equal(calcularPerfilDisc(melhor).discVersao, 2);
+// Aquiescência: concordar com tudo NÃO pode mais dar 100 em nenhuma dimensão.
+const tudo5 = calcularPerfilDisc(allMax).scores;
+for (const dim of ['D', 'I', 'S', 'C']) assert.ok(tudo5[dim] < 80, `Concordar com tudo ainda infla ${dim} (${tudo5[dim]}).`);
 assert.equal(computeSaboteurs(allMin, sabotadores)?.pqScore, 90);
 assert.equal(computeSaboteurs(allMax, sabotadores)?.pqScore, 50);
 
@@ -25,10 +39,17 @@ for (const question of disc) {
   const expected = `id: '${question.id}'`;
   assert.ok(edgeSource.includes(expected), `${question.id} ausente em atualizarStatus.`);
   assert.ok(sharedSource.includes(expected), `${question.id} ausente em _shared/disc.ts.`);
-  const edgePattern = new RegExp(`id: '${question.id}'[^}]+type: 'likert5'[^}]+weight: ${question.weight}`);
-  assert.ok(edgePattern.test(edgeSource), `${question.id} diverge no motor público.`);
-  const sharedPattern = new RegExp(`id: '${question.id}'[^}]+weight: ${question.weight}`);
-  assert.ok(sharedPattern.test(sharedSource), `${question.id} diverge no motor compartilhado.`);
+  const inv = question.invertido ? ', invertido: true' : '';
+  const w = `${question.weight}(\.0)?`; // 1 no JS é '1.0' no TS
+  const edgePattern = new RegExp(`id: '${question.id}'[^}]+type: 'likert5'[^}]+weight: ${w}${inv} \}`);
+  assert.ok(edgePattern.test(edgeSource), `${question.id} diverge no motor público (peso/invertido).`);
+  const sharedPattern = new RegExp(`id: '${question.id}'[^}]+weight: ${w}${inv} \}`);
+  assert.ok(sharedPattern.test(sharedSource), `${question.id} diverge no motor compartilhado (peso/invertido).`);
+}
+// Os dois espelhos precisam aplicar 6 − valor e carimbar a versão.
+for (const [nome, src] of [['atualizarStatus', edgeSource], ['_shared/disc.ts', sharedSource]]) {
+  assert.ok(/6 - bruto/.test(src), `${nome} não aplica a inversão (6 − valor) do DISC-V2.`);
+  assert.ok(/DISC_VERSAO = 2/.test(src), `${nome} não carimba DISC_VERSAO = 2.`);
 }
 
 // ── M5 (auditoria 27/07/2026): Sabotadores do Edge ───────────────────────────
@@ -112,4 +133,4 @@ assert.ok(
   'Verificação de erro nos writes (C3) ausente em atualizarStatus.'
 );
 
-console.log('Contrato de scoring validado: 28 DISC + 50 Sabotadores (front ↔ Edge).');
+console.log('Contrato de scoring validado: 28 DISC (v2, 8 invertidos) + 50 Sabotadores (front ↔ Edge).');

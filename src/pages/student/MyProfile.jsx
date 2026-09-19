@@ -553,6 +553,7 @@ function montarCiclos(atual, anteriores) {
       dominantProfile: h.dominantProfile,
       secondaryProfile: h.secondaryProfile || null,
       pqScore: h.pqScore ?? null,
+      discVersao: Number(h.discVersao) || 1,
     }))
     .sort((a, b) => a.ciclo - b.ciclo);
   if (atual?.scores && atual.dominantProfile) {
@@ -564,6 +565,7 @@ function montarCiclos(atual, anteriores) {
       dominantProfile: atual.dominantProfile,
       secondaryProfile: atual.secondaryProfile || null,
       pqScore: atual.pqScore ?? null,
+      discVersao: Number(atual.discVersao) || 1,
     });
   }
   // Δ em relação ao ciclo anterior
@@ -578,6 +580,7 @@ function montarCiclos(atual, anteriores) {
       C: n(cur.scores.C) - n(ant.scores.C),
       pq: (ant.pqScore != null && cur.pqScore != null) ? Math.round(cur.pqScore - ant.pqScore) : null,
       mudouPerfil: ant.dominantProfile !== cur.dominantProfile,
+      versoesDiferentes: (ant.discVersao || 1) !== (cur.discVersao || 1), // DISC-V2
     } : null;
   }
   return lista;
@@ -699,6 +702,9 @@ function HistoryTab({ userId }) {
           </div>
           {ultimo.delta.mudouPerfil && (
             <p className="text-xs text-[#F59E0B] mt-2">Seu perfil dominante mudou nesta avaliação.</p>
+          )}
+          {ultimo.delta.versoesDiferentes && (
+            <p className="text-xs text-[#A0A3B1] mt-2">O questionário foi atualizado entre as duas avaliações (itens novos), então a comparação é aproximada.</p>
           )}
         </Card>
       )}

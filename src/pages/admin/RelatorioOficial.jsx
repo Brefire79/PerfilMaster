@@ -477,6 +477,7 @@ export default function RelatorioOficial() {
           <div style={{ marginBottom: '20px' }}>
             <h2 style={{ fontSize: '13px', fontWeight: '700', color: '#374151', fontFamily: 'Arial, sans-serif', margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '2px solid #E5E7EB', paddingBottom: '6px' }}>
               § 2. Perfil Comportamental DISC
+              {perfil?.discVersao === 2 && <span style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0, color: '#6B7280', fontSize: '11px' }}> · questionário v2 (itens invertidos)</span>}
             </h2>
 
             {/* Badge primário */}

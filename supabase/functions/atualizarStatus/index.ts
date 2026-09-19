@@ -14,23 +14,24 @@ const supabase = createClient(
 // sampleQuestions.js — os types antigos forced_choice/scenario (range 3)
 // distorciam _03/_05 (respostas 4 e 5 normalizavam ambas para 1.0).
 // Espelho de src/lib/discScoring.js — mudou lá, mude aqui (e vice-versa).
+const DISC_VERSAO = 2; // DISC-V2: espelha sampleQuestions.js
 const QUESTIONS = [
-  { id: 'q_d_01', dimension: 'D', type: 'likert5', weight: 1.0 }, { id: 'q_d_02', dimension: 'D', type: 'likert5', weight: 1.0 },
+  { id: 'q_d_01', dimension: 'D', type: 'likert5', weight: 1.0 }, { id: 'q_d_02', dimension: 'D', type: 'likert5', weight: 1.0, invertido: true },
   { id: 'q_d_03', dimension: 'D', type: 'likert5', weight: 1.2 }, { id: 'q_d_04', dimension: 'D', type: 'likert5', weight: 1.1 },
   { id: 'q_d_05', dimension: 'D', type: 'likert5', weight: 1.5 }, { id: 'q_d_06', dimension: 'D', type: 'likert5', weight: 1.5 },
-  { id: 'q_i_01', dimension: 'I', type: 'likert5', weight: 1.0 }, { id: 'q_i_02', dimension: 'I', type: 'likert5', weight: 1.0 },
+  { id: 'q_i_01', dimension: 'I', type: 'likert5', weight: 1.0 }, { id: 'q_i_02', dimension: 'I', type: 'likert5', weight: 1.0, invertido: true },
   { id: 'q_i_03', dimension: 'I', type: 'likert5', weight: 1.2 }, { id: 'q_i_04', dimension: 'I', type: 'likert5', weight: 1.1 },
   { id: 'q_i_05', dimension: 'I', type: 'likert5', weight: 1.5 }, { id: 'q_i_06', dimension: 'I', type: 'likert5', weight: 1.5 },
-  { id: 'q_s_01', dimension: 'S', type: 'likert5', weight: 1.0 }, { id: 'q_s_02', dimension: 'S', type: 'likert5', weight: 1.0 },
+  { id: 'q_s_01', dimension: 'S', type: 'likert5', weight: 1.0 }, { id: 'q_s_02', dimension: 'S', type: 'likert5', weight: 1.0, invertido: true },
   { id: 'q_s_03', dimension: 'S', type: 'likert5', weight: 1.2 }, { id: 'q_s_04', dimension: 'S', type: 'likert5', weight: 1.1 },
   { id: 'q_s_05', dimension: 'S', type: 'likert5', weight: 1.5 }, { id: 'q_s_06', dimension: 'S', type: 'likert5', weight: 1.5 },
-  { id: 'q_c_01', dimension: 'C', type: 'likert5', weight: 1.0 }, { id: 'q_c_02', dimension: 'C', type: 'likert5', weight: 1.0 },
+  { id: 'q_c_01', dimension: 'C', type: 'likert5', weight: 1.0 }, { id: 'q_c_02', dimension: 'C', type: 'likert5', weight: 1.0, invertido: true },
   { id: 'q_c_03', dimension: 'C', type: 'likert5', weight: 1.2 }, { id: 'q_c_04', dimension: 'C', type: 'likert5', weight: 1.1 },
   { id: 'q_c_05', dimension: 'C', type: 'likert5', weight: 1.5 }, { id: 'q_c_06', dimension: 'C', type: 'likert5', weight: 1.5 },
   // DELTA 8: questões *_07 existem em sampleQuestions.js e eram respondidas
   // mas IGNORADAS no cálculo — agora pontuam com o mesmo peso do front (1.1)
-  { id: 'q_d_07', dimension: 'D', type: 'likert5', weight: 1.1 }, { id: 'q_i_07', dimension: 'I', type: 'likert5', weight: 1.1 },
-  { id: 'q_s_07', dimension: 'S', type: 'likert5', weight: 1.1 }, { id: 'q_c_07', dimension: 'C', type: 'likert5', weight: 1.1 },
+  { id: 'q_d_07', dimension: 'D', type: 'likert5', weight: 1.1, invertido: true }, { id: 'q_i_07', dimension: 'I', type: 'likert5', weight: 1.1, invertido: true },
+  { id: 'q_s_07', dimension: 'S', type: 'likert5', weight: 1.1, invertido: true }, { id: 'q_c_07', dimension: 'C', type: 'likert5', weight: 1.1, invertido: true },
 ];
 const QUESTION_MAP = new Map(QUESTIONS.map((q) => [q.id, q]));
 function calcularPerfil(respostas: Record<string, number>) {
@@ -40,7 +41,10 @@ function calcularPerfil(respostas: Record<string, number>) {
     const q = QUESTION_MAP.get(questionId);
     if (!q) continue;
     const range = q.type === 'likert5' ? 4 : 3;
-    const normalizado = Math.max(0, Math.min(1, (Number(valor) - 1) / range));
+    // DISC-V2: item invertido entra como 6 − valor (espelha discScoring.js).
+    const bruto = Math.max(1, Math.min(5, Number(valor) || 0));
+    const ajustado = (q as { invertido?: boolean }).invertido ? 6 - bruto : bruto;
+    const normalizado = Math.max(0, Math.min(1, (ajustado - 1) / range));
     acumulado[q.dimension] += normalizado * q.weight;
     pesosTotal[q.dimension] += q.weight;
   }
@@ -53,7 +57,7 @@ function calcularPerfil(respostas: Record<string, number>) {
   const ordenado = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const perfilPrimario = ordenado[0]?.[0] || 'D';
   const perfilSecundario = ordenado[1] && ordenado[1][1] >= Number(ordenado[0][1]) * 0.8 ? ordenado[1][0] : undefined;
-  return { dominante: scores.D, influente: scores.I, estavel: scores.S, analitico: scores.C, perfilPrimario, perfilSecundario };
+  return { discVersao: DISC_VERSAO, dominante: scores.D, influente: scores.I, estavel: scores.S, analitico: scores.C, perfilPrimario, perfilSecundario };
 }
 // ── Sabotadores (PQ) no fluxo público (avaliação avulsa é sempre Completa/78) ──
 // Espelha src/lib/saboteurScoring.js. As 50 questões q_sab_<slug>_NN (likert 1-5)

@@ -7,7 +7,7 @@ import { computeSaboteurs } from '@/lib/saboteurScoring.js';
 // FIX (auditoria 07/07/2026): motor DISC canônico compartilhado — mesma
 // fórmula ponderada do Edge atualizarStatus (antes o wizard usava média
 // simples, sem pesos, e divergia do fluxo público).
-import { calcularPerfilDisc } from '@/lib/discScoring.js';
+import { calcularPerfilDisc, DISC_VERSAO } from '@/lib/discScoring.js';
 import { buildProfile as buildProfileAI } from '@/firebase/functions.js';
 import Button from '@/components/ui/Button.jsx';
 import useAuthStore from '@/store/authStore.js';
@@ -48,7 +48,9 @@ async function fetchQuestionsByType(assessmentType) {
 // estado React: um refresh no meio das 78 questões perdia tudo. Agora o rascunho
 // fica em localStorage por usuário (mesmo padrão do fluxo público) e é limpo
 // quando o envio conclui.
-const rascunhoKey = (uid) => `profileai.wizard.respostas.${uid}`;
+// DISC-V2: a chave carrega a versão do questionário — rascunho começado no v1 (itens
+// q_?_02/07 com outro sentido) fica órfão em vez de ser lido ao contrário.
+const rascunhoKey = (uid) => `profileai.wizard.respostas.v${DISC_VERSAO}.${uid}`;
 function carregarRascunho(uid) {
   if (!uid) return {};
   try {
@@ -583,6 +585,7 @@ export default function AssessmentWizard({ onCompleted, proximaAvaliacao = null 
         dominantProfile: perfilLocal.dominantProfile,
         secondaryProfile: perfilLocal.secondaryProfile,
         scores: perfilLocal.scores,
+        discVersao: perfilLocal.discVersao, // DISC-V2 (DELTA 29)
         pqScore: sab?.pqScore ?? null,
         saboteurScores: sab?.scores ?? null,
         assessmentId: assessmentDocId,

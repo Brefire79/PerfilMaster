@@ -12,7 +12,7 @@
 // avaliações novas passam a usar a fórmula canônica.
 // ============================================================================
 
-import { SAMPLE_QUESTIONS } from '../constants/sampleQuestions.js';
+import { SAMPLE_QUESTIONS, DISC_VERSAO } from '../constants/sampleQuestions.js';
 
 const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
 
@@ -20,7 +20,7 @@ const PROFILE_NAMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Anal�
 const DISC_QUESTION_MAP = new Map(
   SAMPLE_QUESTIONS
     .filter((q) => ['D', 'I', 'S', 'C'].includes(q.dimension))
-    .map((q) => [q.id, { dimension: q.dimension, weight: q.weight ?? 1.0 }])
+    .map((q) => [q.id, { dimension: q.dimension, weight: q.weight ?? 1.0, invertido: !!q.invertido }])
 );
 
 /**
@@ -36,7 +36,10 @@ export function calcularPerfilDisc(respostas) {
   for (const [questionId, valor] of Object.entries(respostas || {})) {
     const q = DISC_QUESTION_MAP.get(questionId);
     if (!q) continue;
-    const normalizado = Math.max(0, Math.min(1, (Number(valor) - 1) / 4));
+    // DISC-V2: item invertido entra como 6 − valor (concordar = menos da dimensão).
+    const bruto = Math.max(1, Math.min(5, Number(valor) || 0));
+    const ajustado = q.invertido ? 6 - bruto : bruto;
+    const normalizado = Math.max(0, Math.min(1, (ajustado - 1) / 4));
     acumulado[q.dimension] += normalizado * q.weight;
     pesosTotal[q.dimension] += q.weight;
   }
@@ -51,6 +54,7 @@ export function calcularPerfilDisc(respostas) {
   const sorted = Object.entries(scores).sort((a, b) => b[1] - a[1]);
   const [dominant, secondary] = sorted;
   return {
+    discVersao: DISC_VERSAO,
     scores,
     dominantProfile: dominant[0],
     dominantProfileName: PROFILE_NAMES[dominant[0]],
@@ -59,4 +63,4 @@ export function calcularPerfilDisc(respostas) {
   };
 }
 
-export { PROFILE_NAMES };
+export { PROFILE_NAMES, DISC_VERSAO };

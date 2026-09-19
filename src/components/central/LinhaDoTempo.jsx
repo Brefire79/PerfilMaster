@@ -101,6 +101,9 @@ function calcularDelta(antes, depois) {
     ? Math.round(Number(depois.pqScore) - Number(antes.pqScore))
     : null;
   d.mudouPerfil = antes.perfilPrimario !== depois.perfilPrimario;
+  // DISC-V2: ciclos de versões diferentes do questionário se comparam só aproximadamente.
+  const va = Number(antes.discVersao) || 1, vd = Number(depois.discVersao) || 1;
+  d.versoesDiferentes = va !== vd ? `${va} → ${vd}` : null;
   return d;
 }
 
@@ -226,6 +229,11 @@ export default function LinhaDoTempo({ pessoa }) {
                         )}
                         {ev.delta.mudouPerfil && (
                           <span className="text-[#F59E0B]">perfil dominante mudou</span>
+                        )}
+                        {ev.delta.versoesDiferentes && (
+                          <span className="text-[#F59E0B] basis-full" title="O questionário DISC ganhou itens invertidos (v2); a comparação com um ciclo v1 é aproximada.">
+                            questionário DISC v{ev.delta.versoesDiferentes}: comparação aproximada
+                          </span>
                         )}
                       </div>
                     )}

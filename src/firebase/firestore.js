@@ -81,6 +81,7 @@ const CAMEL_TO_DB = {
   adminStrategy: 'adminstrategy',
   // DELTA 17: PQ Score + scores numéricos dos sabotadores (Módulo 3)
   pqScore: 'pq_score',
+  discVersao: 'disc_versao', // DELTA 29 (DISC-V2)
   saboteurScores: 'saboteur_scores',
   // DELTA 7: CPF / convergência de identidade (cpf é tudo-minúsculo, mapeia 1:1;
   // consentimento precisa de snake_case explícito)
@@ -815,6 +816,7 @@ export async function getAvaliadoLikeFromUid(uid) {
       estavel: num(scores.S),
       analitico: num(scores.C),
       pqScore: p.pqScore ?? scores.pqScore ?? null,
+      discVersao: Number(p.discVersao) || 1, // DELTA 29
       // DELTA 17: intensidade 0-100 por sabotador (AssessmentWizard grava via
       // saboteurScoring.js). Sem isto a § 3.2 e o motor de abordagem viam a
       // conta como DISC-only. Top-3 derivado aqui (não é persistido na conta).
@@ -1485,6 +1487,7 @@ function diagnosticoDoPerfil(perfil) {
     },
     pqScore: perfil.pqScore ?? null,
     saboteurScores: perfil.saboteurScores && typeof perfil.saboteurScores === 'object' ? perfil.saboteurScores : null,
+    discVersao: Number(perfil.discVersao) || 1,
   };
 }
 
@@ -1528,6 +1531,7 @@ function diagnosticoDoProfileConta(prof) {
     scores: { D: num(scores.D), I: num(scores.I), S: num(scores.S), C: num(scores.C) },
     pqScore: prof.pqScore ?? scores.pqScore ?? null,
     saboteurScores: prof.saboteurScores && typeof prof.saboteurScores === 'object' ? prof.saboteurScores : null, // Mestre v2 / motor
+    discVersao: Number(prof.discVersao) || 1,
   };
 }
 

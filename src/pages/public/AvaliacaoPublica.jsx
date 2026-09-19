@@ -1,7 +1,7 @@
 import React, { useEffect, useReducer, useCallback, useRef, useState, Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { buscarPorToken, atualizarStatus } from '@/firebase/functions.js';
-import { SAMPLE_QUESTIONS } from '@/constants/sampleQuestions.js';
+import { SAMPLE_QUESTIONS, DISC_VERSAO } from '@/constants/sampleQuestions.js';
 
 // A avaliação avulsa é sempre Completa (78) — mesmos critérios para todos os
 // avaliados: 28 DISC + 50 Sabotadores (q_sab_*), na ordem DISC→Sabotadores.
@@ -66,7 +66,8 @@ const LIKERT_OPCOES = [
 // questões perdia tudo (e a tela de erro dizia, incorretamente, que estavam
 // "salvas localmente"). Agora salvamos em localStorage por token e retomamos
 // de onde parou; a chave é limpa quando o envio conclui com sucesso.
-const respostasStorageKey = (token) => `profileai.avaliacao.respostas.${token}`;
+// DISC-V2: chave versionada — rascunho do questionário v1 não é reaproveitado.
+const respostasStorageKey = (token) => `profileai.avaliacao.respostas.v${DISC_VERSAO}.${token}`;
 
 function loadRespostasSalvas(token) {
   if (!token) return {};

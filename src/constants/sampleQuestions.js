@@ -16,6 +16,13 @@
  *   - src/lib/saboteurScoring.js (mapeia por `dimension` SAB_*)
  */
 
+// DISC-V2 (19/09/2026): 8 dos 28 itens DISC são INVERTIDOS (`invertido: true`,
+// concordar = menos da dimensão; o scoring aplica 6 − valor). Reduz o viés de
+// aquiescência do v1 (quem concordava com tudo saía com 4 perfis altos). Ids e
+// pesos intocados. Perfis gravados carregam `discVersao`; comparar ciclos de
+// versões diferentes é aproximado. Mudou item DISC → suba DISC_VERSAO.
+export const DISC_VERSAO = 2;
+
 export const SAMPLE_QUESTIONS = [
   // ─── D — Dominante ────────────────────────────────────────────────────────
 
@@ -36,10 +43,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'D',
     type: 'likert5',
     text: {
-      ptBR: 'Quando há um obstáculo no caminho, meu primeiro impulso é superá-lo diretamente.',
+      ptBR: 'Diante de um obstáculo, prefiro esperar que alguém mais decidido tome a frente.',
     },
     options: null,
     weight: 1.0,
+    invertido: true, // DISC-V2: concordar = MENOS D (6 − valor no scoring)
   },
   {
     id: 'q_d_03',
@@ -105,10 +113,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'I',
     type: 'likert5',
     text: {
-      ptBR: 'Gosto de convencer outras pessoas sobre minhas ideias usando entusiasmo e histórias.',
+      ptBR: 'Prefiro apresentar uma ideia com fatos objetivos a tentar contagiar as pessoas com entusiasmo.',
     },
     options: null,
     weight: 1.0,
+    invertido: true, // DISC-V2: concordar = MENOS I (6 − valor no scoring)
   },
   {
     id: 'q_i_03',
@@ -174,10 +183,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'S',
     type: 'likert5',
     text: {
-      ptBR: 'Sinto satisfação genuína em apoiar colegas de trabalho quando eles precisam de ajuda.',
+      ptBR: 'Ajudar um colega com um problema dele costuma me parecer uma interrupção do meu próprio trabalho.',
     },
     options: null,
     weight: 1.0,
+    invertido: true, // DISC-V2: concordar = MENOS S (6 − valor no scoring)
   },
   {
     id: 'q_s_03',
@@ -243,10 +253,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'C',
     type: 'likert5',
     text: {
-      ptBR: 'Sinto desconforto quando tenho que entregar um trabalho que não atingiu meu padrão de qualidade.',
+      ptBR: 'Entregar algo "bom o bastante" no prazo me satisfaz mais do que lapidar até ficar perfeito.',
     },
     options: null,
     weight: 1.0,
+    invertido: true, // DISC-V2: concordar = MENOS C (6 − valor no scoring)
   },
   {
     id: 'q_c_03',
@@ -301,10 +312,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'D',
     type: 'likert5',
     text: {
-      ptBR: 'Prefiro liderar projetos a participar como membro de equipe.',
+      ptBR: 'Fico mais à vontade seguindo a direção de outra pessoa do que assumindo o comando.',
     },
     options: null,
     weight: 1.1,
+    invertido: true, // DISC-V2: concordar = MENOS D (6 − valor no scoring)
   },
   {
     id: 'q_i_07',
@@ -312,10 +324,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'I',
     type: 'likert5',
     text: {
-      ptBR: 'Me motiva inspirar e animar as pessoas ao meu redor.',
+      ptBR: 'Em um grupo animado, costumo ficar quieto e observar em vez de puxar a energia.',
     },
     options: null,
     weight: 1.1,
+    invertido: true, // DISC-V2: concordar = MENOS I (6 − valor no scoring)
   },
   {
     id: 'q_s_07',
@@ -323,10 +336,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'S',
     type: 'likert5',
     text: {
-      ptBR: 'Valorizo relacionamentos de longo prazo e invisto tempo em construí-los.',
+      ptBR: 'Não me incomodo em trocar de equipe ou de parceiros de trabalho com frequência.',
     },
     options: null,
     weight: 1.1,
+    invertido: true, // DISC-V2: concordar = MENOS S (6 − valor no scoring)
   },
   {
     id: 'q_c_07',
@@ -334,10 +348,11 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'C',
     type: 'likert5',
     text: {
-      ptBR: 'Organizo minhas tarefas em listas e processos detalhados antes de começar.',
+      ptBR: 'Prefiro começar a fazer e ajustar no caminho a planejar tudo em listas e processos antes.',
     },
     options: null,
     weight: 1.1,
+    invertido: true, // DISC-V2: concordar = MENOS C (6 − valor no scoring)
   },
 
   // ═══════════════════════════════════════════════════════════════════════════
