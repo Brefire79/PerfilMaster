@@ -43,7 +43,7 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'D',
     type: 'likert5',
     text: {
-      ptBR: 'Diante de um obstáculo, prefiro esperar que alguém mais decidido tome a frente.',
+      ptBR: 'Diante de um obstáculo, prefiro esperar que outra pessoa tome a frente.',
     },
     options: null,
     weight: 1.0,
@@ -113,7 +113,7 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'I',
     type: 'likert5',
     text: {
-      ptBR: 'Prefiro apresentar uma ideia com fatos objetivos a tentar contagiar as pessoas com entusiasmo.',
+      ptBR: 'Ao apresentar uma ideia, falo de forma contida, sem tentar empolgar quem está ouvindo.',
     },
     options: null,
     weight: 1.0,
@@ -183,7 +183,7 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'S',
     type: 'likert5',
     text: {
-      ptBR: 'Ajudar um colega com um problema dele costuma me parecer uma interrupção do meu próprio trabalho.',
+      ptBR: 'Prefiro que cada um resolva os próprios problemas no trabalho, sem depender do apoio dos colegas.',
     },
     options: null,
     weight: 1.0,
@@ -336,7 +336,7 @@ export const SAMPLE_QUESTIONS = [
     dimension: 'S',
     type: 'likert5',
     text: {
-      ptBR: 'Não me incomodo em trocar de equipe ou de parceiros de trabalho com frequência.',
+      ptBR: 'Trocar de equipe ou de parceiros de trabalho com frequência me parece natural, até estimulante.',
     },
     options: null,
     weight: 1.1,
