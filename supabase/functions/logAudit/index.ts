@@ -16,6 +16,7 @@ const ACOES_PERMITIDAS = new Set([
   'admin_viewed_history',   // admin abriu o histórico de um participante
   'report_generated',       // relatório oficial gerado/visualizado
   'report_exported',        // relatório exportado (PDF)
+  'mestre_miss',            // Mestre v2: pergunta que o chat não entendeu (só texto normalizado, ≤ 200)
 ]);
 
 Deno.serve(async (req) => {

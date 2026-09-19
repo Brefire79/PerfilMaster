@@ -3,6 +3,7 @@ import clsx from 'clsx';
 import { getClientErrorsLog } from '@/firebase/firestore.js';
 import { useSuperadmin } from '@/hooks/useSuperadmin.js';
 import { isBackendDown, mensagemDeRede } from '@/firebase/http.js';
+import MestreMisses from '@/components/central/MestreMisses.jsx';
 
 /**
  * Diagnóstico — erros que aconteceram no navegador dos usuários (M2, DELTA 20).
@@ -104,6 +105,9 @@ export default function Diagnostico() {
           {isSuperadmin && ' Como superadmin, você também vê os do fluxo público (sem conta).'}
         </p>
       </header>
+
+      {/* Mestre v2: vocabulário que falta (audit_log · mestre_miss) */}
+      <MestreMisses isSuperadmin={isSuperadmin} />
 
       {/* Resumo */}
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

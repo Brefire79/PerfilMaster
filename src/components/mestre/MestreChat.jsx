@@ -15,11 +15,12 @@ import { playBeep, showOsNotification } from '@/lib/notify.js';
 // (localStorage) até o logout — navegar ou recarregar não apaga o contexto.
 // ============================================================================
 
+// Mestre v2: pendências, próximo foco (turma/pessoa) e evolução por nome.
 const SUGESTOES = [
-  { texto: 'Como está a distribuição DISC dos meus grupos?', tag: 'Grupos', cor: '#6366F1' },
-  { texto: 'Qual a taxa de conclusão nos últimos 30 dias?', tag: 'Período', cor: '#F59E0B' },
-  { texto: 'Como está a saúde do app? Algo fora do normal?', tag: 'Status', cor: '#22C55E' },
-  { texto: 'Como faço uma avaliação avulsa pelo WhatsApp?', tag: 'Como fazer', cor: '#EF4444' },
+  { texto: 'Quem ainda não concluiu a avaliação?', tag: 'Pendências', cor: '#F59E0B' },
+  { texto: 'O que trabalhar com a minha turma?', tag: 'Próximo foco', cor: '#6366F1' },
+  { texto: 'Como está a distribuição DISC dos meus grupos?', tag: 'Grupos', cor: '#22C55E' },
+  { texto: 'O que são os testes dirigidos?', tag: 'Como fazer', cor: '#EF4444' },
 ];
 
 const STATUS_META = {
@@ -323,7 +324,7 @@ export default function MestreChatFlutuante() {
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); enviar(); } }}
-          placeholder="Pergunte sobre grupos, período ou o app…"
+          placeholder="Pergunte por nome, turma, pendências ou o app…"
           rows={1}
           className="mfc-textarea"
         />

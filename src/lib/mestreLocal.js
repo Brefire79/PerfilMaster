@@ -16,6 +16,16 @@ import {
 } from '@/firebase/firestore.js';
 import { computeObservabilidade, formatMinutos } from '@/lib/observabilidade.js';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
+import { logAudit } from '@/firebase/functions.js';
+// Mestre v2 (19/09/2026): intenção + entidades (grupo/pessoa/período) e consultas novas.
+import { interpretar } from '@/lib/mestreIntencao.js';
+import {
+  catalogoDoEscopo,
+  dadosPendencias, narrarPendencias,
+  dadosAbordagemTurma, narrarAbordagemTurma,
+  dadosPessoa, narrarAbordagemPessoa, narrarEvolucaoPessoa,
+  dadosCiclos, narrarCiclos,
+} from '@/lib/mestreConsultas.js';
 
 const DISC_NOMES = { D: 'Dominante', I: 'Influente', S: 'Estável', C: 'Analítico' };
 
@@ -40,43 +50,7 @@ function isoOf(campo) {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
-/** Extrai a janela em dias da pergunta ("últimos 30 dias", "semana", "mês"…). */
-function detectarDias(p) {
-  const m = p.match(/(\d+)\s*dias?/);
-  if (m) return Math.max(1, parseInt(m[1], 10));
-  if (/24\s*h(oras)?\b/.test(p)) return 1;
-  if (/\bhoje\b/.test(p)) return 1;
-  if (/\bsemana\b/.test(p)) return 7;
-  if (/\bquinzena\b/.test(p)) return 15;
-  if (/\bmes(es)?\b/.test(p)) return 30;
-  if (/\btrimestre\b/.test(p)) return 90;
-  return null;
-}
-
-// ─── Roteamento (camada semântica fixa, sem IA) ─────────────────────────────
-
-function rotear(perguntaNorm) {
-  // Saúde/status do app tem precedência (pega "está tudo certo?", "versão"…).
-  if (/\b(saude|status|versao|atualizacao|funcionando|anormal|normal|parad\w*|travad\w*|problema|diagnostico)\b/.test(perguntaNorm) ||
-      /tudo (certo|bem|ok)/.test(perguntaNorm)) {
-    return { query: 'saude_status', params: {} };
-  }
-  // Contagem de pessoas/grupos ("quantos alunos tenho", "total de alunos") —
-  // usa a MESMA fonte do card do Painel, para os números baterem.
-  if (/\b(quant[oa]s?|total|numero|n[º°])\b/.test(perguntaNorm) &&
-      /\b(alun\w*|pesso\w*|grup\w*|contas?|membros?)\b/.test(perguntaNorm)) {
-    return { query: 'contagem', params: {} };
-  }
-  // Grupos / DISC / Sabotadores → inteligência de grupos.
-  if (/\b(grupos?|disc|predominante|dominante|influente|estavel|analitico|sabotador\w*|pq)\b/.test(perguntaNorm)) {
-    return { query: 'inteligencia_grupos', params: { min_n: 5 } };
-  }
-  // Período / volume / conclusão → visão geral.
-  if (/\b(taxa|conclusao|conclu(i|id)\w*|iniciad\w*|periodo|dias?|semana|mes(es)?|trimestre|volume|engajamento|quant[ao]s?|tempo medio|avaliac\w*)\b/.test(perguntaNorm)) {
-    return { query: 'visao_geral', params: { dias: detectarDias(perguntaNorm) } };
-  }
-  return { query: null, params: {} };
-}
+// Roteamento e extração de período/entidades: src/lib/mestreIntencao.js (Mestre v2).
 
 // ─── Consultas (mesmos RPCs escopados por RLS das outras abas) ──────────────
 
@@ -341,6 +315,10 @@ export function limparMissLog() {
 }
 
 function registrarMiss(pergunta, tipo = 'sem_resposta', detalhe = null) {
+  // Mestre v2: além do localStorage, manda para o audit_log (ação `mestre_miss`,
+  // best-effort) — o superadmin enxerga os misses de TODOS os facilitadores na
+  // aba Diagnóstico e evolui o vocabulário. Só a pergunta normalizada (≤ 200).
+  logAudit({ action: 'mestre_miss', target_type: 'mestre', target_id: tipo, metadata: { pergunta: normalizar(pergunta).slice(0, 200), detalhe: detalhe ? String(detalhe).slice(0, 200) : null } });
   try {
     const log = getMissLog();
     const norm = normalizar(pergunta);
@@ -389,7 +367,7 @@ const CONVERSAS = [
   },
   {
     re: /(o que (voce|vc) (faz|sabe)|como (voce|vc) funciona|\bajuda\b|\bhelp\b|o que (posso|da pra) perguntar)/,
-    resposta: 'Posso te ajudar com três recortes de dados, sempre agregados e sem expor ninguém:\n• Inteligência de grupos — distribuição DISC, PQ e sabotadores médios, conclusão por grupo.\n• Visão geral — avaliações criadas, iniciadas e concluídas num período (ex.: "últimos 30 dias").\n• Saúde do app — status geral, itens parados e alertas.\nTambém explico como usar o Perfil Master (avaliação avulsa, convites, senha, relatórios).',
+    resposta: 'Posso responder com os dados do seu escopo, sem nada sair do app:\n• "quem ainda não concluiu?" / "tem pendência?" — avaliações em aberto e testes vencendo\n• "o que trabalhar com a [turma]?" — próximo foco coletivo\n• "o que fazer com [nome]?" / "como [nome] evoluiu?" — perfil, próximo passo e antes→depois\n• "quem está em reavaliação?" — testes dirigidos aplicados\n• "distribuição DISC dos grupos", "taxa de conclusão nos últimos 30 dias", "quantos alunos tenho", "está tudo certo?"\nE explico como o app funciona: testes dirigidos, motor de abordagem, convites, janela, comparativo, senha, relatórios.',
   },
   {
     re: /o que (e|significa) (o )?disc|\bmetodologia disc\b/,
@@ -441,6 +419,30 @@ const CONVERSAS = [
     resposta: 'Em Módulos você monta avaliações personalizadas por grupo. Hoje o motor de cálculo e relatório cobre o modelo DiSC; Social Style, OCAI e Custom aparecem como "em breve". A avaliação principal (78 questões DISC + Sabotadores) não depende de módulo.',
   },
   {
+    re: /o que (e|sao) (os )?testes? dirigid|como (funciona|aplico|aplicar) (o |um )?teste dirigid|\bcatalogo de testes\b/,
+    resposta: 'Testes Dirigidos são questionários curtos (12 perguntas, ~3 min) que aprofundam UM foco de desenvolvimento apontado pelo perfil: Assertividade e limites, Delegação e escuta, Equilíbrio e propósito, Decisão sob pressão, Foco e conclusão, Autocrítica e feedback e Fundamentos de inteligência positiva. Metade dos itens é invertida, então "concordar com tudo" não infla o resultado. Para aplicar a uma pessoa: Relatório Oficial › § 3.3 › "Aplicar" (aluno com conta vê no Início; sem conta recebe um link). Para a turma toda: Grupos › Comparativo › "Próximo foco da turma". Pergunte "quem está em reavaliação?" ou "o que trabalhar com [nome]?" que eu trago o próximo passo.',
+  },
+  {
+    re: /motor de abordagem|como (voce|vc) (sugere|escolhe|decide)|por que (esse|este) teste|regra r\d/,
+    resposta: 'O próximo passo é decidido por um motor determinístico (sem IA), com regras versionadas: PQ abaixo de 60 → Fundamentos; sabotador mais intenso acima de 65 → o teste ligado a ele (Prestativo → Assertividade, Controlador/Insistente → Delegação, Hiper-Realizador → Equilíbrio, Esquivo → Decisão, Inquieto → Foco, Juiz/Vítima → Feedback); só DISC → pela dimensão extrema; teste já aplicado → passa ao próximo sinal (rotação). Toda sugestão sai com o id da regra (ex.: R3-SAB-STICKLER) e a versão do motor — dá para auditar um ano depois por que aquele teste foi sugerido.',
+  },
+  {
+    re: /linha do tempo|historico (da|de) pessoa|refazer (a )?avaliacao|reavaliar alguem/,
+    resposta: 'Desde o DELTA 25, refazer a avaliação não apaga o resultado anterior: cada avaliação vira um "ciclo" e a Linha do Tempo (Central › Pessoas & Histórico) mostra ciclo a ciclo com o Δ de D/I/S/C e PQ, além dos testes dirigidos aplicados. O aluno vê a própria evolução em Meu Perfil › Histórico. Me pergunte "como o [nome] evoluiu?".',
+  },
+  {
+    re: /\bcomparativo\b|tabela da turma|\bcsv\b|excel/,
+    resposta: 'O Comparativo da turma (Grupos › a turma › aba Comparativo) lista uma linha por pessoa concluída com D/I/S/C, PQ, perfil e data, ordenável, com filtro por dominante, média no rodapé e exportação CSV para Excel. No topo fica o card "Próximo foco da turma", que agrega as sugestões e aplica um teste dirigido a todos de uma vez.',
+  },
+  {
+    re: /janela (de horario|da avaliacao)|responder junt|horario da avaliacao/,
+    resposta: 'A janela de horário (Grupos › aba Convite › "Janela da avaliação") define quando a avaliação ABRE e FECHA para a turma responder junta. Quem começou dentro da janela pode terminar até 2 h depois do fim. O servidor trava envios fora da janela.',
+  },
+  {
+    re: /turma empresarial|convite (com )?vagas|vagas do convite|quantas vagas/,
+    resposta: 'Turma empresarial (Grupos › Novo Grupo › "Turma empresarial") cria o grupo com um convite de N vagas, nome da empresa e contato. Cada cadastro (com conta ou pelo celular, sem e-mail) gasta 1 vaga; a aba Convite mostra "12 de 40", quem entrou e a situação de cada avaliação, e permite pausar, encerrar ou ajustar vagas.',
+  },
+  {
     re: /\bnotificac\w*|aviso sonoro|\bbeep\b|\bsom\b/,
     resposta: 'As preferências de notificação (som e avisos) ficam em Configurações. Com o app aberto, você recebe aviso de atividade dos avaliados; quando eu respondo com a aba em segundo plano, também aviso por notificação, se estiver habilitado.',
   },
@@ -458,8 +460,7 @@ function conversaMatch(perguntaNorm) {
 }
 
 const FALLBACK =
-  'Ainda não sei responder essa. Posso trazer a distribuição DISC e sabotadores dos grupos, a taxa de conclusão de um período ("últimos 30 dias") ou a saúde do app, e explico fluxos como avaliação avulsa, convites e redefinição de senha. Anotei sua pergunta para aprender esse assunto numa próxima atualização.';
-
+  'Ainda não sei responder essa. Experimente: "quem ainda não concluiu?", "o que trabalhar com a [turma]?", "o que fazer com [nome]?", "como [nome] evoluiu?", "quem está em reavaliação?", "distribuição DISC dos grupos" ou "taxa de conclusão nos últimos 30 dias". Anotei sua pergunta para aprender esse assunto numa próxima atualização.';
 // ─── API principal ───────────────────────────────────────────────────────────
 
 /**
@@ -477,23 +478,51 @@ export async function responderMestre({ pergunta, adminUid, contexto = {} }) {
     return { modo: 'conversa', narrativa: conhecimento, dados: null, queryUsada: null };
   }
 
-  const { query, params } = rotear(perguntaNorm);
-  if (!query) {
+  // Mestre v2: intenção + entidades casadas com os nomes reais do escopo.
+  const catalogo = await catalogoDoEscopo(adminUid).catch(() => ({ grupos: [], pessoas: [] }));
+  const { intencao, entidades, faltando } = interpretar(pergunta, catalogo);
+
+  if (!intencao) {
     registrarMiss(pergunta); // alimenta a evolução do vocabulário
     return { modo: 'conversa', narrativa: FALLBACK, dados: null, queryUsada: null };
   }
 
+  // Slot-filling: falta a pessoa/turma → pergunta de volta, sem chutar.
+  if (faltando.includes('pessoa_ambigua')) {
+    const nomes = entidades.ambiguos.slice(0, 6).map((p) => p.nome).join(', ');
+    return { modo: 'conversa', narrativa: `Encontrei mais de uma pessoa com esse nome: ${nomes}. De qual delas você fala? (Use o nome completo.)`, dados: null, queryUsada: null };
+  }
+  if (faltando.includes('pessoa')) {
+    return { modo: 'conversa', narrativa: 'De quem você quer ver a evolução? Diga o nome da pessoa — por exemplo, "como a Claudia evoluiu?".', dados: null, queryUsada: null };
+  }
+  if (faltando.includes('pessoa|grupo')) {
+    const gr = catalogo.grupos.slice(0, 5).map((g) => g.nome).join(', ');
+    return { modo: 'conversa', narrativa: `Para quem? Diga o nome de uma pessoa ou de uma turma${gr ? ` (suas turmas: ${gr})` : ''}.`, dados: null, queryUsada: null };
+  }
+
+  const params = { dias: entidades.dias, min_n: 5 };
   let dados;
-  if (query === 'inteligencia_grupos') dados = await dadosGrupos(params);
-  else if (query === 'visao_geral') dados = await dadosVisaoGeral(params);
-  else if (query === 'contagem') dados = await dadosContagem(adminUid);
-  else dados = await dadosSaude(adminUid, contexto);
+  let narrativa;
+  switch (intencao) {
+    case 'pendencias':
+      dados = await dadosPendencias(adminUid); narrativa = narrarPendencias(dados); break;
+    case 'abordagem_turma':
+      dados = await dadosAbordagemTurma(adminUid, entidades.grupo); narrativa = narrarAbordagemTurma(dados); break;
+    case 'abordagem_pessoa':
+      dados = await dadosPessoa(adminUid, entidades.pessoa, 'abordagem_pessoa'); narrativa = narrarAbordagemPessoa(dados); break;
+    case 'evolucao_pessoa':
+      dados = await dadosPessoa(adminUid, entidades.pessoa, 'evolucao_pessoa'); narrativa = narrarEvolucaoPessoa(dados); break;
+    case 'ciclos':
+      dados = await dadosCiclos(adminUid, entidades.dias); narrativa = narrarCiclos(dados); break;
+    case 'inteligencia_grupos':
+      dados = await dadosGrupos(params); narrativa = narrarGrupos(dados); break;
+    case 'visao_geral':
+      dados = await dadosVisaoGeral(params); narrativa = narrarVisaoGeral(dados); break;
+    case 'contagem':
+      dados = await dadosContagem(adminUid); narrativa = narrarContagem(dados); break;
+    default:
+      dados = await dadosSaude(adminUid, contexto); narrativa = narrarSaude(dados);
+  }
 
-  const narrativa =
-    query === 'inteligencia_grupos' ? narrarGrupos(dados) :
-    query === 'visao_geral' ? narrarVisaoGeral(dados) :
-    query === 'contagem' ? narrarContagem(dados) :
-    narrarSaude(dados);
-
-  return { modo: 'dado', narrativa, dados, queryUsada: query };
+  return { modo: 'dado', narrativa, dados, queryUsada: intencao };
 }

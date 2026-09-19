@@ -1484,6 +1484,7 @@ function diagnosticoDoPerfil(perfil) {
       C: perfil.analitico ?? perfil.scores?.C ?? 0,
     },
     pqScore: perfil.pqScore ?? null,
+    saboteurScores: perfil.saboteurScores && typeof perfil.saboteurScores === 'object' ? perfil.saboteurScores : null,
   };
 }
 
@@ -1526,6 +1527,7 @@ function diagnosticoDoProfileConta(prof) {
     perfilSecundario: prof.secondaryProfile || null,
     scores: { D: num(scores.D), I: num(scores.I), S: num(scores.S), C: num(scores.C) },
     pqScore: prof.pqScore ?? scores.pqScore ?? null,
+    saboteurScores: prof.saboteurScores && typeof prof.saboteurScores === 'object' ? prof.saboteurScores : null, // Mestre v2 / motor
   };
 }
 
