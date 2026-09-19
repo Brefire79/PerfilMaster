@@ -46,7 +46,8 @@ const CentralGrupos = lazy(() => import('@/pages/admin/central/InteligenciaGrupo
 const CentralDiagnostico = lazy(() => import('@/pages/admin/central/Diagnostico.jsx'));
 // Sub-aba "Mestre (IA)" removida (jul/2026): o chat virou flutuante
 // (components/mestre/MestreChat.jsx, montado no AdminLayout). Arquivo
-// AssistenteIA.jsx preservado para referência; rota redireciona abaixo.
+// AssistenteIA.jsx e a Edge assistenteCentral foram removidos em 19/09/2026
+// (o aprofundamento com IA vive em mestreAprofundar); rota redireciona abaixo.
 
 // ─── Lazy-loaded Student Pages ────────────────────────────────────────────────
 // FIX A2: removidos StudentDashboard, Assessment, MyProfile — usam versão Safe* abaixo

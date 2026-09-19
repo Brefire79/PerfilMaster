@@ -127,12 +127,6 @@ export async function logAudit(payload) {
   }
 }
 
-// Central de Gestão (DELTA 16) — Assistente IA: mapeia a pergunta para uma
-// consulta agregada permitida e devolve narrativa + dados anonimizados.
-export async function assistenteCentral(payload) {
-  return callFunction('assistenteCentral', payload);
-}
-
 // Caminho B — gera link de recuperação de senha de um aluno (admin), para o
 // facilitador enviar por WhatsApp. Sem SMTP/e-mail.
 export async function generateRecoveryLink(payload) {
