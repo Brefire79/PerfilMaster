@@ -43,6 +43,7 @@ import { ConfirmModal } from '@/components/ui/Modal.jsx';
 import Input from '@/components/ui/Input.jsx';
 import MemberList from '@/components/group/MemberList.jsx';
 import InviteLink from '@/components/group/InviteLink.jsx';
+import ComparativoTurma from '@/components/group/ComparativoTurma.jsx';
 import ProgressRing from '@/components/ui/ProgressRing.jsx';
 import ProfileBadge from '@/components/profile/ProfileBadge.jsx';
 import ProfileDetail from '@/components/profile/ProfileDetail.jsx';
@@ -590,6 +591,7 @@ export default function GroupDetail() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentGroup, setCurrentGroup, updateGroup: updateGroupStore } = useGroupStore();
+  const { user } = useAuthStore();
 
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
@@ -597,7 +599,7 @@ export default function GroupDetail() {
   // DELTA 22: ?tab=invite abre direto na aba Convite (turma empresarial recém-criada)
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() =>
-    ['members', 'invite', 'settings'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'members'
+    ['members', 'invite', 'compare', 'settings'].includes(searchParams.get('tab')) ? searchParams.get('tab') : 'members'
   );
   const [selectedMember, setSelectedMember] = useState(null);
   const [profilePanelOpen, setProfilePanelOpen] = useState(false);
@@ -725,6 +727,7 @@ export default function GroupDetail() {
   const tabs = [
     { key: 'members', label: t('group.members', 'Membros') },
     { key: 'invite', label: t('group.invite', 'Convite') },
+    { key: 'compare', label: 'Comparativo' },
     { key: 'settings', label: t('navigation.settings', 'Configurações') },
   ];
 
@@ -897,6 +900,11 @@ export default function GroupDetail() {
               handleGroupUpdated({ ...group, inviteToken: token })
             }
           />
+        )}
+
+        {/* DELTA 24: comparativo pessoa × D/I/S/C/PQ + CSV */}
+        {activeTab === 'compare' && (
+          <ComparativoTurma groupId={id} groupName={group.name} adminUid={group.adminUid || user?.uid} />
         )}
 
         {activeTab === 'settings' && (
