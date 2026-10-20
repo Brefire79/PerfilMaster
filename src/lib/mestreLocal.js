@@ -1,7 +1,8 @@
 // ============================================================================
 // Central de Gestão — Módulo 4: motor LOCAL do chat "Mestre".
-// Sem chamada a IA externa: a pergunta é roteada por palavras-chave para uma
-// das consultas fixas da camada semântica, os dados vêm dos mesmos RPCs
+// Sem chamada a IA externa: a pergunta é roteada (mestreIntencao.rotear) para a
+// base de conhecimento (mestreConhecimento.js) ou para uma das consultas fixas
+// da camada semântica; os dados vêm dos mesmos RPCs
 // escopados das outras abas da Central e a narrativa é montada aqui em PT-BR.
 // A API de IA (DeepSeek) fica reservada à avaliação nos relatórios
 // (insightPerfil / RelatorioOficial) e ao pipeline da avaliação.
@@ -17,8 +18,9 @@ import {
 import { computeObservabilidade, formatMinutos } from '@/lib/observabilidade.js';
 import { SABOTEUR_LABELS } from '@/lib/saboteurScoring.js';
 import { logAudit } from '@/firebase/functions.js';
-// Mestre v2 (19/09/2026): intenção + entidades (grupo/pessoa/período) e consultas novas.
-import { interpretar } from '@/lib/mestreIntencao.js';
+// Mestre v3: roteador por tipo de pergunta + base de conhecimento estruturada.
+import { rotear } from '@/lib/mestreIntencao.js';
+import { respostaDe } from '@/lib/mestreConhecimento.js';
 import {
   catalogoDoEscopo,
   dadosPendencias, narrarPendencias,
@@ -346,121 +348,17 @@ export function registrarErroMestre(pergunta, erro) {
   registrarMiss(pergunta, 'erro', erro?.message || String(erro));
 }
 
-// ─── Modo conversa: respostas com informações do app (sem IA) ───────────────
+// ─── Fallback com sugestões ─────────────────────────────────────────────────
 
-const CONVERSAS = [
-  {
-    // "que dia é hoje", "que data é hoje", "que horas são" — responde local,
-    // sem cair na consulta de período (a palavra "dia" enganava o roteador).
-    re: /\bque (dia|data)\b.*\b(hoje|agora)\b|\bdata de hoje\b|\bque dia (e|eh)\b|dia estamos|\bque horas\b|hora atual|hoje e que dia/,
-    resposta: () => {
-      const agora = new Date();
-      const data = agora.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-      const hora = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      return `Hoje é ${data}, ${hora} no seu dispositivo. Se quiser, pergunte "qual a taxa de conclusão nas últimas 24 horas?" que eu trago o movimento do dia.`;
-    },
-  },
-  {
-    re: /\b(oi|ola|bom dia|boa tarde|boa noite|e ai|eai|hey|hello)\b/,
-    soCurta: true, // saudação só vale sozinha — não pode sequestrar "olá, como está X?"
-    resposta: 'Olá! Eu sou o Mestre, o assistente da Central. Respondo com os números do seu escopo: distribuição DISC e sabotadores por grupo, taxa de conclusão por período e a saúde geral do app. Pergunte, por exemplo: "Como está a distribuição DISC dos meus grupos?".',
-  },
-  {
-    re: /(o que (voce|vc) (faz|sabe)|como (voce|vc) funciona|\bajuda\b|\bhelp\b|o que (posso|da pra) perguntar)/,
-    resposta: 'Posso responder com os dados do seu escopo, sem nada sair do app:\n• "quem ainda não concluiu?" / "tem pendência?" — avaliações em aberto e testes vencendo\n• "o que trabalhar com a [turma]?" — próximo foco coletivo\n• "o que fazer com [nome]?" / "como [nome] evoluiu?" — perfil, próximo passo e antes→depois\n• "quem está em reavaliação?" — testes dirigidos aplicados\n• "distribuição DISC dos grupos", "taxa de conclusão nos últimos 30 dias", "quantos alunos tenho", "está tudo certo?"\nE explico como o app funciona: testes dirigidos, motor de abordagem, convites, janela, comparativo, senha, relatórios.',
-  },
-  {
-    re: /o que (e|significa) (o )?disc|\bmetodologia disc\b/,
-    resposta: 'DISC é a metodologia comportamental usada nas avaliações do Perfil Master. Ela mapeia quatro perfis: Dominante (foco em resultado e decisão), Influente (comunicação e entusiasmo), Estável (consistência e harmonia) e Analítico (precisão e qualidade). Cada avaliação de 78 questões calcula os quatro eixos e aponta o perfil primário.',
-  },
-  {
-    re: /o que (e|sao|significa) (os )?sabotador/,
-    resposta: 'Os Sabotadores (metodologia PQ) são padrões mentais que atrapalham a performance: Juiz, Controlador, Hiper-Realizador, Hiper-Racional, Hiper-Vigilante, Insistente, Prestativo, Esquivo, Inquieto e Vítima. A avaliação completa mede a intensidade de cada um e calcula o PQ Score (quanto maior, menor a interferência dos sabotadores). Veja os agregados por grupo na aba Inteligência de Grupos.',
-  },
-  {
-    re: /avaliacao (avulsa|esporadica|sem conta)|whatsapp.*avalia|link.*avalia/,
-    resposta: 'Para uma avaliação avulsa (sem conta): vá em Alunos e clique em "Avaliação avulsa", ou em Grupos › Membros use "Avaliação avulsa (WhatsApp)". O app gera um link único por pessoa para enviar no WhatsApp; ela responde as 78 questões sem login e você acompanha o resultado no Relatório Oficial.',
-  },
-  {
-    re: /\bconvite|convidar|adicionar aluno|cadastrar aluno/,
-    resposta: 'Para convidar alguém com conta: crie ou abra um grupo em Grupos e gere o link de convite — a pessoa se cadastra por ele e já entra no grupo. Para vínculo sem grupo, gere um convite avulso. Convites de admin (equipe) também existem, gerenciados em Configurações.',
-  },
-  {
-    re: /\bsenha|resetar? .*acesso|esqueceu/,
-    resposta: 'Para redefinir a senha de um aluno: na aba Alunos, clique no botão "Senha" do aluno. O app gera um link de redefinição para você enviar pelo WhatsApp — sem depender de e-mail. A pessoa abre o link e define a nova senha em /reset-password.',
-  },
-  {
-    re: /converter|tornar conta|virar conta/,
-    resposta: 'Para converter um avaliado de sessão (link WhatsApp) em conta de aluno: na aba Alunos, use o botão "Tornar conta". O perfil DISC já respondido migra junto, e você recebe um link de senha para enviar à pessoa.',
-  },
-  {
-    re: /\brelatorio|exportar|pdf/,
-    resposta: 'O Relatório Oficial de cada pessoa fica em Alunos (ou pelo link do avaliado) e é onde a análise de IA é gerada — é o único lugar do chat/relatórios que consulta a API de IA. Minhas respostas aqui você pode exportar em PDF pelo botão "Exportar PDF" quando trago dados.',
-  },
-  {
-    re: /quem (e|sao) (voce|vc|o mestre)|\bseu nome\b|voce e uma ia/,
-    resposta: 'Sou o Mestre, o assistente da Central do Perfil Master. Funciono localmente, dentro do app: leio só números agregados do seu escopo (nunca nome, e-mail ou CPF) e não envio nada para IA externa — a IA é usada apenas na análise do Relatório Oficial.',
-  },
-  {
-    re: /\b(obrigad[oa]|valeu|show|perfeito|otimo|top|legal)\b/,
-    soCurta: true,
-    resposta: 'De nada! Estou por aqui quando precisar — é só clicar no botão do Mestre no Painel.',
-  },
-  {
-    re: /\b(privacidade|anonim\w*|lgpd|pii|dados pessoais|k-?anonimato)\b/,
-    resposta: 'Privacidade aqui é regra: eu só trabalho com números agregados do seu escopo, com k-anonimato nos grupos (amostras pequenas ficam suprimidas). CPF é opcional, com consentimento LGPD, e nunca aparece em respostas — nem para mim. Nenhum dado seu sai do app pelo chat.',
-  },
-  {
-    re: /\bcentral (de gestao)?\b|\bauditoria\b|\btrilha\b|\bobservabilidade\b/,
-    resposta: 'A Central de Gestão (aba Central de Gestão) tem três painéis: Visão Geral (volume e conclusão do período), Pessoas & Histórico (status real de cada pessoa + trilha de auditoria) e Inteligência de Grupos (DISC, PQ e sabotadores agregados por grupo). Eu respondo com os mesmos dados desses painéis, aqui no chat.',
-  },
-  {
-    re: /\bmodulos?\b|social style|\bocai\b/,
-    resposta: 'Em Módulos você monta avaliações personalizadas por grupo. Hoje o motor de cálculo e relatório cobre o modelo DiSC; Social Style, OCAI e Custom aparecem como "em breve". A avaliação principal (78 questões DISC + Sabotadores) não depende de módulo.',
-  },
-  {
-    re: /o que (e|sao) (os )?testes? dirigid|como (funciona|aplico|aplicar) (o |um )?teste dirigid|\bcatalogo de testes\b/,
-    resposta: 'Testes Dirigidos são questionários curtos (12 perguntas, ~3 min) que aprofundam UM foco de desenvolvimento apontado pelo perfil: Assertividade e limites, Delegação e escuta, Equilíbrio e propósito, Decisão sob pressão, Foco e conclusão, Autocrítica e feedback e Fundamentos de inteligência positiva. Metade dos itens é invertida, então "concordar com tudo" não infla o resultado. Para aplicar a uma pessoa: Relatório Oficial › § 3.3 › "Aplicar" (aluno com conta vê no Início; sem conta recebe um link). Para a turma toda: Grupos › Comparativo › "Próximo foco da turma". Pergunte "quem está em reavaliação?" ou "o que trabalhar com [nome]?" que eu trago o próximo passo.',
-  },
-  {
-    re: /motor de abordagem|como (voce|vc) (sugere|escolhe|decide)|por que (esse|este) teste|regra r\d/,
-    resposta: 'O próximo passo é decidido por um motor determinístico (sem IA), com regras versionadas: PQ abaixo de 60 → Fundamentos; sabotador mais intenso acima de 65 → o teste ligado a ele (Prestativo → Assertividade, Controlador/Insistente → Delegação, Hiper-Realizador → Equilíbrio, Esquivo → Decisão, Inquieto → Foco, Juiz/Vítima → Feedback); só DISC → pela dimensão extrema; teste já aplicado → passa ao próximo sinal (rotação). Toda sugestão sai com o id da regra (ex.: R3-SAB-STICKLER) e a versão do motor — dá para auditar um ano depois por que aquele teste foi sugerido.',
-  },
-  {
-    re: /linha do tempo|historico (da|de) pessoa|refazer (a )?avaliacao|reavaliar alguem/,
-    resposta: 'Desde o DELTA 25, refazer a avaliação não apaga o resultado anterior: cada avaliação vira um "ciclo" e a Linha do Tempo (Central › Pessoas & Histórico) mostra ciclo a ciclo com o Δ de D/I/S/C e PQ, além dos testes dirigidos aplicados. O aluno vê a própria evolução em Meu Perfil › Histórico. Me pergunte "como o [nome] evoluiu?".',
-  },
-  {
-    re: /\bcomparativo\b|tabela da turma|\bcsv\b|excel/,
-    resposta: 'O Comparativo da turma (Grupos › a turma › aba Comparativo) lista uma linha por pessoa concluída com D/I/S/C, PQ, perfil e data, ordenável, com filtro por dominante, média no rodapé e exportação CSV para Excel. No topo fica o card "Próximo foco da turma", que agrega as sugestões e aplica um teste dirigido a todos de uma vez.',
-  },
-  {
-    re: /janela (de horario|da avaliacao)|responder junt|horario da avaliacao/,
-    resposta: 'A janela de horário (Grupos › aba Convite › "Janela da avaliação") define quando a avaliação ABRE e FECHA para a turma responder junta. Quem começou dentro da janela pode terminar até 2 h depois do fim. O servidor trava envios fora da janela.',
-  },
-  {
-    re: /turma empresarial|convite (com )?vagas|vagas do convite|quantas vagas/,
-    resposta: 'Turma empresarial (Grupos › Novo Grupo › "Turma empresarial") cria o grupo com um convite de N vagas, nome da empresa e contato. Cada cadastro (com conta ou pelo celular, sem e-mail) gasta 1 vaga; a aba Convite mostra "12 de 40", quem entrou e a situação de cada avaliação, e permite pausar, encerrar ou ajustar vagas.',
-  },
-  {
-    re: /\bnotificac\w*|aviso sonoro|\bbeep\b|\bsom\b/,
-    resposta: 'As preferências de notificação (som e avisos) ficam em Configurações. Com o app aberto, você recebe aviso de atividade dos avaliados; quando eu respondo com a aba em segundo plano, também aviso por notificação, se estiver habilitado.',
-  },
-];
-
-/** Resposta da base de conhecimento, ou null se nenhum padrão casar. */
-function conversaMatch(perguntaNorm) {
-  for (const c of CONVERSAS) {
-    if (c.soCurta && perguntaNorm.length >= 25) continue;
-    if (c.re.test(perguntaNorm)) {
-      return typeof c.resposta === 'function' ? c.resposta() : c.resposta;
-    }
-  }
-  return null;
+function narrarFallback(tipo, sugestoes) {
+  const exemplos = sugestoes.length
+    ? sugestoes
+    : tipo === 'como_fazer' || tipo === 'conceito'
+      ? ['como crio um grupo?', 'como envio a avaliação?', 'o que é PQ Score?']
+      : ['o que faço hoje?', 'quem ainda não concluiu?', 'o que fazer com [nome]?'];
+  return `Não tenho certeza do que você quis dizer. Talvez seja uma destas:\n${exemplos.map((e) => `• "${e}"`).join('\n')}\nAnotei a pergunta para aprender esse assunto numa próxima atualização.`;
 }
 
-const FALLBACK =
-  'Ainda não sei responder essa. Experimente: "quem ainda não concluiu?", "o que trabalhar com a [turma]?", "o que fazer com [nome]?", "como [nome] evoluiu?", "quem está em reavaliação?", "distribuição DISC dos grupos" ou "taxa de conclusão nos últimos 30 dias". Anotei sua pergunta para aprender esse assunto numa próxima atualização.';
 // ─── API principal ───────────────────────────────────────────────────────────
 
 /**
@@ -469,23 +367,20 @@ const FALLBACK =
  * @returns {Promise<{modo:'dado'|'conversa', narrativa:string, dados:object|null, queryUsada:string|null}>}
  */
 export async function responderMestre({ pergunta, adminUid, contexto = {} }) {
-  const perguntaNorm = normalizar(pergunta);
-
-  // Base de conhecimento primeiro: "como faço X" / conceitos ("o que é DISC")
-  // são mais específicos que os gatilhos de métrica e não devem virar consulta.
-  const conhecimento = conversaMatch(perguntaNorm);
-  if (conhecimento) {
-    return { modo: 'conversa', narrativa: conhecimento, dados: null, queryUsada: null };
-  }
-
-  // Mestre v2: intenção + entidades casadas com os nomes reais do escopo.
+  // Mestre v3: tipo da pergunta → base de conhecimento (mestreConhecimento.js)
+  // ou intenção + entidades casadas com os nomes reais do escopo.
   const catalogo = await catalogoDoEscopo(adminUid).catch(() => ({ grupos: [], pessoas: [] }));
-  const { intencao, entidades, faltando } = interpretar(pergunta, catalogo);
+  const rota = rotear(pergunta, catalogo);
 
-  if (!intencao) {
-    registrarMiss(pergunta); // alimenta a evolução do vocabulário
-    return { modo: 'conversa', narrativa: FALLBACK, dados: null, queryUsada: null };
+  if (rota.rota === 'kb') {
+    return { modo: 'conversa', narrativa: respostaDe(rota.entrada), dados: null, queryUsada: null };
   }
+  if (rota.rota === 'fallback') {
+    registrarMiss(pergunta); // alimenta a evolução do vocabulário
+    return { modo: 'conversa', narrativa: narrarFallback(rota.tipo, rota.sugestoes), dados: null, queryUsada: null };
+  }
+
+  const { intencao, entidades, faltando } = rota;
 
   // Slot-filling: falta a pessoa/turma → pergunta de volta, sem chutar.
   if (faltando.includes('pessoa_ambigua')) {
@@ -497,7 +392,7 @@ export async function responderMestre({ pergunta, adminUid, contexto = {} }) {
   }
   if (faltando.includes('pessoa|grupo')) {
     const gr = catalogo.grupos.slice(0, 5).map((g) => g.nome).join(', ');
-    return { modo: 'conversa', narrativa: `Para quem? Diga o nome de uma pessoa ou de uma turma${gr ? ` (suas turmas: ${gr})` : ''}.`, dados: null, queryUsada: null };
+    return { modo: 'conversa', narrativa: `Para quem? Diga o nome de uma pessoa ou de uma turma${gr ? ` (suas turmas: ${gr})` : ''}. Se a dúvida for sobre um perfil em geral, pergunte "como lidar com um perfil Analítico?".`, dados: null, queryUsada: null };
   }
 
   const params = { dias: entidades.dias, min_n: 5 };
@@ -505,7 +400,9 @@ export async function responderMestre({ pergunta, adminUid, contexto = {} }) {
   let narrativa;
   switch (intencao) {
     case 'pendencias':
-      dados = await dadosPendencias(adminUid); narrativa = narrarPendencias(dados); break;
+      dados = await dadosPendencias(adminUid); narrativa = narrarPendencias(dados);
+      if (rota.tipo === 'agenda') narrativa = `O que pede ação agora:\n${narrativa}`;
+      break;
     case 'abordagem_turma':
       dados = await dadosAbordagemTurma(adminUid, entidades.grupo); narrativa = narrarAbordagemTurma(dados); break;
     case 'abordagem_pessoa':

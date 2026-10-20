@@ -1,0 +1,493 @@
+{
+  "_comentario": "Conjunto-ouro do Mestre. espera: kb:<id> | consulta:<intencao> | slot:<faltando> | fallback. fase>1 = ainda nao implementado (so reportado). Origem: teste de 19/10/2026 com 35 perguntas reais + variacoes. Toda pergunta do miss-log corrigida entra aqui.",
+  "casos": [
+    {
+      "q": "oi",
+      "espera": "kb:saudacao"
+    },
+    {
+      "q": "bom dia",
+      "espera": "kb:saudacao"
+    },
+    {
+      "q": "obrigado",
+      "espera": "kb:agradecimento"
+    },
+    {
+      "q": "valeu!",
+      "espera": "kb:agradecimento"
+    },
+    {
+      "q": "o que você faz?",
+      "espera": "kb:ajuda"
+    },
+    {
+      "q": "o que posso perguntar?",
+      "espera": "kb:ajuda"
+    },
+    {
+      "q": "quem é você?",
+      "espera": "kb:quem_sou"
+    },
+    {
+      "q": "que dia é hoje?",
+      "espera": "kb:data_hora"
+    },
+    {
+      "q": "meus dados vão para a IA? e a LGPD?",
+      "espera": "kb:privacidade"
+    },
+    {
+      "q": "como começo a usar o app?",
+      "espera": "kb:comecar"
+    },
+    {
+      "q": "por onde começo?",
+      "espera": "kb:comecar"
+    },
+    {
+      "q": "sou novo aqui, primeiros passos",
+      "espera": "kb:comecar"
+    },
+    {
+      "q": "como funciona o app?",
+      "espera": "kb:comecar"
+    },
+    {
+      "q": "como crio um grupo?",
+      "espera": "kb:criar_grupo"
+    },
+    {
+      "q": "quero criar uma turma nova",
+      "espera": "kb:criar_grupo"
+    },
+    {
+      "q": "como abro um novo grupo",
+      "espera": "kb:criar_grupo"
+    },
+    {
+      "q": "como funciona a turma empresarial?",
+      "espera": "kb:turma_empresarial"
+    },
+    {
+      "q": "como aumento as vagas do convite?",
+      "espera": "kb:turma_empresarial"
+    },
+    {
+      "q": "qual a diferença entre conta e avaliação avulsa?",
+      "espera": "kb:conta_vs_avulsa"
+    },
+    {
+      "q": "como envio a avaliação para alguém?",
+      "espera": "kb:avaliacao_avulsa"
+    },
+    {
+      "q": "como mando a avaliação pelo whatsapp?",
+      "espera": "kb:avaliacao_avulsa"
+    },
+    {
+      "q": "avaliação avulsa",
+      "espera": "kb:avaliacao_avulsa"
+    },
+    {
+      "q": "como reenvio o link?",
+      "espera": "kb:reenviar_link"
+    },
+    {
+      "q": "como cobro quem não respondeu?",
+      "espera": "kb:reenviar_link"
+    },
+    {
+      "q": "o link não abre para o aluno",
+      "espera": "kb:reenviar_link"
+    },
+    {
+      "q": "como convido um aluno?",
+      "espera": "kb:convite"
+    },
+    {
+      "q": "como adiciono uma pessoa no grupo?",
+      "espera": "kb:convite"
+    },
+    {
+      "q": "quanto tempo leva a avaliação?",
+      "espera": "kb:tempo_avaliacao"
+    },
+    {
+      "q": "quantas perguntas tem a avaliação?",
+      "espera": "kb:tempo_avaliacao"
+    },
+    {
+      "q": "como faço para todos responderem juntos?",
+      "espera": "kb:janela"
+    },
+    {
+      "q": "janela de horário",
+      "espera": "kb:janela"
+    },
+    {
+      "q": "como mudo minha senha?",
+      "espera": "kb:minha_senha"
+    },
+    {
+      "q": "esqueci minha senha",
+      "espera": "kb:minha_senha"
+    },
+    {
+      "q": "como troco a senha do aluno?",
+      "espera": "kb:senha_aluno"
+    },
+    {
+      "q": "o aluno esqueceu a senha",
+      "espera": "kb:senha_aluno"
+    },
+    {
+      "q": "como transformo um avaliado em conta?",
+      "espera": "kb:converter_conta"
+    },
+    {
+      "q": "quem tem o pq mais baixo?",
+      "espera": "kb:ranking",
+      "nota": "fase 3 troca por consulta:ranking"
+    },
+    {
+      "q": "quem são os mais influentes?",
+      "espera": "kb:ranking"
+    },
+    {
+      "q": "quem é o mais dominante da turma?",
+      "espera": "kb:ranking"
+    },
+    {
+      "q": "como exporto para excel?",
+      "espera": "kb:comparativo"
+    },
+    {
+      "q": "onde fica o comparativo da turma?",
+      "espera": "kb:comparativo"
+    },
+    {
+      "q": "onde vejo o relatório da Claudia?",
+      "espera": "kb:relatorio"
+    },
+    {
+      "q": "como gero o pdf do relatório?",
+      "espera": "kb:relatorio"
+    },
+    {
+      "q": "como faço uma reavaliação?",
+      "espera": "kb:reavaliacao"
+    },
+    {
+      "q": "como refazer a avaliação de alguém?",
+      "espera": "kb:reavaliacao"
+    },
+    {
+      "q": "o que são os testes dirigidos?",
+      "espera": "kb:testes_dirigidos"
+    },
+    {
+      "q": "como aplico um teste dirigido?",
+      "espera": "kb:testes_dirigidos"
+    },
+    {
+      "q": "como você escolhe o teste?",
+      "espera": "kb:motor_abordagem"
+    },
+    {
+      "q": "onde vejo a evolução?",
+      "espera": "kb:linha_do_tempo"
+    },
+    {
+      "q": "o que é DISC?",
+      "espera": "kb:disc"
+    },
+    {
+      "q": "o que significa pq score?",
+      "espera": "kb:pq_score"
+    },
+    {
+      "q": "o que é pq?",
+      "espera": "kb:pq_score"
+    },
+    {
+      "q": "o que são os sabotadores?",
+      "espera": "kb:sabotadores"
+    },
+    {
+      "q": "o que é o juiz?",
+      "espera": "kb:sab_judge"
+    },
+    {
+      "q": "o que significa o sabotador hiper-realizador?",
+      "espera": "kb:sab_hyperAchiever"
+    },
+    {
+      "q": "o que é a vítima?",
+      "espera": "kb:sab_victim"
+    },
+    {
+      "q": "como lidar com o controlador?",
+      "espera": "kb:sab_controller"
+    },
+    {
+      "q": "o que é um perfil dominante?",
+      "espera": "kb:perfil_D"
+    },
+    {
+      "q": "o que significa ser estável?",
+      "espera": "kb:perfil_S"
+    },
+    {
+      "q": "como lidar com alguém analítico?",
+      "espera": "kb:lidar_C"
+    },
+    {
+      "q": "como devo dar a devolutiva para um perfil dominante?",
+      "espera": "kb:lidar_D"
+    },
+    {
+      "q": "como me comunicar com um influente?",
+      "espera": "kb:lidar_I"
+    },
+    {
+      "q": "como motivar pessoas estáveis?",
+      "espera": "kb:lidar_S"
+    },
+    {
+      "q": "o que é social style?",
+      "espera": "kb:social_style"
+    },
+    {
+      "q": "o app está lento",
+      "espera": "kb:app_lento"
+    },
+    {
+      "q": "não carrega nada",
+      "espera": "kb:app_lento"
+    },
+    {
+      "q": "o que tem na central de gestão?",
+      "espera": "kb:central"
+    },
+    {
+      "q": "como desligo o som das notificações?",
+      "espera": "kb:notificacoes"
+    },
+    {
+      "q": "quem não respondeu ainda?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quem ainda não concluiu a avaliação?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "tem alguém atrasado?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "tem alguma pendência?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quais testes estão vencidos?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quais prazos vencem essa semana?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "o que eu faço hoje?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "próximos passos",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "o que fazer agora?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quais são minhas prioridades?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quantos alunos eu tenho?",
+      "espera": "consulta:contagem"
+    },
+    {
+      "q": "quantas pessoas tenho no total?",
+      "espera": "consulta:contagem"
+    },
+    {
+      "q": "quantos grupos eu tenho?",
+      "espera": "consulta:contagem"
+    },
+    {
+      "q": "quantas avaliações foram concluídas essa semana?",
+      "espera": "consulta:visao_geral"
+    },
+    {
+      "q": "qual a taxa de conclusão nos últimos 30 dias?",
+      "espera": "consulta:visao_geral"
+    },
+    {
+      "q": "resumo da semana",
+      "espera": "consulta:visao_geral"
+    },
+    {
+      "q": "como está o engajamento?",
+      "espera": "consulta:visao_geral"
+    },
+    {
+      "q": "distribuição DISC dos grupos",
+      "espera": "consulta:inteligencia_grupos"
+    },
+    {
+      "q": "qual o perfil da minha equipe?",
+      "espera": "consulta:inteligencia_grupos",
+      "nota": "fase 3 troca por consulta:perfil_equipe"
+    },
+    {
+      "q": "qual grupo tem mais dominantes?",
+      "espera": "consulta:inteligencia_grupos"
+    },
+    {
+      "q": "qual o sabotador mais comum?",
+      "espera": "consulta:inteligencia_grupos"
+    },
+    {
+      "q": "compare os grupos",
+      "espera": "consulta:inteligencia_grupos"
+    },
+    {
+      "q": "está tudo certo?",
+      "espera": "consulta:saude_status"
+    },
+    {
+      "q": "tem algum erro no app?",
+      "espera": "consulta:saude_status"
+    },
+    {
+      "q": "quem está em reavaliação?",
+      "espera": "consulta:ciclos"
+    },
+    {
+      "q": "quantos testes dirigidos foram aplicados este mês?",
+      "espera": "consulta:ciclos"
+    },
+    {
+      "q": "me fala da Claudia",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "o que fazer com a Claudia Cavalcanti?",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "como lidar com o Breno?",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "como dar devolutiva para a Claudia?",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "qual o próximo passo da Casa TvBox",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "como o Breno evoluiu?",
+      "espera": "consulta:evolucao_pessoa"
+    },
+    {
+      "q": "a Claudia melhorou?",
+      "espera": "consulta:evolucao_pessoa"
+    },
+    {
+      "q": "o que trabalhar com a turma piloto?",
+      "espera": "consulta:abordagem_turma"
+    },
+    {
+      "q": "qual o próximo foco do grupo empresarial",
+      "espera": "consulta:abordagem_turma"
+    },
+    {
+      "q": "como lidar com a turma piloto?",
+      "espera": "consulta:abordagem_turma"
+    },
+    {
+      "q": "o que fazer com a Cavalcanti?",
+      "espera": "slot:pessoa_ambigua"
+    },
+    {
+      "q": "como evoluiu?",
+      "espera": "slot:pessoa"
+    },
+    {
+      "q": "o que fazer com ela?",
+      "espera": "slot:pessoa|grupo",
+      "nota": "fase 2 resolve pelo foco da conversa"
+    },
+    {
+      "q": "como lidar com essa pessoa?",
+      "espera": "slot:pessoa|grupo"
+    },
+    {
+      "q": "como vejo os alunos pendentes?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "onde vejo quem não respondeu?",
+      "espera": "consulta:pendencias"
+    },
+    {
+      "q": "quem concluiu ontem?",
+      "espera": "consulta:visao_geral"
+    },
+    {
+      "q": "como está a Claudia?",
+      "espera": "consulta:abordagem_pessoa"
+    },
+    {
+      "q": "qual o pq da turma piloto?",
+      "espera": "consulta:inteligencia_grupos"
+    },
+    {
+      "q": "xyz qwerty",
+      "espera": "fallback"
+    },
+    {
+      "q": "como faço café?",
+      "espera": "fallback"
+    },
+    {
+      "q": "e ela evoluiu?",
+      "espera": "consulta:evolucao_pessoa",
+      "fase": 2
+    },
+    {
+      "q": "e o grupo dela?",
+      "espera": "consulta:abordagem_turma",
+      "fase": 2
+    },
+    {
+      "q": "o que faço nesta tela?",
+      "espera": "kb:tela_atual",
+      "fase": 2
+    },
+    {
+      "q": "quantas pessoas são dominantes?",
+      "espera": "consulta:perfil_equipe",
+      "fase": 3
+    },
+    {
+      "q": "o juiz aparece em quantos alunos?",
+      "espera": "consulta:perfil_equipe",
+      "fase": 3
+    }
+  ]
+}
